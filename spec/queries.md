@@ -1,0 +1,172 @@
+# Open queries
+
+Decisions that need a human. Each carries a stable `Q<number>` code, states what it blocks, and records the current working assumption so work can proceed provisionally where that is safe.
+
+Codes are never renumbered or reused. When a query is answered, record the decision and the date here, and update `standard.md` in the same change.
+
+Each query names the item that **resolves** it and the items it **blocks**. These are always different: a query is never blocked by the item that answers it. Where the resolver is outside this repository, that is stated, because it means the decision has to be chased rather than scheduled.
+
+---
+
+## Q1 - May UK90-derived tables be redistributed?
+
+**Resolved by:** UKRI's response to the pending licence application, recorded through `R2`. Not resolvable inside this repository.
+**Blocks:** embedding UK90-derived tables in any public artefact (crates, release binaries, container images, Python wheels). Does **not** block implementation, because the runtime-supplied path in `standard.md` section 7.2 works under either answer.
+
+**Background:** UK90 was produced under the Medical Research Council. Since 2018 the MRC's functions sit within UK Research and Innovation, which now owns the data. UK-WHO depends on UK90 for preterm infants and from 4 to 20 years, so without UK90 there is no UK-WHO. WHO and CDC data are open. The Trisomy 21 and Turner tables have their own terms, determined in `R2`.
+
+A licence application has been made to UKRI. The data are more than 35 years old, and the maintainers may argue publicly that open access serves the public interest better than licensing. That argument is separate from this project's engineering, which must not depend on its outcome.
+
+Possible outcomes:
+
+- **Open licence or explicit redistribution permission.** Switch UK90 tables to embedded (a feature default), record the licence in table metadata, and close this query.
+- **Licence permitting OHTF use but not onward redistribution.** OHTF may run a hosted server with embedded data; public binaries ship without it, and users import their own licensed copy.
+- **Refusal or no answer.** Public artefacts ship without UK90 tables; users import their own licensed copy. A hosted OHTF server needs a separate legal basis before using UK90.
+
+**Working assumption:** UK90-derived tables are runtime-supplied in every public artefact, and are not committed to this repository. `opengrowth-data` carries their metadata and checksums but not their values. This costs one import command and is reversed by changing a feature default.
+---
+
+## Q2 - Which Category 2 defects are corrected, and by whom?
+
+**Resolved by:** `R4`.
+**Blocks:** the affected parts of `R10` and `R12`.
+
+The Category 2 list in `standard.md` section 6.2 contains behaviour that is probably wrong but changes clinical output, so it cannot be corrected during a port without clinical sign-off. Most significant is `chronological_percentage_median_bmi` being computed from the corrected age, where the field name and the value disagree.
+
+Needed: a clinical decision per item, and an owner. If any is corrected, it is a behaviour change requiring a version bump, migration notes, and a hazard-log entry.
+
+Decisions are made through this project's clinical safety process, with the Clinical Safety Officer as owner unless another is named.
+
+**Working assumption:** reproduce all Category 2 behaviour exactly. Raise each as an issue against the upstream Python repository as well, as a courtesy and so the two engines can stay aligned if RCPCH makes the same correction, but do not wait on an upstream answer.
+
+---
+
+## Q3 - What shape does the server-layer provenance addition take?
+
+**Resolved by:** the OHTF maintainers, during `R15`. Informed by `digital-growth-charts-server#207` upstream if RCPCH defines it first.
+**Blocks:** the response shape in `R15`. Does **not** block `R12`.
+
+**Settled:** the engine-level shape is decided. OpenGrowth adopts the nested `provenance` object from the Python `37-measurement-provenance` branch, containing `growth_reference` and a `calculation_engine` block of `name`, `version`, and `commit`, plus the additive `reference_data` block. See [provenance.md](provenance.md).
+
+**Still open:** whether the server adds an `api_server` sibling identifying the deployment, and with which fields: presumably a name and version, possibly a commit and environment. Upstream `#207` proposes this but has not defined the fields.
+
+**Working assumption:** the engine-level struct is stable and `R12` proceeds on it. The server-layer addition is modelled as an optional field behind the same single serialisation point, so adding it later touches one place. If RCPCH defines `api_server` first, match it, so clients see one structure from both servers.
+---
+
+## Q4 - What are the numerical tolerances?
+
+**Resolved by:** `R5`, which measures actual agreement before the values are fixed.
+**Blocks:** the pass criteria for `R10` and acceptance gate 1.
+
+`standard.md` section 5.2 proposes SDS within `1e-9` absolute, centiles exact after four-decimal rounding, and chart coordinates exact. These are opening positions, not measurements.
+
+Needed: confirmation after `R5` measures actual agreement across the fixture corpus, including the tails beyond ±8 SD where normal-distribution differences are largest.
+
+**Working assumption:** the proposed values. If measurement shows they cannot be met, the correct response is to investigate the cause rather than widen the tolerance, because a wide tolerance would mask genuine algorithmic divergence.
+
+---
+
+## Q5 - Which normal distribution implementation?
+
+**Resolved by:** `R5`, via the experiment described below.
+**Blocks:** `R10` and every numerical acceptance gate.
+
+The choice determines how closely centiles and SDS can track SciPy, particularly in the tails. This is an accuracy decision, not a convenience decision, and it should be settled by measurement rather than by reputation or download count.
+
+Needed: an experiment evaluating candidate Rust implementations against a SciPy-generated grid spanning the ordinary range and the extreme tails, reporting maximum absolute and relative deviation, plus a maintenance and licence review of each candidate.
+
+**Working assumption:** none. Do not pick a crate before the experiment.
+
+---
+
+## Q6 - How should chart null coordinates be handled?
+
+**Resolved by:** `R4`, as a Category 3 defect decision.
+**Blocks:** `R13`, and the chart response schema in `R15`.
+
+The current server declares chart `y` as a required non-nullable float, but 68 stored chart points contain `null`, concentrated in the eighty-five-percent-centile Trisomy 21 male BMI and CDC female weight files. Requests traversing those points fail response validation with a `500`.
+
+Options: permit `null` in the schema and emit those points, which changes the response shape for consumers; or omit the points, which changes array lengths and could alter a rendered curve; or investigate why they are null and fix the underlying data.
+
+Needed: a decision, ideally informed by why those points are null in the first place, since that may be a data-generation defect rather than a schema defect.
+
+**Working assumption:** investigate the cause first. A data fix is preferable to either schema change because it removes the problem instead of encoding it.
+
+---
+
+## Q7 - Should `extended-who-centiles` work?
+
+**Resolved by:** `R4`, as a Category 3 defect decision.
+**Blocks:** `R13`.
+
+The chart request schema accepts `extended-who-centiles`, but no such asset is generated and the constant is not handled by the centile-band logic, so a request produces a `500`. Either the format should be implemented, or it should be removed from the accepted values and rejected with a `422`.
+
+**Working assumption:** implement it, since it is already advertised in the public schema and some integrator may have written it into a client. Confirm whether any client actually uses it before deciding.
+
+---
+
+## Q8 - What is the intended CORS policy?
+
+**Resolved by:** the OHTF maintainers, before `R15`.
+**Blocks:** `R15`.
+
+The current server sets a wildcard origin together with `allow_credentials=True`, which is contradictory, and additionally lists `http://localhost:8000`, which is redundant under the wildcard. Because the authorisation middleware sits outside CORS, preflight requests to non-root paths can be rejected with `403` before CORS processing.
+
+Needed: a statement of the intended policy. Reproducing a contradictory configuration in a new implementation is not obviously right, but changing it could break a browser client.
+
+**Working assumption:** reproduce the current observable behaviour where a browser client could depend on it, resolve the contradiction rather than copy it (check what the current server actually sends; Starlette may echo the request origin when credentials are allowed, which is more permissive than intended), make the policy configurable per deployment, and record the difference in the migration notes.
+
+---
+
+## Q9 - How is equivalence with the Python server demonstrated before anyone relies on OpenGrowth?
+
+**Resolved by:** the OHTF maintainers and the Clinical Safety Officer, as part of `R21`.
+**Blocks:** `R20`, `R21`, and the ambition level for Profile B.
+
+OpenGrowth is not replacing RCPCH's server, so there is no cutover of RCPCH traffic to plan. The question is what evidence is enough before an integrator points production traffic at an OpenGrowth server instead of the RCPCH API.
+
+Options:
+
+- **Self-hosted differential replay.** Run the pinned Python server locally from its AGPL source and replay the conformance corpus plus large volumes of generated inputs against both. Needs no access to RCPCH's live service.
+- **Shadow comparison against the live RCPCH API.** More realistic, but sends traffic to a service OHTF does not control, which needs RCPCH's permission and must use no real patient data.
+- **Integrator shadow mode.** An early-adopter integrator calls both and logs disagreements. Strongest evidence, but needs a partner and careful data handling.
+
+**Working assumption:** self-hosted differential replay as the required gate, because it needs nobody's permission. Integrator shadow mode is welcome as extra evidence. Profile B is pursued only if replay comparison needs byte-level diffs.
+---
+
+## Q10 - How does OpenGrowth track the upstream Python engine?
+
+**Resolved by:** the OHTF maintainers. RCPCH's own plans for `rcpchgrowth` are outside this project's control.
+**Blocks:** `R3` (which version to pin), `R18`.
+
+RCPCH may continue to change `rcpchgrowth`, freeze it, or deprecate it. OpenGrowth needs a policy that works in all three cases, because the Python engine is the reference implementation for everything the independent R vectors do not cover.
+
+Needed: which upstream version the goldens are pinned to; how upstream changes are reviewed (adopt, decline, or record as divergence); and what becomes the reference if upstream stops being maintained.
+
+**Working assumption:** pin goldens to the latest released `rcpchgrowth` version at the time of `R3`. Review each later upstream release for clinical changes and adopt them through the normal clinical safety process, recording any declined change as an intentional divergence. If upstream stops, the pinned version plus the independent vectors remain the reference, and OpenGrowth becomes the maintained implementation. The Python bindings (`R18`) are published as `opengrowth` on PyPI, not under the `rcpchgrowth` name.
+
+---
+
+## Q11 - What is OpenGrowth's regulatory position?
+
+**Resolved by:** the Clinical Safety Officer and OHTF, with regulatory advice where needed. Not resolvable by engineering.
+**Blocks:** any clinical use, any hosted OHTF service used for patient care, and `R21`.
+
+The engine calculates values that inform clinical decisions, so a product built on it for patient care is likely to be software as a medical device under UK MDR. OpenGrowth is not covered by the RCPCH dGC registration.
+
+Needed: whether OHTF places anything on the market (for example a hosted API), and if so as manufacturer of what; or whether OHTF publishes the engine as open-source software only, with each deploying organisation taking the manufacturer role for its own product.
+
+**Working assumption:** OHTF publishes the engine as open-source software that is not for clinical use, and does not operate a clinical service. Deployers carry the manufacturer and DCB0160 responsibilities for their own products. The safety evidence in this repository is written to make their job easy.
+
+---
+
+## Q12 - How does CI run UK90-dependent tests without publishing the data?
+
+**Resolved by:** the OHTF maintainers, during `R6`.
+**Blocks:** UK-WHO conformance in CI (`R9` onward for UK-WHO). Local development is unaffected.
+
+The repository is public, so UK90 tables cannot be committed, cached in public CI artefacts, or baked into images while `Q1` is open. CI still needs them to run the UK-WHO suite, which is the highest-risk area.
+
+Options: fetch the tables at job start from private storage using a repository secret, never caching or uploading them; run UK-WHO conformance only on a self-hosted runner that holds a licensed copy; or skip UK-WHO conformance on forks and external PRs and require it on `main`.
+
+**Working assumption:** fetch from private storage with a secret, verified against the checksum manifest, on `main` and maintainer PRs only. External PRs run everything except UK-WHO conformance, and a maintainer runs it before merging. Revisit if `Q1` resolves in favour of open data.

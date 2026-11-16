@@ -1,0 +1,359 @@
+# OpenGrowth - specification
+
+Normative design for OpenGrowth, an Open Health Technology Foundation reimplementation in Rust of the growth calculation engine published by RCPCH in Python as [`rcpchgrowth`](https://github.com/rcpch/rcpchgrowth-python) and served over HTTP by [`digital-growth-charts-server`](https://github.com/rcpch/digital-growth-charts-server).
+
+## 1. Purpose
+
+One canonical Rust engine that computes SDS, centiles, centile bands, and chart coordinates against the UK-WHO, WHO, CDC, Trisomy 21, and Turner syndrome growth references, and drives several surfaces from that single implementation and a single binary: a library, a command-line tool, an MCP server, an HTTP API, and later a Python FFI binding.
+
+The motivations are:
+
+- **Consolidation.** The equivalent functionality is spread across six repositories: the Python package, the API server, a CLI wrapper, the React component library, a demo client, and the documentation site. A change touching the engine can need coordinated releases in five of them. The target is two: this repository (engine, CLI, MCP, API, Python bindings, docs) and one React repository (chart component and demo client). Fewer places for a calculation to drift, and a workload one maintainer can carry with help from other OHTF contributors.
+- **Agent access.** A self-contained binary with a CLI and MCP server gives AI agents and scripts the calculations directly, without a Python environment or a network call.
+- **Cost and throughput.** A compiled server should serve more requests per core at lower latency than the Python service. This is an expectation to be measured (`R29`), not a premise.
+
+This is a reimplementation, not a rewrite of intent. The clinical behaviour is already defined by the published methods, the independent R vectors, the Python engine, its reference data, and its test fixtures. Those are the specification of record for *what the numbers are*; this document specifies *how faithfully Rust must reproduce them* and *where it is permitted to differ*.
+
+## 2. Non-goals
+
+- **Not a new clinical method.** No new references, no new statistical approach, no reinterpretation of existing references. Changes to clinical behaviour go through this project's clinical safety process (section 9), and are raised with the upstream Python project where they also apply there.
+- **Not an RCPCH project.** OpenGrowth is not affiliated with or endorsed by RCPCH, does not use RCPCH branding, and is not part of the RCPCH Digital Growth Charts medical device. See section 3.1.
+- **Not a `clincalc` module.** OpenGrowth is a separate OHTF project. `clincalc` or any other project may consume it as a library under the terms in section 3, which cannot relicense the reference data.
+- **Not a replacement for `growth-references`.** That repository remains the provenance record for source datasets. This project consumes reference data; it does not become its home.
+- **Not a re-derivation of reference data.** Tables are transcribed, not recomputed. Any transformation must be reproducible and evidenced.
+- **Not initially a drop-in Python import.** FFI is a later phase (`R18`) and is explicitly out of scope for the first release.
+
+## 3. Ownership, licensing, and data redistribution
+
+### 3.1 Ownership and attribution
+
+OpenGrowth is an Open Health Technology Foundation project from its first commit, hosted at `github.com/ohtf/opengrowth`. It was never an RCPCH project. It is an independent derivative work of `rcpchgrowth`, which RCPCH publishes under AGPL-3.0-or-later; the AGPL permits this, subject to the conditions below.
+
+Copyright in new work is held by its contributors, recorded as `Open Health Technology Foundation contributors`. Files that port logic from `rcpchgrowth` also preserve the upstream copyright:
+
+```rust
+// SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+// SPDX-FileCopyrightText: Royal College of Paediatrics and Child Health
+// SPDX-License-Identifier: AGPL-3.0-or-later
+```
+
+The upstream repository carries no explicit copyright statement beyond its licence, so the RCPCH line omits a year rather than guess one.
+
+Original files that contain no ported logic carry only the OHTF line. When in doubt, include both: over-attribution costs nothing, under-attribution breaches the licence.
+
+AGPL section 5 requires modified versions to carry prominent notices that they were modified, with a relevant date. A root `NOTICE.md` records that OpenGrowth is a Rust reimplementation derived from `rcpchgrowth`, names the upstream version and commit the port was taken from, and gives the date (`R25`).
+
+RCPCH's name is used only nominatively: to state API compatibility and to give attribution. It does not appear in crate names, binary names, product names, or logos, and nothing may imply RCPCH endorsement.
+
+Contributions are signed off under the [OHTF Developer Certificate of Origin](https://openhealthtechnology.org/community/dco/).
+
+### 3.2 Code licence
+
+**AGPL-3.0-or-later.** This is not a free choice. The Python engine is licensed AGPL-3.0-or-later, and a port is a derivative work, so the Rust engine inherits that licence. Network use of a modified hosted server triggers AGPL section 13: anyone running a modified OpenGrowth server must offer its source to users. The licence must not be applied by analogy to `growth-references`, which is a separate work with separate terms.
+
+### 3.3 Reference data carries its own terms, tracked per table
+
+The datasets do not share one set of terms. [`growth-references`](https://github.com/rcpch/growth-references) records that each dataset remains subject to its original source, terms, and licensing restrictions: WHO and CDC data are published as open data; the UK90 reference was produced under the Medical Research Council and, since the MRC's functions passed to UK Research and Innovation in 2018, is owned by UKRI. The Trisomy 21 and Turner tables have their own sources, whose terms are recorded in `R2`.
+
+UK90 matters most because UK-WHO depends on it: UK-WHO uses UK90 for preterm infants and from 4 years to 20 years, with WHO 2006 in between. Without UK90 there is no UK-WHO.
+
+A licence application to UKRI has been made and is pending (`Q1`). Possible outcomes:
+
+- **Open licence or redistribution permission.** UK90 tables are embedded like the others and the restriction below lapses.
+- **No redistribution permission.** Public artefacts ship without UK90-derived tables, and users who hold their own licence supply the data at install time (section 7.2).
+
+The design supports both, so implementation does not wait for the answer.
+
+Requirements:
+
+- Reference data lives in its own crate (`opengrowth-data`), separable from the engine. This keeps the redistribution question confined to one artefact rather than spread across the workspace.
+- Each table carries machine-readable provenance and licence metadata: source, publication, version or retrieval date, transformation applied, terms, and a content checksum.
+- A registry test asserts every table, embedded or importable, has non-empty provenance, a licence identifier, and a checksum. A table without recorded terms fails the build. This mirrors the `clincalc` pattern where each calculator must record its own licence, and it satisfies the change-control rule `growth-references` imposes on itself.
+- Each restricted table is either embedded or runtime-supplied, chosen per table by a feature flag. While `Q1` is open, UK90-derived tables are runtime-supplied in every public artefact: crates, release binaries, container images, Python wheels, CI caches.
+- No table is added, replaced, or regenerated without recording source, licence, transformation, and validation evidence in the same change.
+
+### 3.4 Third-party material already identified as restricted
+
+The Python repository retains material that is **not** cleanly redistributable and must not be copied into this project without review:
+
+- `GrowthchartLMSmethod07.pdf` (Fenton and Sauve 2007) carries a Nature Publishing Group "all rights reserved" notice.
+- `huiqi_cole_methods.bas` is LMSgrowth 2.74, copyright 2002-11 Medical Research Council UK (now UKRI).
+- Fenton reference data is absent from the Python engine specifically because a licence had not been secured.
+
+Algorithms may be reimplemented from published method descriptions; source files under restrictive terms must not be vendored.
+
+## 4. Compatibility profiles
+
+"Functionally identical" and "byte-identical" are different contracts with very different costs. This specification defines three named profiles so that a claim of compatibility is always testable and unambiguous. Every conformance test, issue, and release note states which profile it concerns.
+
+### 4.1 Profile A - `semantic` (required)
+
+The Rust implementation is semantically compatible when, for the same input:
+
+- HTTP status codes match, where a server is involved.
+- Parsed JSON structures match: same properties, same nesting, same array ordering.
+- Properties that the Python implementation emits as explicit `null` are present and `null`, not omitted.
+- Strings match exactly: error messages, centile bands, calendar-age phrases, clinical comments, date formats.
+- Numeric values match within the tolerances in section 5.
+
+Object key ordering, whitespace, and the lexical spelling of numbers are **not** part of this profile. This is the level the existing Python server test suite actually enforces, since its tests compare parsed JSON and its fixtures are inconsistently formatted.
+
+Profile A is the release gate. Nothing ships without it.
+
+### 4.2 Profile B - `wire-body` (target, separately costed)
+
+Everything in Profile A, plus the serialised response body is byte-identical for a fixed corpus. This additionally requires reproducing:
+
+- Pydantic response-model field ordering and Python dictionary insertion ordering.
+- Compact JSON separators and absence of a trailing newline.
+- Python float-to-string spelling, including `115.0` versus `115`, scientific-notation thresholds, and negative zero.
+- Exact ordering and text of validation error arrays.
+
+Profile B is a target, not a gate. It is worth having because it lets a proxy or replay harness diff old and new responses directly, but it is a large amount of work for a benefit that mainly accrues during migration. Pursue it only after Profile A holds, and only for the endpoints where a replay comparison is actually planned.
+
+### 4.3 Profile C - `wire-http` (explicitly not promised)
+
+Byte-identical whole HTTP responses including headers, ordering, `Content-Length`, and framing. This is not achievable across a Uvicorn and a Rust HTTP stack and **will not be promised**. Where transport-level comparison is needed, compare status, an explicit allowlist of headers, and the body, excluding `Date`, `Server`, connection, and framing details.
+
+### 4.4 Backwards compatibility is a separate, stronger promise
+
+Independent of profile, the API contract must not regress. Existing fields keep their names, types, nullability, and meaning. New fields are additive. A client written against the Python server must continue to work against the Rust server without modification. This is the promise made to integrators and it outranks byte-level ambition: if a byte-compatibility shortcut would require changing a field, the field wins.
+
+## 5. Numerical equivalence
+
+### 5.1 The problem
+
+Exact bit-level agreement with the Python engine cannot be assumed, because the Python engine's numerical behaviour is partly inherited from SciPy and NumPy:
+
+- `scipy.stats.norm.cdf` and `norm.ppf` use specific approximations. A Rust normal distribution implementation will differ in the final bits, and the difference is largest in the extreme tails, which is exactly where clinically abnormal measurements live.
+- `scipy.interpolate.interp1d` returns NumPy scalars, whose coercion behaviour is not identical to `f64`.
+- Python's `round()` is round-half-to-even over binary floating point. Rust's `f64::round()` is half-away-from-zero. These differ at exact ties, and the API rounds centiles to four decimal places, so a tie lands on a user-visible field.
+- Floating-point operation order matters in the four-point Lagrange cubic interpolation. Compiler autovectorisation or fused multiply-add can change the result in the last bits.
+
+### 5.2 Policy
+
+1. **Implement Python-compatible rounding explicitly.** A shared helper implements round-half-to-even at a given decimal place. Never use `f64::round()` on a value that reaches an output field. This is a correctness requirement, not an optimisation detail.
+2. **Preserve operation order in interpolation and LMS arithmetic.** Transcribe the Python expression structure rather than algebraically simplifying it. Do not enable fast-math-style transformations.
+3. **Hold two oracles to two different tolerances.** They answer different questions and both must pass:
+   - **Against the independent R vectors: 1e-3 absolute SDS.** About 4,000 fictional children generated by Tim Cole's R implementation (`sds_age_validation_2021_refactored_2026.json`, 3,984 UK-WHO cases) are the clinical-accuracy gate. They are independent of all RCPCH code, so they catch an error Python and Rust share, such as a defect inherited through the port. 1e-3 is the tolerance the Python engine is already accepted at, agreed with the statistician, because R's and Python's interpolation and normal-distribution implementations never agree exactly. OpenGrowth meets the same gate the Python engine does; it is not tightened or loosened.
+   - **Against Python goldens: the tight per-field tolerances below.** These are the regression gate. They catch small drift, and string, shape, and rounding differences, that the R vectors do not exercise.
+4. **Define tolerance per field class against the Python goldens, and enforce it in the conformance harness.** Proposed opening values, to be confirmed by measurement in `R5` and recorded in `Q4`:
+   - SDS: agree to within `1e-9` absolute, since SDS is emitted unrounded by the API and is the field most exposed to normal-distribution differences.
+   - Centiles: agree **exactly** after four-decimal rounding, except for an explicitly enumerated list of rounding-boundary cases, each individually reviewed and accepted under point 5. An unenumerated centile difference is a failure.
+   - Chart coordinates: agree exactly at the four-decimal rounding already applied by the Python chart builder.
+   - Ages, measurements, and derived values: agree to within `1e-9` absolute unless a specific field is documented as rounded.
+5. **Rounding-boundary flips are enumerated, never waived.** If a centile differs after rounding because the unrounded value sits within a representable step of a `.00005` boundary, that case is recorded individually in a checked-in exceptions list with its inputs and both values, reviewed clinically, and either accepted with reasons or fixed. The list is expected to be short and to shrink; a growing list is evidence of algorithmic divergence rather than floating-point noise. A blanket "centiles may differ by 1 in the fourth decimal" allowance is not acceptable.
+6. **Tolerance is a property of the harness, not of the engine.** The engine does not round to hide differences.
+
+### 5.3 Normal distribution implementation
+
+The choice of Rust normal CDF/PPF implementation is a numerical-accuracy decision, not a dependency-convenience decision, and it must be made against measured agreement with SciPy across the full range including tails beyond ±8 SD. `Q5` records this as an open decision with a required experiment: evaluate candidate implementations against a SciPy-generated grid before choosing.
+
+## 6. Defect policy
+
+The Python implementation contains behaviour that is observable but not intended. "Functionally identical" cannot mean "reproduce every defect", because several current defects are crashes. The port classifies each into one of three categories and records the decision.
+
+### 6.1 Category 1 - reproduce exactly
+
+Clinically observable output that a consumer may depend on, even if it looks odd. Includes ordinary field values, string wording, and rounding behaviour.
+
+### 6.2 Category 2 - reproduce, but flag for separate clinical decision
+
+Behaviour that is probably wrong but changes clinical output, so it cannot be silently corrected during a port. Each needs a clinical decision and, if changed, a version bump and a documented behaviour change. Identified so far:
+
+- `chronological_percentage_median_bmi` is computed using the **corrected** age rather than the chronological age (`rcpchgrowth/measurement.py:369-375`). The field name and the value disagree.
+- UK Trisomy 21 BMI data extend to 18.92 years (228 points per sex), but validation rejects ages above 18.82 (`rcpchgrowth/trisomy_21.py:54-55`), so the final two points per sex, at 18.83 and 18.92, are unreachable.
+- `WHO_2006_OVER_TWOS_AGES` (37 entries) contains `3.083333333` twice, at index 13 and again at index 26 immediately after `4.0`, so the chart age grid is unsorted at that point (`constants/reference_constants.py:117`). Note this array is distinct from the clean `UK_WHO_2006_OVER_TWOS_AGES`, whose name contains it as a substring; a careless grep matches the wrong one.
+- Several chart builders initialise `cole_method=False`, so a request for the Cole nine-centile collection is converted through the exact normal inverse rather than the two-thirds-SDS rounding used for UK-WHO. The same named collection therefore means different things per reference.
+- WHO measurement-to-SDS forces linear interpolation while WHO SDS-to-measurement does not, so the two directions are not exact inverses at non-table ages.
+
+### 6.3 Category 3 - do not reproduce
+
+Crash-class and contract-violating behaviour. Reproducing these would be actively harmful, and no reasonable client depends on a 500. Each is fixed in Rust and recorded as an intentional, documented difference:
+
+- Several routes `return HTTPException(...)` instead of `raise`, so a runtime failure becomes a response-validation `500` rather than the intended `422`. Rust returns the intended `422`.
+- Chart `Data.y` is declared non-nullable while 68 stored chart points contain `null`, so requests traversing those points fail with `500`. Rust must decide between permitting null coordinates in the schema or excluding those points; this is `Q6` because it changes the response shape.
+- `extended-who-centiles` is accepted by the chart request schema but no such asset is generated, producing a `500`. Rust either implements it or rejects it with a `422`; `Q7`.
+- Turner chart requests with an invalid sex or measurement method return a bare string from an endpoint declared to return a chart object, producing a `500`. Rust returns `422`, consistent with the Turner calculation and fictional-child endpoints.
+- `uk_who_reference()` returns a `ValueError` object rather than raising it on out-of-domain input, so the type error surfaces later at an unrelated place. Rust returns a typed error at the point of failure.
+- `create_thrive_lines()` calls `plt.plot` while the matplotlib import is commented out, so it raises `NameError` on any call. Rust does not port a plotting call into a calculation library.
+
+Every Category 3 fix is a behaviour change relative to Python and must appear in the migration notes, even though each replaces a failure with a defined response.
+
+## 7. Architecture
+
+A Cargo workspace with leaf-crate discipline: dependency arrows point inward to the engine, and the engine depends on nothing above it.
+
+```text
+opengrowth/
+|-- crates/
+|   |-- opengrowth-core/     engine: LMS math, interpolation, references, dates, measurement
+|   |-- opengrowth-data/     reference tables, importer, provenance and licence metadata
+|   |-- opengrowth-cli/      command-line surface; builds the single `opengrowth` binary
+|   |-- opengrowth-server/   HTTP surface, API-compatible with digital-growth-charts-server
+|   |-- opengrowth-mcp/      MCP surface, stdio and streamable HTTP
+|   `-- opengrowth-py/       PyO3 bindings (R18, deferred)
+|-- conformance/            language-agnostic cases, fixtures, and expected output
+|-- docs/                   user documentation site (R30)
+|-- spec/
+`-- s/                      repeated-process scripts
+```
+
+The server and MCP crates are libraries. The `opengrowth` binary exposes them as subcommands (`opengrowth serve`, `opengrowth mcp`) alongside the calculation commands, so there is one artefact to build, version, sign, and deploy.
+
+### 7.1 `opengrowth-core`
+
+Pure calculation. No clock, no I/O, no global state, no async runtime, no HTTP types. Timestamps and I/O are the caller's responsibility. This is what makes the engine embeddable in every surface and testable deterministically.
+
+Dependencies are minimised to `serde` plus a reviewed numerical crate for the normal distribution (`Q5`). It must remain buildable without the data crate, using injected tables, so that core numerical tests do not require redistributable data.
+
+Errors are typed. `anyhow` belongs in the CLI and server, not in the engine, because callers need to match on failure modes such as out-of-domain age, unsupported measurement method for a reference, and unavailable reference data.
+
+### 7.2 `opengrowth-data`
+
+Two ways to provide a table, behind one interface the engine sees (`ReferenceProvider`, or similar):
+
+- **Embedded.** Tables are `&'static` slices compiled into the binary, not parsed at runtime, so lookup is allocation-free and the binary is self-contained. The default for open tables.
+- **Runtime-supplied.** For tables that cannot be redistributed (UK90-derived, while `Q1` is open). The binary contains the table's provenance metadata and expected checksum, but not its values. A user with their own licence runs `opengrowth data import <path>`, which parses the source files, verifies them against the checked-in checksum manifest, converts them to the same in-memory form, and stores them in the platform data directory. This follows the SNOMED CT pattern, where the software is distributed freely and the licensed release is loaded separately.
+
+Rules for runtime-supplied data:
+
+- An unverified, partial, or mismatched table is never used. The import fails loudly; it does not fall back or partially load.
+- A calculation needing an absent table returns a typed `ReferenceDataUnavailable` error naming the table and how to import it. It never silently substitutes another reference, such as WHO for UK-WHO.
+- Provenance records the data version and checksum used for the calculation (see [provenance.md](provenance.md)).
+- `opengrowth data status` lists every table, whether it is embedded, imported, or missing, and its version.
+- The data directory location follows house-style deterministic configuration discovery and can be overridden by flag or environment variable, so containers and CI can mount it.
+
+A build step converts the source JSON into Rust data, and integrity tests assert per-table invariants: expected point counts, ascending age ordering, no duplicate ages, and endpoint values matching the source. The same checks run at import time for runtime-supplied tables. These are the defence against a silent transcription error, which is the highest-consequence failure mode in this project.
+
+If `Q1` resolves in favour of redistribution, UK90 tables switch to embedded by changing a feature default. The import path stays as a way to pin or update data without a new binary.
+
+### 7.3 `opengrowth-cli`
+
+`clap` derive, thin `main.rs` delegating to a reusable library, `anyhow::Result`, global `--format text|json`, data on stdout and everything else on stderr, SIGPIPE reset on Unix. A bare invocation prints a useful command list rather than an error. Full conventions in house-style [`rust-cli.md`](https://github.com/pacharanero/house-style/blob/main/rust-cli.md).
+
+The CLI covers the command surface of [`rcpchgrowth-python-cli`](https://github.com/rcpch/rcpchgrowth-python-cli), so that surface is an input to the design and its users are a migration audience. Unlike the HTTP API, the CLI requires sex and gestation explicitly rather than defaulting them, because agents are among its main users and a silently defaulted gestation changes the result.
+
+### 7.4 `opengrowth-server`
+
+Reimplements the current HTTP contract: six reference families, each with `calculation`, `bulk-calculation`, `chart-coordinates`, and `fictional-child-data`, plus `utilities/mid-parental-height`. Twenty-five POST operations in total.
+
+Behaviour that must be preserved exactly:
+
+- Bulk requests accept 1 to 200 observations. Structural failures reject the whole request with `422`; domain and calculation failures become inline error objects while the response stays `200`. Result ordering and count match the input.
+- Inline error objects carry exactly `loc`, `msg`, `type`, `input`, in that order.
+- Optional response fields serialise as explicit `null`, never omitted.
+- Only the four centile fields carrying the rounding validator are rounded, to four decimal places. SDS and ages are not rounded.
+- Mid-parental height applies its own rounding sequence, including a double rounding of the centile.
+
+Behaviour that must be reconsidered rather than copied:
+
+- The current server generates chart assets and rewrites `openapi.json` during module import. A Rust server must not mutate checked-in files at startup. Chart assets become build-time artefacts.
+- Authorisation is a bearer-token middleware configured by environment variable, exempting only the exact path `/`, and is not represented as an OpenAPI security scheme. Reproduce the behaviour; document it in the schema.
+- CORS is configured with both a wildcard origin and credentials, which is contradictory. `Q8`.
+- The `/growth/v1` prefix is not implemented in the server; it is applied by the gateway. Do not bake it into the Rust router.
+
+### 7.5 Engine boundary for provenance
+
+Every calculation result carries a record of the growth reference used and the engine that computed it. This is a clinical safety control mitigating the hazard first recorded as RCPCH dGC hazard #174, not a debugging field.
+
+OpenGrowth **adopts the nested `provenance` shape** implemented on the Python `37-measurement-provenance` branch, with two required divergences: the engine reports its own identity in `calculation_engine.name` rather than impersonating the Python engine, and it adds the reference data version it used.
+
+The engine produces provenance; every surface passes it through. A surface must **not** synthesise provenance from the route it happens to be serving, because that would make the field confirm the caller's assumption rather than test it.
+
+Full contract, invariants, and version/commit semantics: [provenance.md](provenance.md). The remaining open element is the server-layer addition, tracked in `Q3`.
+
+### 7.6 `opengrowth-mcp`
+
+An MCP server exposing calculation, chart-coordinate, and mid-parental-height operations as tools, over stdio for local agents and streamable HTTP for hosted use. It calls the engine directly, not the HTTP server.
+
+- Follows house-style [`mcp.md`](https://github.com/pacharanero/house-style/blob/main/mcp.md), including the conditional `rmcp` adoption gate and bounded input reading.
+- Tool inputs use the same typed request structs as the CLI and server, generated from one schema source, so the three surfaces cannot drift.
+- Like the CLI, tools require sex and gestation explicitly.
+- Tool descriptions state the clinical-use boundary from [SAFETY.md](../SAFETY.md), and results carry full provenance so an agent can cite what it computed.
+- The hosted MCP endpoint shares the server's authorisation model.
+
+### 7.7 Documentation
+
+User documentation lives in `docs/` and is published as a Zensical site per house-style [`docs.md`](https://github.com/pacharanero/house-style/blob/main/docs.md) (`R30`). CLI reference, OpenAPI reference, and MCP tool reference are generated from the code so they cannot drift. Clinical background on the references and methods may draw on the RCPCH documentation with attribution, subject to its licence.
+
+## 8. Conformance
+
+Behaviour shared between the Python and Rust implementations is defined as data, not as duplicated test code.
+
+```text
+conformance/
+|-- README.md      what each case set is, where it came from, who generates goldens
+|-- cases/         input manifests
+|-- fixtures/      inputs too large to inline
+|-- independent/   vectors computed outside RCPCH code (R, WHO anthro), never regenerated by us
+`-- expected/      goldens captured from the Python reference implementation
+```
+
+There are two kinds of oracle, with different authority:
+
+- **Independent vectors** come from implementations that share no code with `rcpchgrowth`: Tim Cole's R implementation, and WHO `anthro`. They are the clinical-accuracy gate (section 5.2 point 3). They are imported as published and never regenerated by this project.
+- **Python goldens** are captured from a pinned `rcpchgrowth` version, recorded in the manifest with the generator command, and never edited by hand. The Python implementation is the reference implementation for everything the independent vectors do not cover: response shape, strings, rounding, errors, and the references the R vectors do not test. A golden change without a stated rationale is a defect.
+
+Where an independent vector and a Python golden disagree beyond tolerance, that is a finding about the Python engine, not a licence to choose whichever Rust matches. Record it as a defect for classification under section 6.
+
+Goldens contain calculated outputs, not LMS tables, so they can be committed while `Q1` is open. Running the UK-WHO suite needs UK90 tables, so CI obtains them without publishing them (`Q12`).
+
+### 8.1 Existing fixtures to reuse directly
+
+These already exist and are the backbone of the differential suite:
+
+| Source | Cases |
+|---|---:|
+| `sds_age_validation_2021_refactored_2026.json` | 3,984 UK-WHO fictional children, independent R vectors from Tim Cole |
+| `sds_age_validation_2021_deprecated.json` | 4,002 historical, including the 18 cases changed by the WHO migration |
+| `cdc/bmi_height_weight_validation.json` | 2,730 CDC |
+| `who_test_data/who_validation_data.csv` | 800 usable WHO |
+| `who_test_data/who_under2_gold_192.csv` | 192 WHO gold, generated from WHO `anthro` |
+| `who_chart_precalculated_centiles.py` | ~123,000 WHO chart points |
+
+### 8.2 Coverage the existing fixtures do not provide
+
+The Python suite has real gaps, and a port that only satisfies the existing fixtures would be under-tested. New cases are needed for:
+
+- Turner, UK Trisomy 21, and AAP Trisomy 21 numerical output, which currently have only provenance smoke tests.
+- The complete `Measurement` serialised shape, which has no golden test.
+- Date and gestation boundaries: 22, 23, 25, 37, 40, 42, 44 weeks; birth, estimated delivery date, and delivery date plus 14 days; 2, 4, 5, the 1856-day WHO transition, 10, 17, 18, 19, 20 years; leap days and month ends.
+- Validation limits: exactly ±8 SD and ±15 SD, which are accepted because the comparison is strict.
+- Bulk cardinality at 0, 1, 2, 200, 201.
+- Authorisation, CORS, 404, 405, and trailing-slash behaviour, none of which is currently tested.
+
+### 8.3 Harness rules
+
+Load the manifest, run the implementation, compare semantically against expected output within the declared tolerance. Do not make JSON key order part of the contract at Profile A. Name the failing case and the offending field; never assert only a pass count.
+
+## 9. Clinical safety
+
+This engine computes values that inform clinical assessment of children's growth, so it needs its own clinical safety process. It is not part of the RCPCH dGC platform, is not covered by that platform's MHRA registration or safety file, and is not registered as a medical device. Its regulatory position is `Q11`. Hazards are kept in this repository's own hazard log; hazards from the dGC log that also apply are copied in with a cross-reference.
+
+Safety-relevant commitments:
+
+- A root `SAFETY.md` states the clinical-use boundary, the regulatory position, and the hazard log, and grows into a full safety file set per house-style [`clinical-safety.md`](https://github.com/pacharanero/house-style/blob/main/clinical-safety.md) (`R21`).
+- Reference-selection and age-correction logic is the highest-risk area. The Python repository's own analysis of the 18 fixture cases whose expected values changed during the WHO migration concluded that the largest numerical divergence between UK-WHO and WHO falls in preterm and early-infant assessment. That is an inference from a small sample rather than a systematic study, so treat it as a strong prior for where to look first, not as a bounded characterisation of the risk. Changes there require explicit clinical review, not just green tests.
+- A change that alters any clinical output updates the safety documentation in the same change, or states why no update is needed.
+- Reference-data changes carry provenance and validation evidence, per section 3.3.
+- Tests protecting safety-relevant behaviour cite the hazard or clinical source they defend.
+
+## 10. Acceptance gates
+
+The first useful release is complete when:
+
+1. Every independent R and WHO `anthro` vector passes at 1e-3 absolute SDS, the same gate the Python engine meets.
+2. Profile A holds for every existing Python fixture, within the declared tolerances, with every rounding-boundary flip individually enumerated and reviewed.
+3. UK-WHO preterm and early-infant cases pass, including the boundaries at 42 weeks, 2 years, and 4 years, and the 18 cases changed during the WHO migration. **This is the highest-risk gate and is not waivable.** Clinical review is required here in addition to green tests.
+4. Every reference table, embedded or importable, has recorded provenance, licence, checksum, and integrity tests, and no public artefact contains a table whose terms do not permit redistribution.
+5. If UK90 is runtime-supplied, the import, verification, status, and `ReferenceDataUnavailable` paths are tested, including rejection of a tampered and a truncated file.
+6. The CLI covers the surface of the existing Python CLI.
+7. The server passes an endpoint-level differential suite against the Python server for all 25 operations, including bulk partial-failure semantics.
+8. Category 3 differences are documented in migration notes.
+9. `NOTICE.md` and SPDX headers satisfy section 3.1.
+10. `cargo fmt --all --check`, `cargo clippy --all-targets -- -D warnings`, and `cargo test` are green in CI, and every commit carries a DCO sign-off.
+
+Explicitly **not** required for the first release: Profile B, the FFI binding, the MCP server, the experimental dynamic-growth functions, and bone-age or height-prediction calculations that do not currently exist in working form in Python.
+
+The first release is still not for clinical use until `Q11` is resolved and the safety file set (`R21`) is complete.

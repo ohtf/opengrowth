@@ -1,0 +1,24 @@
+# Rust
+/target
+**/*.rs.bk
+
+# Disposable agent and browser-automation artefacts
+/.claude
+/.playwright-mcp
+/.playwright
+/playwright-report
+/blob-report
+/test-results
+
+# Private workspace
+# Intentionally retained local-only artefacts that must not be committed.
+/.private
+
+# Restricted reference data
+# UK90-derived tables must not be committed while spec/queries.md Q1 is open.
+# Keep local licensed copies here; they are imported at runtime.
+/reference-data-local
+
+# OS / editor
+.DS_Store
+*.swp
