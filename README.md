@@ -2,7 +2,7 @@
 
 An open-source growth calculation engine for children: SDS, centiles, centile bands, and chart coordinates against the UK-WHO, WHO, CDC, Trisomy 21, and Turner syndrome growth references. One Rust binary provides the library, CLI, HTTP API, and MCP server.
 
-> **Status: Experimental.** UK-WHO SDS and centiles work, and match the Python engine bit for bit on the 3,984-child conformance corpus. Other references, the HTTP API, and the MCP server are not built yet. Do not use this for anything clinical.
+> **Status: Experimental.** UK-WHO works in the CLI and the HTTP API. `POST /uk-who/calculation` and `/uk-who/bulk-calculation` return the same bytes as the RCPCH FastAPI server, outside provenance, for 5,284 of 5,286 captured requests. Other references and the MCP server are not built yet. Do not use this for anything clinical.
 
 OpenGrowth is an [Open Health Technology Foundation](https://openhealthtechnology.org) project, hosted at [github.com/ohtf/opengrowth](https://github.com/ohtf/opengrowth). Its OHTF lifecycle status is **Experimental**.
 
@@ -150,11 +150,30 @@ print(repr(m['chronological_sds']), repr(m['corrected_sds']))"
 
 The SDS should match OpenGrowth's `--format json` output to every digit. Centiles agree to about 15 significant figures but not always to the last digit; see [conformance/README.md](conformance/README.md).
 
-### 6. Run the evidence
+### 6. The HTTP API
 
 ```sh
-s/conformance     # 3,984 R-vector children against R and Python, plus SciPy and CPython comparisons
-s/bench-round0    # in-process speed race: Rust engine against Python engine
+opengrowth serve                       # http://127.0.0.1:8000; --bind to change, AUTHORIZATION_KEY to require a token
+curl -s -X POST http://127.0.0.1:8000/uk-who/calculation -H 'content-type: application/json' -d '{
+  "birth_date": "2020-04-12", "observation_date": "2028-06-12", "observation_value": 115,
+  "sex": "female", "gestation_weeks": 40, "gestation_days": 0, "measurement_method": "height"}' | jq .
+```
+
+Things to try:
+
+- Point an existing Digital Growth Charts client or the React chart component at it. It should not notice the difference, apart from `provenance`, which names OpenGrowth and lists the checksum of each table it read.
+- Send something wrong: a missing field, `"sex": "Male"`, `"gestation_weeks": 50`, a measurement of 300 cm, malformed JSON. The 422 bodies should be exactly the upstream ones.
+- `POST /uk-who/bulk-calculation` with up to 200 observations; a bad observation becomes an inline error and the rest still calculate.
+- `GET /uk-who/calculation` (405), `POST /uk-who/calculation/` (307), and a CDC endpoint (501: not ported yet).
+- Run with no tables imported (`OPENGROWTH_DATA_HOME=$(mktemp -d) opengrowth serve`): calculations return 503 naming the missing table, never an answer from another reference.
+
+### 7. Run the evidence
+
+```sh
+s/conformance        # R vectors, Python goldens, SciPy, CPython, and 5,286 FastAPI responses replayed byte for byte
+s/bench-round0       # in-process speed race: Rust engine against Python engine
+s/reference-server   # once: the pinned FastAPI server, for the next command
+s/bench --quick      # HTTP race against the real FastAPI server; report in .private/bench/
 ```
 
 ### What we would like to hear
@@ -162,6 +181,7 @@ s/bench-round0    # in-process speed race: Rust engine against Python engine
 - Any calculation where OpenGrowth and `rcpchgrowth` disagree. That would be a defect in one of them, so include the exact command.
 - Anything confusing in the output, the error messages, or the `data` commands.
 - Whether the text output is what you would want to see at a terminal, and whether the JSON is what an agent or script needs.
+- Any HTTP response that differs from the RCPCH API other than in `provenance`. Include the request body.
 
 Open an issue. For anything that could affect a clinical result, label it `hazard`, as described in [SAFETY.md](SAFETY.md).
 

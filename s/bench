@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Benchmark rounds 1 to 4: the FastAPI server against `opengrowth serve` (spec/benchmark.md).
+# Needs oha, s/reference-server, and reference tables. Results go to .private/bench/.
+# Extra arguments go to bench/http/run.py, for example --quick or --cpus 2.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+server="${OPENGROWTH_REFERENCE_SERVER:-$HOME/.cache/opengrowth/reference-server}"
+venv="${OPENGROWTH_REFERENCE_VENV:-$HOME/.cache/opengrowth/reference-python}"
+command -v oha >/dev/null || { echo "oha not found; cargo install oha" >&2; exit 1; }
+[[ -x "$server/venv/bin/gunicorn" ]] || { echo "No reference server at $server; run s/reference-server" >&2; exit 1; }
+if [[ -z "${OPENGROWTH_REFERENCE_DATA_DIR:-}" ]]; then
+  candidate=$(compgen -G "$venv/lib/python*/site-packages/rcpchgrowth/data_tables" | head -n 1 || true)
+  [[ -n "$candidate" ]] || { echo "Set OPENGROWTH_REFERENCE_DATA_DIR or run s/reference-python" >&2; exit 1; }
+  export OPENGROWTH_REFERENCE_DATA_DIR="$candidate"
+fi
+cargo build --quiet --release -p opengrowth-cli
+out="$root/.private/bench/$(date -u +%Y-%m-%dT%H%M%SZ)"
+exec python3 -I "$root/bench/http/run.py" --opengrowth "$root/target/release/opengrowth" \
+  --python-server "$server/src" --python-venv "$server/venv" \
+  --data-dir "$OPENGROWTH_REFERENCE_DATA_DIR" --out "$out" "$@"

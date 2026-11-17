@@ -31,7 +31,7 @@ Possible outcomes:
 **Resolved by:** `R4`.
 **Blocks:** the affected parts of `R10` and `R12`.
 
-The Category 2 list in `standard.md` section 6.2 contains behaviour that is probably wrong but changes clinical output, so it cannot be corrected during a port without clinical sign-off. Most significant is `chronological_percentage_median_bmi` being computed from the corrected age, where the field name and the value disagree.
+The Category 2 list in `standard.md` section 6.2 contains behaviour that is probably wrong but changes clinical output, so it cannot be corrected during a port without clinical sign-off. (The `chronological_percentage_median_bmi` item turned out not to apply to the pinned 4.6.5; see `standard.md` section 6.2.)
 
 Needed: a clinical decision per item, and an owner. If any is corrected, it is a behaviour change requiring a version bump, migration notes, and a hazard-log entry.
 
@@ -51,6 +51,8 @@ Decisions are made through this project's clinical safety process, with the Clin
 **Still open:** whether the server adds an `api_server` sibling identifying the deployment, and with which fields: presumably a name and version, possibly a commit and environment. Upstream `#207` proposes this but has not defined the fields.
 
 **Working assumption:** the engine-level struct is stable and `R12` proceeds on it. The server-layer addition is modelled as an optional field behind the same single serialisation point, so adding it later touches one place. If RCPCH defines `api_server` first, match it, so clients see one structure from both servers.
+
+**Update, 2026-11-17:** upstream has now defined it. `digital-growth-charts-server` 5.1.0 returns `api_server` with `name`, `version`, and `commit`, after `calculation_engine`. `opengrowth serve` matches that shape, reporting `opengrowth-server`, and puts the additive `reference_data` list last. Proposed for closure.
 ---
 
 ## Q4 - What are the numerical tolerances?
@@ -191,3 +193,16 @@ The repository is public, so UK90 tables cannot be committed, cached in public C
 Options: fetch the tables at job start from private storage using a repository secret, never caching or uploading them; run UK-WHO conformance only on a self-hosted runner that holds a licensed copy; or skip UK-WHO conformance on forks and external PRs and require it on `main`.
 
 **Working assumption:** fetch from private storage with a secret, verified against the checksum manifest, on `main` and maintainer PRs only. External PRs run everything except UK-WHO conformance, and a maintainer runs it before merging. Revisit if `Q1` resolves in favour of open data.
+
+---
+
+## Q13 - Should upstream's leaked Python error messages be kept?
+
+**Resolved by:** the OHTF maintainers and the Clinical Safety Officer.
+**Blocks:** nothing; the current behaviour is safe. Affects `R20` only as an enumerated difference if changed.
+
+When `gestation_weeks` or `gestation_days` is sent as `null`, upstream returns a 422 whose message is a raw Python `TypeError`, such as "unsupported operand type(s) for *: 'NoneType' and 'int'". OpenGrowth reproduces it byte for byte. It is a correct refusal with a useless message.
+
+Options: keep it for byte identity; or replace it with a clear message ("gestation_weeks must be a number from 22 to 44, not null") and list it as a known difference. Changing the message is a contract change, though no client can sensibly depend on this text.
+
+**Working assumption:** keep it until decided, because the goal is byte identity and the behaviour is already a safe refusal.

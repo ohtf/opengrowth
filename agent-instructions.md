@@ -4,7 +4,7 @@ OpenGrowth is an Open Health Technology Foundation project: a Rust reimplementat
 
 The project is **experimental**. The engine computes UK-WHO SDS and centiles, bit-identical to the Python engine on the conformance corpus; the other references, the full result object, the HTTP server, and the MCP server do not exist yet. Check the [roadmap](spec/roadmap.md) before starting work. Distribution of UK90-derived tables is gated on `Q1`.
 
-Crates: `opengrowth-core` (the engine, a leaf), `opengrowth-data` (table manifest, verification, import), `opengrowth-cli` (the `opengrowth` binary), `opengrowth-conformance` (the differential suite; not published).
+Crates: `opengrowth-core` (the engine, a leaf), `opengrowth-data` (table manifest, verification, import), `opengrowth-server` (the HTTP API, served by `opengrowth serve`), `opengrowth-cli` (the `opengrowth` binary), `opengrowth-conformance` (the differential suite; not published).
 
 ## Read first
 
@@ -28,6 +28,7 @@ Crates: `opengrowth-core` (the engine, a leaf), `opengrowth-data` (table manifes
 - **Provenance reports what was computed, never what was requested.** A surface that derives provenance from its own routing has defeated the point. This is a safety control, not a convenience field.
 - **Use Python-compatible rounding.** `f64::round()` is half-away-from-zero; Python is half-to-even. Use `opengrowth_core::round::python_round`. Never let `f64::round()` reach an output field.
 - **Parse floats exactly.** `serde_json` must keep its `float_roundtrip` feature; without it, parsed tables and goldens can be 1 ulp off and bit-identity with Python is lost. Don't add a JSON parser that lacks an exact mode.
+- **The HTTP API is byte-identical to upstream outside `provenance`.** Response field order follows the upstream Pydantic models, floats go through `pyjson`, and request validation follows Pydantic's order and messages. Any new difference goes into `KNOWN_DIFFERENCES` in `crates/opengrowth-conformance/tests/http_uk_who.rs` and `spec/standard.md` section 6.3, with a reason.
 - **Keep the platform `pow`, `ln`, and `exp`.** They make SDS bit-identical to CPython on Linux; the portable `libm` versions do not (`conformance/README.md`).
 - **Do not vendor restrictively licensed source material.** Reimplement from published method descriptions. Named exclusions are in `standard.md` section 3.4.
 - **Preterm and early-infant behaviour is the highest-risk area.** Changes there need clinical review, not just passing tests.

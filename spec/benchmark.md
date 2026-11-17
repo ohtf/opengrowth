@@ -40,6 +40,22 @@ First result, 2026-11-17, Linux x86_64, one core:
 
 Same work, bit-identical answers, about 180 times faster. This says nothing yet about the API, where HTTP, JSON, and request validation dominate.
 
+### First HTTP results (smoke run)
+
+`s/bench --quick`, 2026-11-17: one 22-CPU Linux x86_64 workstation, each server pinned to CPUs 0-3 with `taskset`, `oha` 1.14 on CPUs 4-21, no containers, 4 to 5 s per step, one request body per endpoint. Python is `digital-growth-charts-server` 29bb4e9 under gunicorn with 4 uvicorn workers. Both servers returned identical answers outside provenance before timing began.
+
+| | Python | Rust |
+| --- | ---: | ---: |
+| Single calculation, idle, p50 | 3.2 ms | 0.5 ms |
+| Bulk, 200 observations, idle, p50 | 221 ms | 3.8 ms |
+| Highest open-loop rate with p99 < 100 ms | 1,139/s | 98,526/s |
+| Closed loop, 64 connections | 1,790/s, p99 50 ms | 134,898/s, p99 1.0 ms |
+| Closed loop, 1,024 connections | 1,313/s, p99 3,981 ms | 121,002/s, p99 18.7 ms |
+| Memory idle | 507 MB | 18 MB |
+| Start to first answer | 0.9 s | 0.1 s |
+
+Treat these as indicative. They are short runs on one machine with the load generator sharing it, and the Python contestant is untuned. A published result needs full-length runs, the tuned Python contestant, containers with equal limits, and a separate load machine, as set out above.
+
 ### Round 1: one request at a time
 
 **Question:** how long does one request take when the server is idle?
@@ -99,10 +115,11 @@ Closed-loop sweep at 1, 2, 4, ... 1,024 connections, 60 s each. Plot throughput,
 
 ## Outputs
 
-`s/bench` (arrives with `R29`) runs the rounds and writes raw results, charts, and a Markdown report to `.private/bench/<date>/`, which is gitignored. A summary of each published run goes into the documentation site (`R30`) with its method, so anyone can reproduce it. A first published result is a good milestone for an announcement post.
+`s/bench` runs the rounds and writes raw results, charts, and a Markdown report to `.private/bench/<date>/`, which is gitignored. A summary of each published run goes into the documentation site (`R30`) with its method, so anyone can reproduce it. A first published result is a good milestone for an announcement post.
 
 ## Prerequisites
 
 - Round 0: available now.
-- Rounds 1 to 5: the HTTP server (`R15`), and for the byte-identical correctness check, the Profile B serialiser.
+- Rounds 1 to 3 and part of 4: available now with `s/bench` (UK-WHO endpoints). Round 4's cost and energy figures, round 5, and containerised runs are still to do.
+- Round 6 CLI race: the bulk command in the CLI (`R14`).
 - Round 6 CLI race: the bulk command in the CLI (`R14`).

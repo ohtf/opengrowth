@@ -115,9 +115,11 @@ Profile B is the **goal for every operation** (maintainer decision, 2026-11-16: 
 
 Measured so far (`conformance/README.md`):
 
-- **SDS and decimal ages are bit-identical** to Python for all 3,984 UK-WHO R-vector children on Linux, so their serialised text can be identical.
-- **Centiles are not yet bit-identical** (differences around 1e-15, from the normal CDF; `Q5`). The API rounds every measurement centile to four decimal places, so the rounded text matches except at an exact rounding boundary. Closing this fully needs a bit-exact port of SciPy's `ndtr`.
-- Python float formatting (`repr`) differs from Rust's in places: Python writes `1e-05` where `serde_json` writes `1e-5`, and `115.0` where Rust's `Display` writes `115`. The switch to exponent notation also happens at different magnitudes. The server needs a dedicated Python-compatible float writer, tested against CPython `repr`; this is a Profile B requirement on `R15`, not an engine change.
+- **UK-WHO `calculation` and `bulk-calculation` are byte-identical outside provenance** for 5,284 of 5,286 requests captured from the FastAPI server at a pinned commit: every R-vector child, an age and gestation grid across every UK-WHO join, calendar edge cases, pass-through fields, application errors, Pydantic validation errors, malformed JSON, routing, authorisation, and bulk limits. The other two are the enumerated Category 3 fixes in section 6.3.
+- **SDS and decimal ages are bit-identical** to Python for all 3,984 UK-WHO R-vector children on Linux.
+- **Unrounded centiles are not bit-identical** (differences around 1e-15, from the normal CDF; `Q5`), but every API centile is rounded to four decimal places, and no captured response differs. A difference is still possible at an exact rounding boundary; `R32` would remove it.
+- Floats are written with CPython `repr` spelling (`115.0`, `1e-05`, `1e+16`, ties to even), matching CPython on 10,484 values (`R31`).
+- Request validation reproduces Pydantic 2.11's lax coercions, error types, messages, contexts, and field order, and malformed JSON reports CPython's message and character position. Coverage is what the captured cases exercise; untested Pydantic corners (unusual date strings, very large integers) may differ in message but not in status.
 
 ### 4.3 Profile C - `wire-http` (explicitly not promised)
 
@@ -169,7 +171,7 @@ Clinically observable output that a consumer may depend on, even if it looks odd
 
 Behaviour that is probably wrong but changes clinical output, so it cannot be silently corrected during a port. Each needs a clinical decision and, if changed, a version bump and a documented behaviour change. Identified so far:
 
-- `chronological_percentage_median_bmi` is computed using the **corrected** age rather than the chronological age (`rcpchgrowth/measurement.py:369-375`). The field name and the value disagree.
+- ~~`chronological_percentage_median_bmi` is computed using the corrected age.~~ Not so in 4.6.5, the pinned version: it uses the chronological age (`measurement.py:365-370`), and OpenGrowth does the same. Kept here, struck through, so the earlier analysis is not repeated.
 - UK Trisomy 21 BMI data extend to 18.92 years (228 points per sex), but validation rejects ages above 18.82 (`rcpchgrowth/trisomy_21.py:54-55`), so the final two points per sex, at 18.83 and 18.92, are unreachable.
 - `WHO_2006_OVER_TWOS_AGES` (37 entries) contains `3.083333333` twice, at index 13 and again at index 26 immediately after `4.0`, so the chart age grid is unsorted at that point (`constants/reference_constants.py:117`). Note this array is distinct from the clean `UK_WHO_2006_OVER_TWOS_AGES`, whose name contains it as a substring; a careless grep matches the wrong one.
 - Several chart builders initialise `cole_method=False`, so a request for the Cole nine-centile collection is converted through the exact normal inverse rather than the two-thirds-SDS rounding used for UK-WHO. The same named collection therefore means different things per reference.
@@ -187,7 +189,10 @@ Crash-class and contract-violating behaviour. Reproducing these would be activel
 - `create_thrive_lines()` calls `plt.plot` while the matplotlib import is commented out, so it raises `NameError` on any call. Rust does not port a plotting call into a calculation library.
 
 - LMS lookup at an age between the last row of one table and the first row of the next (for example between 1.9986 and 2.0 years in the WHO infant table) raises an `IndexError`, and an age below a table's first row raises a SciPy bounds `ValueError`. Neither is reachable from whole-day ages through UK-WHO selection. Rust returns `TableError::AgeOutOfRange`.
-- A zero or negative observation makes `z_score` raise or return a complex number. Rust returns `CalcError::InvalidObservation`, checked after the age rules so that the reported error matches upstream wherever upstream reports one.
+- A zero or negative observation makes `z_score` raise or return a complex number. Rust returns `CalcError::InvalidObservation`, checked after the age rules so that the reported error matches upstream wherever upstream reports one. Through the API, upstream returns the "less than -8 SD" 422 when L is a whole number (UK90 height, L = 1) and a 500 otherwise; OpenGrowth always returns the 422.
+- A `birth_date` that is not a string (a number, `null`) raises a `TypeError` in the upstream `strptime` validator, which escapes as a bare `500 Internal Server Error`. OpenGrowth returns a 422 `value_error` carrying the same `TypeError` text. These are the two enumerated differences in the HTTP conformance test.
+- CPython's JSON parser accepts `NaN`, `Infinity`, and lone surrogates; upstream then fails later or returns them. OpenGrowth rejects them as `json_invalid`. A numeric string `"nan"` is rejected as `float_parsing`, where upstream accepts it and then fails with a 500.
+- `gestation_weeks` or `gestation_days` sent as `null` is accepted by the upstream model and then reaches Python arithmetic, producing a 422 whose message is a Python `TypeError` ("unsupported operand type(s) for *: 'NoneType' and 'int'"). OpenGrowth reproduces this exactly, because it is a 422 rather than a crash, but the message should be replaced with a clear one; that is a contract change for review (`Q13`).
 
 Every Category 3 fix is a behaviour change relative to Python and must appear in the migration notes, even though each replaces a failure with a defined response.
 

@@ -6,7 +6,7 @@ Safety driver: [dGC hazard #174](https://github.com/rcpch/digital-growth-charts-
 
 ## 1. Adopted shape
 
-OpenGrowth adopts the shape implemented on the Python `37-measurement-provenance` branch, plus an additive `reference_data` block. It is the first key of the result object:
+OpenGrowth adopts the shape the upstream server returns (engine `provenance` plus the server's `api_server` block, `digital-growth-charts-server` 5.1.0), plus an additive `reference_data` list. It is the first key of the result object, and `opengrowth serve` emits exactly this:
 
 ```json
 {
@@ -14,6 +14,11 @@ OpenGrowth adopts the shape implemented on the Python `37-measurement-provenance
     "growth_reference": "uk-who",
     "calculation_engine": {
       "name": "opengrowth",
+      "version": "0.1.0",
+      "commit": "unknown"
+    },
+    "api_server": {
+      "name": "opengrowth-server",
       "version": "0.1.0",
       "commit": "unknown"
     },
