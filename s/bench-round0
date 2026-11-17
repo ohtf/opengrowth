@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Benchmark round 0: Rust and Python engines in-process on the R-vector children (spec/benchmark.md).
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+venv="${OPENGROWTH_REFERENCE_VENV:-$HOME/.cache/opengrowth/reference-python}"
+if [[ -z "${OPENGROWTH_REFERENCE_DATA_DIR:-}" ]]; then
+  candidate=$(compgen -G "$venv/lib/python*/site-packages/rcpchgrowth/data_tables" | head -n 1 || true)
+  [[ -n "$candidate" ]] || { echo "Set OPENGROWTH_REFERENCE_DATA_DIR or run s/reference-python" >&2; exit 1; }
+  export OPENGROWTH_REFERENCE_DATA_DIR="$candidate"
+fi
+cargo run --quiet --release -p opengrowth-conformance --example round0
+exec "$venv/bin/python" "$root/bench/round0/python.py"

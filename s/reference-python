@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Create or update the pinned Python reference environment used to capture goldens.
+set -euo pipefail
+venv="${OPENGROWTH_REFERENCE_VENV:-$HOME/.cache/opengrowth/reference-python}"
+uv venv --quiet --allow-existing --python 3.13 "$venv"
+exec uv pip install --quiet --python "$venv/bin/python" "rcpchgrowth==4.6.5" "$@"

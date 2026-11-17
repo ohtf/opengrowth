@@ -2,6 +2,9 @@
 /target
 **/*.rs.bk
 
+# Python (golden generators)
+__pycache__/
+
 # Disposable agent and browser-automation artefacts
 /.claude
 /.playwright-mcp

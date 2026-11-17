@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+version = 1
+
+[[annotations]]
+path = ["**/*.md", "LICENSE"]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 Open Health Technology Foundation contributors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = [".gitignore", ".editorconfig", "Cargo.lock", "conformance/expected/**"]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 Open Health Technology Foundation contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# Independent R vectors, copied unmodified from rcpchgrowth's AGPL-licensed
+# test suite. See conformance/README.md for provenance.
+[[annotations]]
+path = "conformance/independent/uk-who-cole-r-vectors.json"
+precedence = "override"
+SPDX-FileCopyrightText = "Royal College of Paediatrics and Child Health"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
