@@ -80,6 +80,7 @@ git clone git@github.com:ohtf/opengrowth.git && cd opengrowth
 cargo install --locked --path crates/opengrowth-cli
 opengrowth            # bare invocation lists the commands
 og                    # the same program, shorter to type
+og completions install   # tab completion for both names; detects your shell, or pass --shell
 ```
 
 ### 2. Get the reference tables
