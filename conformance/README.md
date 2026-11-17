@@ -19,13 +19,15 @@ The R vectors are fictional and contain no patient data. They are AGPL-3.0-or-la
 
 ## Goldens
 
-All are produced by `s/goldens` from `rcpchgrowth==4.6.5` installed from PyPI by `s/reference-python`. Each file records its generator and the exact Python, SciPy, NumPy, and `rcpchgrowth` versions.
+All are produced by `s/goldens` from `rcpchgrowth==4.6.5` installed from PyPI by `s/reference-python`, or, for `http_*`, by `s/reference-server`, which checks out the upstream server at a pinned commit and installs its pinned dependencies with `rcpchgrowth` 4.6.5 (4.6.4, which the server pins, differs only in `_build_info.py`). Each file records its generator and the exact Python, SciPy, NumPy, and `rcpchgrowth` versions.
 
 | File | Generator | Contents |
 | --- | --- | --- |
 | `uk-who-r-vector-inputs.json` | `uk_who_r_vectors.py` | Python `Measurement` output for every R-vector input: ages, SDS, centiles, and error strings. |
 | `normal-grid.json` | `normal_grid.py` | `scipy.stats.norm.cdf` over z in [-40, 40] and `norm.ppf` over p from 1e-307 to 1 - 1e-15. |
 | `python-round.json` | `python_round.py` | CPython `round(x, n)` for ties, near-ties, and a seeded random sample. |
+| `python-repr.json` | `python_repr.py` | CPython `repr(float)` for random bit patterns, decade boundaries, and API-like values. |
+| `http-uk-who.json` | `http_uk_who.py` | Responses from `digital-growth-charts-server` at 29bb4e9 (FastAPI 0.116.1, Pydantic 2.11.7), captured with Starlette's `TestClient`: status, recorded headers, and SHA-256 of the body and of the body with provenance removed. Full bodies for the hand-written cases; digests only for the R-vector corpus and the age and gestation grid. Needs `s/reference-server`. |
 
 Goldens contain calculated outputs, never LMS tables, so they can be committed while `spec/queries.md` Q1 is open.
 
@@ -42,6 +44,8 @@ Measured on Linux x86_64 against rcpchgrowth 4.6.5, SciPy 1.18.1, NumPy 2.5.5, C
 | `python_round` vs CPython | 10,045 of 10,045 bit-identical |
 | Normal CDF vs SciPy | max relative difference 5.7e-14 for \|z\| < 37; 2.5e-15 and 59% bit-exact within ±8 SD |
 | Normal PPF (AS241) vs SciPy | max relative difference 8.4e-16; 31% bit-exact |
+| `python_repr` vs CPython | 10,484 of 10,484 identical |
+| UK-WHO HTTP responses vs FastAPI | 5,284 of 5,286 byte-identical outside provenance; the other 2 are enumerated Category 3 fixes (upstream 500, OpenGrowth 422) |
 
 Bit-identical SDS on Linux depends on using the platform `pow` (glibc), as CPython does. The portable `libm` crate's `pow` is 98% bit-exact. Other platforms are not yet measured.
 

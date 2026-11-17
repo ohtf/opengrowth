@@ -6,6 +6,7 @@
 pub mod calculate;
 pub mod completions;
 pub mod data;
+pub mod serve;
 
 use std::path::PathBuf;
 

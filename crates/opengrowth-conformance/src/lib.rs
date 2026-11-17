@@ -100,3 +100,46 @@ pub fn ulps_between(a: f64, b: f64) -> u64 {
     }
     ordered(a).abs_diff(ordered(b))
 }
+
+/// Removes every `"provenance": <value>` member and its separating comma,
+/// exactly as `conformance/generators/http_uk_who.py` does, so bodies can be
+/// compared outside the one designed difference.
+#[must_use]
+pub fn mask_provenance(body: &str) -> String {
+    const KEY: &str = "\"provenance\":";
+    let mut out = body.to_owned();
+    let mut start = 0;
+    while let Some(found) = out[start..].find(KEY) {
+        let i = start + found;
+        if i == 0 || !matches!(out.as_bytes()[i - 1], b'{' | b',') {
+            start = i + KEY.len();
+            continue;
+        }
+        let value_start = i + KEY.len();
+        let mut stream = serde_json::Deserializer::from_str(&out[value_start..])
+            .into_iter::<serde::de::IgnoredAny>();
+        if stream.next().is_none() {
+            break;
+        }
+        let end = value_start + stream.byte_offset();
+        if out.as_bytes().get(end) == Some(&b',') {
+            out.replace_range(i..=end, "");
+        } else if out.as_bytes()[i - 1] == b',' {
+            out.replace_range(i - 1..end, "");
+        } else {
+            out.replace_range(i..end, "");
+        }
+        start = i.saturating_sub(1);
+    }
+    out
+}
+
+/// Lowercase hex SHA-256.
+#[must_use]
+pub fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    sha2::Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}

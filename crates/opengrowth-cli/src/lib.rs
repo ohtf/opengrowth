@@ -54,6 +54,8 @@ pub enum Command {
     /// Inspect and import reference tables.
     #[command(subcommand)]
     Data(commands::data::DataCommand),
+    /// Serve the HTTP API, compatible with the RCPCH Digital Growth Charts API.
+    Serve(commands::serve::Args),
     /// Print a shell completion script.
     Completions(commands::completions::Args),
 }
@@ -76,6 +78,7 @@ where
     match cli.command {
         Command::Calculate(args) => commands::calculate::run(&context, &args),
         Command::Data(command) => commands::data::run(&context, &command),
+        Command::Serve(args) => commands::serve::run(&context, &args),
         Command::Completions(args) => commands::completions::run(&args),
     }
 }

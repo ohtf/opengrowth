@@ -14,6 +14,12 @@ publish = false
 [dependencies]
 opengrowth-core.workspace = true
 opengrowth-data.workspace = true
+opengrowth-server.workspace = true
+axum.workspace = true
+http-body-util.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+tower.workspace = true
 jiff.workspace = true
 libm.workspace = true
 serde.workspace = true

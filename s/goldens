@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Regenerate conformance/expected/ from the pinned Python reference environment.
+# Regenerate conformance/expected/ from the pinned Python reference environments.
 # Goldens are never hand-edited; commit the regenerated files with a rationale.
+# http_* generators run in the reference server environment (s/reference-server).
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 venv="${OPENGROWTH_REFERENCE_VENV:-$HOME/.cache/opengrowth/reference-python}"
-[[ -x "$venv/bin/python" ]] || { echo "No reference environment at $venv; run s/reference-python" >&2; exit 1; }
+server="${OPENGROWTH_REFERENCE_SERVER:-$HOME/.cache/opengrowth/reference-server}"
+generators=("$@")
+[[ ${#generators[@]} -gt 0 ]] || generators=(uk_who_r_vectors normal_grid python_round python_repr http_uk_who)
 cd "$root/conformance/generators"
-for generator in "${@:-uk_who_r_vectors normal_grid python_round}"; do
-  for name in $generator; do
+for name in "${generators[@]}"; do
+  if [[ "$name" == http_* ]]; then
+    [[ -x "$server/venv/bin/python" ]] || { echo "No reference server at $server; run s/reference-server" >&2; exit 1; }
+    OPENGROWTH_REFERENCE_SERVER_SRC="$server/src" "$server/venv/bin/python" "$name.py"
+  else
+    [[ -x "$venv/bin/python" ]] || { echo "No reference environment at $venv; run s/reference-python" >&2; exit 1; }
     "$venv/bin/python" "$name.py"
-  done
+  fi
 done

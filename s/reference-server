@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Create or update the pinned FastAPI reference server used to capture HTTP goldens.
+# Source comes from the upstream repository at a pinned commit; nothing is committed here.
+set -euo pipefail
+commit="29bb4e9e9d93a850a63d5233b927472f808fb9a8"   # digital-growth-charts-server live, 2026-09-24 (v5.1.0)
+repo="${OPENGROWTH_UPSTREAM_SERVER_REPO:-https://github.com/rcpch/digital-growth-charts-server.git}"
+root="${OPENGROWTH_REFERENCE_SERVER:-$HOME/.cache/opengrowth/reference-server}"
+mkdir -p "$root"
+if [[ ! -d "$root/src/.git" ]]; then
+  git clone --quiet "$repo" "$root/src"
+fi
+git -C "$root/src" fetch --quiet origin "$commit"
+git -C "$root/src" -c advice.detachedHead=false checkout --quiet --force "$commit"
+uv venv --quiet --allow-existing --python 3.13 "$root/venv"
+# The server pins rcpchgrowth 4.6.4; 4.6.5 differs only in _build_info.py, so the
+# goldens use one engine version throughout (conformance/README.md).
+exec uv pip install --quiet --python "$root/venv/bin/python" \
+  "fastapi[all]==0.116.1" "uvicorn[standard]==0.35.0" "pydantic==2.11.7" \
+  "gunicorn==23.0.0" "rcpchgrowth==4.6.5" "$@"

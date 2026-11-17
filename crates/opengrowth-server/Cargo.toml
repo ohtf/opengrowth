@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+[package]
+name = "opengrowth-server"
+description = "HTTP API for OpenGrowth, compatible with the RCPCH Digital Growth Charts API"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+opengrowth-core.workspace = true
+opengrowth-data.workspace = true
+axum.workspace = true
+jiff.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+http-body-util.workspace = true
+tower.workspace = true
+
+[lints]
+workspace = true
