@@ -51,7 +51,7 @@ Nothing here writes engine code. The purpose is to make the target unambiguous b
 - [ ] **R16 - Implement mid-parental height and secondary calculations.** Including the existing double-rounding of the centile and the parental ±8 SD rejection.
 
 - [ ] **R26 - Build the MCP server.** Exposed as `opengrowth mcp`, over stdio and streamable HTTP, sharing request types with the CLI and server, per house-style `mcp.md`. Tool descriptions carry the clinical-use boundary; results carry full provenance.
-- [ ] **R30 - Build the documentation site.** Zensical site in `docs/` with generated CLI, OpenAPI, and MCP references, a data-import guide for UK90, migration notes from the RCPCH API, and clinical background with attribution.
+- [ ] **R30 - Build the documentation site.** Zensical site in `docs/` with generated CLI, OpenAPI, and MCP references, a data-import guide for UK90, migration notes from the RCPCH API, and clinical background with attribution. The longer-term content migration is `R36`.
 
 ## Phase 4 - beyond parity
 
@@ -67,3 +67,10 @@ Nothing here writes engine code. The purpose is to make the target unambiguous b
 - [ ] **R33 - Remove string formatting from the lookup hot path.** `python_round` formats and reparses; table ages are already pre-rounded, but each lookup still rounds the query age. Replace with an exact arithmetic method proven bit-identical against the CPython golden. Expected to roughly halve engine time (benchmark round 0).
 - [ ] **R34 - Measure bit-identity on macOS and Windows.** SDS is bit-identical on Linux because Rust and CPython share glibc's `pow`. Run the conformance suite on the other platforms, record the rates, and decide whether to ship a single portable `pow`.
 - [ ] **R35 - Clinical review of the UK-WHO port.** Review reference selection, the 2-year clamp, and preterm and early-infant behaviour against the published UK-WHO method, with the conformance evidence. Required before `R9` counts as done for UK-WHO.
+- [ ] **R36 - Bring the Digital Growth Charts documentation into this repository.** Medium term. Move the content of the dGC documentation site ([growth.rcpch.ac.uk](https://growth.rcpch.ac.uk), source `rcpch/digital-growth-charts-documentation`) into `docs/` as part of the `R30` Zensical site, so the docs are versioned and released with the engine and API they describe.
+  - Remove RCPCH-specific and provider-specific material: RCPCH branding and theme, the RCPCH API subscription and gateway instructions, RCPCH contact routes, and the RCPCH clinical safety file and MHRA registration, which do not cover OpenGrowth (`SAFETY.md`, `Q11`).
+  - Rebrand to OHTF branding throughout.
+  - Keep the clinical and methodological content (growth references, LMS method, gestational correction, centile interpretation), updated where OpenGrowth differs, with the Category 3 differences in the migration notes.
+  - The source is CC BY-SA 4.0. Keep attribution to RCPCH and the original authors on every page derived from it, license derived pages CC BY-SA 4.0, and record the upstream commit imported from in `NOTICE.md`.
+  - Bring over page history with the content where practical (`git filter-repo` on the `docs/` subtree), rather than a flattened copy.
+  - Depends on `R30`. Does not imply RCPCH endorsement, and no page may suggest it.
