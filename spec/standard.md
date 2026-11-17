@@ -1,6 +1,6 @@
-# OpenGrowth - specification
+# opengrowth - specification
 
-Normative design for OpenGrowth, an Open Health Technology Foundation reimplementation in Rust of the growth calculation engine published by RCPCH in Python as [`rcpchgrowth`](https://github.com/rcpch/rcpchgrowth-python) and served over HTTP by [`digital-growth-charts-server`](https://github.com/rcpch/digital-growth-charts-server).
+Normative design for opengrowth, an Open Health Technology Foundation reimplementation in Rust of the growth calculation engine published by RCPCH in Python as [`rcpchgrowth`](https://github.com/rcpch/rcpchgrowth-python) and served over HTTP by [`digital-growth-charts-server`](https://github.com/rcpch/digital-growth-charts-server).
 
 ## 1. Purpose
 
@@ -17,8 +17,8 @@ This is a reimplementation, not a rewrite of intent. The clinical behaviour is a
 ## 2. Non-goals
 
 - **Not a new clinical method.** No new references, no new statistical approach, no reinterpretation of existing references. Changes to clinical behaviour go through this project's clinical safety process (section 9), and are raised with the upstream Python project where they also apply there.
-- **Not an RCPCH project.** OpenGrowth is not affiliated with or endorsed by RCPCH, does not use RCPCH branding, and is not part of the RCPCH Digital Growth Charts medical device. See section 3.1.
-- **Not a `clincalc` module.** OpenGrowth is a separate OHTF project. `clincalc` or any other project may consume it as a library under the terms in section 3, which cannot relicense the reference data.
+- **Not an RCPCH project.** opengrowth is not affiliated with or endorsed by RCPCH, does not use RCPCH branding, and is not part of the RCPCH Digital Growth Charts medical device. See section 3.1.
+- **Not a `clincalc` module.** opengrowth is a separate OHTF project. `clincalc` or any other project may consume it as a library under the terms in section 3, which cannot relicense the reference data.
 - **Not a replacement for `growth-references`.** That repository remains the provenance record for source datasets. This project consumes reference data; it does not become its home.
 - **Not a re-derivation of reference data.** Tables are transcribed, not recomputed. Any transformation must be reproducible and evidenced.
 - **Not initially a drop-in Python import.** FFI is a later phase (`R18`) and is explicitly out of scope for the first release.
@@ -27,7 +27,7 @@ This is a reimplementation, not a rewrite of intent. The clinical behaviour is a
 
 ### 3.1 Ownership and attribution
 
-OpenGrowth is an Open Health Technology Foundation project from its first commit, hosted at `github.com/ohtf/opengrowth`. It was never an RCPCH project. It is an independent derivative work of `rcpchgrowth`, which RCPCH publishes under AGPL-3.0-or-later; the AGPL permits this, subject to the conditions below.
+opengrowth is an Open Health Technology Foundation project from its first commit, hosted at `github.com/ohtf/opengrowth`. It was never an RCPCH project. It is an independent derivative work of `rcpchgrowth`, which RCPCH publishes under AGPL-3.0-or-later; the AGPL permits this, subject to the conditions below.
 
 Copyright in new work is held by its contributors, recorded as `Open Health Technology Foundation contributors`. Files that port logic from `rcpchgrowth` also preserve the upstream copyright:
 
@@ -41,7 +41,7 @@ The upstream repository carries no explicit copyright statement beyond its licen
 
 Original files that contain no ported logic carry only the OHTF line. When in doubt, include both: over-attribution costs nothing, under-attribution breaches the licence.
 
-AGPL section 5 requires modified versions to carry prominent notices that they were modified, with a relevant date. A root `NOTICE.md` records that OpenGrowth is a Rust reimplementation derived from `rcpchgrowth`, names the upstream version and commit the port was taken from, and gives the date (`R25`).
+AGPL section 5 requires modified versions to carry prominent notices that they were modified, with a relevant date. A root `NOTICE.md` records that opengrowth is a Rust reimplementation derived from `rcpchgrowth`, names the upstream version and commit the port was taken from, and gives the date (`R25`).
 
 RCPCH's name is used only nominatively: to state API compatibility and to give attribution. It does not appear in crate names, binary names, product names, or logos, and nothing may imply RCPCH endorsement.
 
@@ -49,7 +49,7 @@ Contributions are signed off under the [OHTF Developer Certificate of Origin](ht
 
 ### 3.2 Code licence
 
-**AGPL-3.0-or-later.** This is not a free choice. The Python engine is licensed AGPL-3.0-or-later, and a port is a derivative work, so the Rust engine inherits that licence. Network use of a modified hosted server triggers AGPL section 13: anyone running a modified OpenGrowth server must offer its source to users. The licence must not be applied by analogy to `growth-references`, which is a separate work with separate terms.
+**AGPL-3.0-or-later.** This is not a free choice. The Python engine is licensed AGPL-3.0-or-later, and a port is a derivative work, so the Rust engine inherits that licence. Network use of a modified hosted server triggers AGPL section 13: anyone running a modified opengrowth server must offer its source to users. The licence must not be applied by analogy to `growth-references`, which is a separate work with separate terms.
 
 ### 3.3 Reference data carries its own terms, tracked per table
 
@@ -111,7 +111,7 @@ Everything in Profile A, plus the serialised response body is byte-identical for
 
 Profile B is the **goal for every operation** (maintainer decision, 2026-11-16: the API should be as byte-identical with the FastAPI server as it is possible to get). It remains a target rather than the release gate, because some differences may prove impossible or not worth their cost; each one that remains is enumerated in the migration notes with its reason, never waived in bulk. Byte identity lets a proxy, replay harness, or the benchmark's correctness check (`benchmark.md`) diff old and new responses directly, and lets integrators switch servers without noticing.
 
-**One designed exception:** the `provenance` object can never be byte-identical, because OpenGrowth must report its own engine name, version, and commit, and adds the `reference_data` list (`provenance.md`). Profile B therefore means byte-identical *outside* `provenance.calculation_engine` and `provenance.reference_data`, and the replay harness masks exactly those paths and no others.
+**One designed exception:** the `provenance` object can never be byte-identical, because opengrowth must report its own engine name, version, and commit, and adds the `reference_data` list (`provenance.md`). Profile B therefore means byte-identical *outside* `provenance.calculation_engine` and `provenance.reference_data`, and the replay harness masks exactly those paths and no others.
 
 Measured so far (`conformance/README.md`):
 
@@ -145,7 +145,7 @@ Exact bit-level agreement with the Python engine cannot be assumed, because the 
 1. **Implement Python-compatible rounding explicitly.** A shared helper implements round-half-to-even at a given decimal place. Never use `f64::round()` on a value that reaches an output field. This is a correctness requirement, not an optimisation detail.
 2. **Preserve operation order in interpolation and LMS arithmetic.** Transcribe the Python expression structure rather than algebraically simplifying it. Do not enable fast-math-style transformations.
 3. **Hold two oracles to two different tolerances.** They answer different questions and both must pass:
-   - **Against the independent R vectors: 1e-3 absolute SDS.** About 4,000 fictional children generated by Tim Cole's R implementation (`sds_age_validation_2021_refactored_2026.json`, 3,984 UK-WHO cases) are the clinical-accuracy gate. They are independent of all RCPCH code, so they catch an error Python and Rust share, such as a defect inherited through the port. 1e-3 is the tolerance the Python engine is already accepted at, agreed with the statistician, because R's and Python's interpolation and normal-distribution implementations never agree exactly. OpenGrowth meets the same gate the Python engine does; it is not tightened or loosened.
+   - **Against the independent R vectors: 1e-3 absolute SDS.** About 4,000 fictional children generated by Tim Cole's R implementation (`sds_age_validation_2021_refactored_2026.json`, 3,984 UK-WHO cases) are the clinical-accuracy gate. They are independent of all RCPCH code, so they catch an error Python and Rust share, such as a defect inherited through the port. 1e-3 is the tolerance the Python engine is already accepted at, agreed with the statistician, because R's and Python's interpolation and normal-distribution implementations never agree exactly. opengrowth meets the same gate the Python engine does; it is not tightened or loosened.
    - **Against Python goldens: the tight per-field tolerances below.** These are the regression gate. They catch small drift, and string, shape, and rounding differences, that the R vectors do not exercise.
 4. **Define tolerance per field class against the Python goldens, and enforce it in the conformance harness.** Proposed opening values, to be confirmed by measurement in `R5` and recorded in `Q4`:
    - SDS: agree to within `1e-9` absolute, since SDS is emitted unrounded by the API and is the field most exposed to normal-distribution differences.
@@ -171,7 +171,7 @@ Clinically observable output that a consumer may depend on, even if it looks odd
 
 Behaviour that is probably wrong but changes clinical output, so it cannot be silently corrected during a port. Each needs a clinical decision and, if changed, a version bump and a documented behaviour change. Identified so far:
 
-- ~~`chronological_percentage_median_bmi` is computed using the corrected age.~~ Not so in 4.6.5, the pinned version: it uses the chronological age (`measurement.py:365-370`), and OpenGrowth does the same. Kept here, struck through, so the earlier analysis is not repeated.
+- ~~`chronological_percentage_median_bmi` is computed using the corrected age.~~ Not so in 4.6.5, the pinned version: it uses the chronological age (`measurement.py:365-370`), and opengrowth does the same. Kept here, struck through, so the earlier analysis is not repeated.
 - UK Trisomy 21 BMI data extend to 18.92 years (228 points per sex), but validation rejects ages above 18.82 (`rcpchgrowth/trisomy_21.py:54-55`), so the final two points per sex, at 18.83 and 18.92, are unreachable.
 - `WHO_2006_OVER_TWOS_AGES` (37 entries) contains `3.083333333` twice, at index 13 and again at index 26 immediately after `4.0`, so the chart age grid is unsorted at that point (`constants/reference_constants.py:117`). Note this array is distinct from the clean `UK_WHO_2006_OVER_TWOS_AGES`, whose name contains it as a substring; a careless grep matches the wrong one.
 - Several chart builders initialise `cole_method=False`, so a request for the Cole nine-centile collection is converted through the exact normal inverse rather than the two-thirds-SDS rounding used for UK-WHO. The same named collection therefore means different things per reference.
@@ -189,10 +189,10 @@ Crash-class and contract-violating behaviour. Reproducing these would be activel
 - `create_thrive_lines()` calls `plt.plot` while the matplotlib import is commented out, so it raises `NameError` on any call. Rust does not port a plotting call into a calculation library.
 
 - LMS lookup at an age between the last row of one table and the first row of the next (for example between 1.9986 and 2.0 years in the WHO infant table) raises an `IndexError`, and an age below a table's first row raises a SciPy bounds `ValueError`. Neither is reachable from whole-day ages through UK-WHO selection. Rust returns `TableError::AgeOutOfRange`.
-- A zero or negative observation makes `z_score` raise or return a complex number. Rust returns `CalcError::InvalidObservation`, checked after the age rules so that the reported error matches upstream wherever upstream reports one. Through the API, upstream returns the "less than -8 SD" 422 when L is a whole number (UK90 height, L = 1) and a 500 otherwise; OpenGrowth always returns the 422.
-- A `birth_date` that is not a string (a number, `null`) raises a `TypeError` in the upstream `strptime` validator, which escapes as a bare `500 Internal Server Error`. OpenGrowth returns a 422 `value_error` carrying the same `TypeError` text. These are the two enumerated differences in the HTTP conformance test.
-- CPython's JSON parser accepts `NaN`, `Infinity`, and lone surrogates; upstream then fails later or returns them. OpenGrowth rejects them as `json_invalid`. A numeric string `"nan"` is rejected as `float_parsing`, where upstream accepts it and then fails with a 500.
-- `gestation_weeks` or `gestation_days` sent as `null` is accepted by the upstream model and then reaches Python arithmetic, producing a 422 whose message is a Python `TypeError` ("unsupported operand type(s) for *: 'NoneType' and 'int'"). OpenGrowth reproduces this exactly, because it is a 422 rather than a crash, but the message should be replaced with a clear one; that is a contract change for review (`Q13`).
+- A zero or negative observation makes `z_score` raise or return a complex number. Rust returns `CalcError::InvalidObservation`, checked after the age rules so that the reported error matches upstream wherever upstream reports one. Through the API, upstream returns the "less than -8 SD" 422 when L is a whole number (UK90 height, L = 1) and a 500 otherwise; opengrowth always returns the 422.
+- A `birth_date` that is not a string (a number, `null`) raises a `TypeError` in the upstream `strptime` validator, which escapes as a bare `500 Internal Server Error`. opengrowth returns a 422 `value_error` carrying the same `TypeError` text. These are the two enumerated differences in the HTTP conformance test.
+- CPython's JSON parser accepts `NaN`, `Infinity`, and lone surrogates; upstream then fails later or returns them. opengrowth rejects them as `json_invalid`. A numeric string `"nan"` is rejected as `float_parsing`, where upstream accepts it and then fails with a 500.
+- `gestation_weeks` or `gestation_days` sent as `null` is accepted by the upstream model and then reaches Python arithmetic, producing a 422 whose message is a Python `TypeError` ("unsupported operand type(s) for *: 'NoneType' and 'int'"). opengrowth reproduces this exactly, because it is a 422 rather than a crash, but the message should be replaced with a clear one; that is a contract change for review (`Q13`).
 
 Every Category 3 fix is a behaviour change relative to Python and must appear in the migration notes, even though each replaces a failure with a defined response.
 
@@ -289,7 +289,7 @@ Behaviour that must be reconsidered rather than copied:
 
 Every calculation result carries a record of the growth reference used and the engine that computed it. This is a clinical safety control mitigating the hazard first recorded as RCPCH dGC hazard #174, not a debugging field.
 
-OpenGrowth **adopts the nested `provenance` shape** implemented on the Python `37-measurement-provenance` branch, with two required divergences: the engine reports its own identity in `calculation_engine.name` rather than impersonating the Python engine, and it adds the reference data version it used.
+opengrowth **adopts the nested `provenance` shape** implemented on the Python `37-measurement-provenance` branch, with two required divergences: the engine reports its own identity in `calculation_engine.name` rather than impersonating the Python engine, and it adds the reference data version it used.
 
 The engine produces provenance; every surface passes it through. A surface must **not** synthesise provenance from the route it happens to be serving, because that would make the field confirm the caller's assumption rather than test it.
 

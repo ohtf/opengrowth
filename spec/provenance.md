@@ -2,11 +2,11 @@
 
 Every calculation result carries a record of which growth reference produced it and which engine computed it. This is a **clinical safety control**, not a debugging convenience: it exists so a downstream consumer can detect that a measurement was calculated against a different reference from the chart it is being plotted on.
 
-Safety driver: [dGC hazard #174](https://github.com/rcpch/digital-growth-charts-documentation/issues/174), where chart curves and a measurement result used different growth references and the discrepancy was invisible to the user. Provenance is step 1 of the four-step mitigation chain designed upstream, alongside `rcpchgrowth-python#37`, `digital-growth-charts-server#207`, and `digital-growth-charts-react-component-library#217`. OpenGrowth records the hazard in its own hazard log with a cross-reference; it does not rely on RCPCH's mitigation being in place.
+Safety driver: [dGC hazard #174](https://github.com/rcpch/digital-growth-charts-documentation/issues/174), where chart curves and a measurement result used different growth references and the discrepancy was invisible to the user. Provenance is step 1 of the four-step mitigation chain designed upstream, alongside `rcpchgrowth-python#37`, `digital-growth-charts-server#207`, and `digital-growth-charts-react-component-library#217`. opengrowth records the hazard in its own hazard log with a cross-reference; it does not rely on RCPCH's mitigation being in place.
 
 ## 1. Adopted shape
 
-OpenGrowth adopts the shape the upstream server returns (engine `provenance` plus the server's `api_server` block, `digital-growth-charts-server` 5.1.0), plus an additive `reference_data` list. It is the first key of the result object, and `opengrowth serve` emits exactly this:
+opengrowth adopts the shape the upstream server returns (engine `provenance` plus the server's `api_server` block, `digital-growth-charts-server` 5.1.0), plus an additive `reference_data` list. It is the first key of the result object, and `opengrowth serve` emits exactly this:
 
 ```json
 {
@@ -36,7 +36,7 @@ OpenGrowth adopts the shape the upstream server returns (engine `provenance` plu
 
 Reference: `rcpchgrowth/measurement.py:202-210` on that branch.
 
-`reference_data` is an OpenGrowth addition and is purely additive, so clients written against the Python shape are unaffected. It exists because tables are supplied by the user at install time (`Q1`), which makes "which data did this calculation use?" a real question rather than one answered by the engine version. It lists each table the calculation actually read, once, with the SHA-256 of the verified file; a measurement whose chronological and corrected ages fall in different UK-WHO segments lists both. The `opengrowth calculate --format json` output already follows this shape. Whether embedded tables (after `Q1`) add a `source` field is decided in `R7`.
+`reference_data` is an opengrowth addition and is purely additive, so clients written against the Python shape are unaffected. It exists because tables are supplied by the user at install time (`Q1`), which makes "which data did this calculation use?" a real question rather than one answered by the engine version. It lists each table the calculation actually read, once, with the SHA-256 of the verified file; a measurement whose chronological and corrected ages fall in different UK-WHO segments lists both. The `opengrowth calculate --format json` output already follows this shape. Whether embedded tables (after `Q1`) add a `source` field is decided in `R7`.
 
 ## 2. Invariants
 
@@ -55,7 +55,7 @@ These are normative and are carried over from the Python test suite at `rcpchgro
 
 **The engine reports `name: "opengrowth"`, not the Python engine's `"rcpch/rcpchgrowth-python"`** (the value `rcpchgrowth` 4.6.5 actually emits, at `measurement.py:201`).
 
-This is a deliberate divergence from strict byte-compatibility, and it is required rather than merely permitted. The purpose of the field is to identify the engine that produced the result. While both engines are in use, during equivalence testing (`Q9`) or when an integrator moves between the RCPCH API and an OpenGrowth server, an engine that reports its predecessor's name makes it impossible to attribute a divergent result to either implementation. Provenance would fail at precisely the moment it is most needed.
+This is a deliberate divergence from strict byte-compatibility, and it is required rather than merely permitted. The purpose of the field is to identify the engine that produced the result. While both engines are in use, during equivalence testing (`Q9`) or when an integrator moves between the RCPCH API and an opengrowth server, an engine that reports its predecessor's name makes it impossible to attribute a divergent result to either implementation. Provenance would fail at precisely the moment it is most needed.
 
 Consumers are unaffected in the one place it matters: the chart component's mismatch guard keys on `growth_reference`, not on engine name. Nothing in the mitigation chain matches on `calculation_engine.name`.
 
@@ -77,7 +77,7 @@ Rust's build-script approach is cleaner than overwriting a checked-in source fil
 
 ## 5. Server layer
 
-Upstream, `digital-growth-charts-server#207` proposes extending provenance at the HTTP layer with an `api_server` sibling to `calculation_engine`, with fields not yet defined. OpenGrowth decides its own server-layer shape (`Q3`), and matches the upstream shape if RCPCH settles one first, so that clients handling both servers see the same structure.
+Upstream, `digital-growth-charts-server#207` proposes extending provenance at the HTTP layer with an `api_server` sibling to `calculation_engine`, with fields not yet defined. opengrowth decides its own server-layer shape (`Q3`), and matches the upstream shape if RCPCH settles one first, so that clients handling both servers see the same structure.
 
 Two constraints apply regardless of the final shape:
 

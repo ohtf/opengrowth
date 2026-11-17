@@ -1,6 +1,6 @@
 # Conformance corpus
 
-Behaviour shared between OpenGrowth and the upstream Python engine, defined as data. See `spec/standard.md` section 8.
+Behaviour shared between opengrowth and the upstream Python engine, defined as data. See `spec/standard.md` section 8.
 
 There are two kinds of oracle, with different authority:
 
@@ -45,7 +45,7 @@ Measured on Linux x86_64 against rcpchgrowth 4.6.5, SciPy 1.18.1, NumPy 2.5.5, C
 | Normal CDF vs SciPy | max relative difference 5.7e-14 for \|z\| < 37; 2.5e-15 and 59% bit-exact within ±8 SD |
 | Normal PPF (AS241) vs SciPy | max relative difference 8.4e-16; 31% bit-exact |
 | `python_repr` vs CPython | 10,484 of 10,484 identical |
-| UK-WHO HTTP responses vs FastAPI | 5,284 of 5,286 byte-identical outside provenance; the other 2 are enumerated Category 3 fixes (upstream 500, OpenGrowth 422) |
+| UK-WHO HTTP responses vs FastAPI | 5,284 of 5,286 byte-identical outside provenance; the other 2 are enumerated Category 3 fixes (upstream 500, opengrowth 422) |
 
 Bit-identical SDS on Linux depends on using the platform `pow` (glibc), as CPython does. The portable `libm` crate's `pow` is 98% bit-exact. Other platforms are not yet measured.
 

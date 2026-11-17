@@ -4,11 +4,11 @@ Do not report suspected vulnerabilities through public issues, discussions, or p
 
 Report them privately through GitHub's private vulnerability reporting for this repository (the **Security** tab, then **Report a vulnerability**), or by email to <security@openhealthtechnology.org>. Include enough detail to reproduce the concern without publishing credentials, personal data, or exploit instructions.
 
-The full OHTF security policy, including response times and coordinated disclosure, is at <https://openhealthtechnology.org/community/security/>. This file takes precedence for anything specific to OpenGrowth.
+The full OHTF security policy, including response times and coordinated disclosure, is at <https://openhealthtechnology.org/community/security/>. This file takes precedence for anything specific to opengrowth.
 
 ## Clinical safety
 
-OpenGrowth computes values that inform clinical assessment of children's growth. A vulnerability that could cause a wrong result to be returned silently, or that could let an attacker alter calculation logic, reference data, or provenance, is a clinical safety concern as well as a security one. Say so clearly in your report; it will be triaged into the hazard log. See [SAFETY.md](SAFETY.md).
+opengrowth computes values that inform clinical assessment of children's growth. A vulnerability that could cause a wrong result to be returned silently, or that could let an attacker alter calculation logic, reference data, or provenance, is a clinical safety concern as well as a security one. Say so clearly in your report; it will be triaged into the hazard log. See [SAFETY.md](SAFETY.md).
 
 ## Data
 

@@ -1,6 +1,6 @@
-# OpenGrowth specs
+# opengrowth specs
 
-Design specifications for OpenGrowth, the Open Health Technology Foundation's Rust reimplementation of the `rcpchgrowth` growth calculation engine.
+Design specifications for opengrowth, the Open Health Technology Foundation's Rust reimplementation of the `rcpchgrowth` growth calculation engine.
 
 ## Reading order
 

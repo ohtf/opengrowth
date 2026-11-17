@@ -1,6 +1,6 @@
 # Agent instructions
 
-OpenGrowth is an Open Health Technology Foundation project: a Rust reimplementation of the `rcpchgrowth` growth calculation engine, driving a library, CLI, MCP server, HTTP API, and later Python bindings from one engine. It is an independent derivative of RCPCH's AGPL-licensed Python engine, not an RCPCH project. This file is the entry point for AI coding agents. Read it before changing anything.
+opengrowth is an Open Health Technology Foundation project: a Rust reimplementation of the `rcpchgrowth` growth calculation engine, driving a library, CLI, MCP server, HTTP API, and later Python bindings from one engine. It is an independent derivative of RCPCH's AGPL-licensed Python engine, not an RCPCH project. This file is the entry point for AI coding agents. Read it before changing anything.
 
 The project is **experimental**. The engine computes UK-WHO SDS and centiles, bit-identical to the Python engine on the conformance corpus; the other references, the full result object, the HTTP server, and the MCP server do not exist yet. Check the [roadmap](spec/roadmap.md) before starting work. Distribution of UK90-derived tables is gated on `Q1`.
 
@@ -18,6 +18,7 @@ Crates: `opengrowth-core` (the engine, a leaf), `opengrowth-data` (table manifes
 
 ## Core invariants
 
+- **The name is written in lowercase: opengrowth**, including at the start of a sentence. Never "OpenGrowth".
 - **This is not an RCPCH project.** Do not describe it as RCPCH software, use RCPCH branding, or imply RCPCH endorsement. Naming RCPCH for compatibility ("compatible with the RCPCH Digital Growth Charts API") and attribution is correct and required.
 - **Preserve upstream attribution.** Files that port logic from `rcpchgrowth` carry the RCPCH copyright line alongside the OHTF one. See `standard.md` section 3.1.
 - **Published methods and the reference implementation define clinical behaviour.** Never change a number to make a test pass. If Rust disagrees with a golden, the default assumption is that Rust is wrong. Investigate before adjusting anything.

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Loading, verifying, and importing OpenGrowth reference tables.
+//! Loading, verifying, and importing opengrowth reference tables.
 //!
 //! This slice supports runtime-supplied tables only (`spec/standard.md`
 //! section 7.2). No table values are compiled into the binary or committed

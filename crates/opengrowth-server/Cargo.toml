@@ -3,7 +3,7 @@
 
 [package]
 name = "opengrowth-server"
-description = "HTTP API for OpenGrowth, compatible with the RCPCH Digital Growth Charts API"
+description = "HTTP API for opengrowth, compatible with the RCPCH Digital Growth Charts API"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

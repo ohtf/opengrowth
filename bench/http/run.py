@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Benchmark rounds 1 to 4 (spec/benchmark.md): the FastAPI server against OpenGrowth.
+"""Benchmark rounds 1 to 4 (spec/benchmark.md): the FastAPI server against opengrowth.
 
 Standard library only. Run through s/bench, which supplies the paths:
 
@@ -280,7 +280,7 @@ def main():
     results["correct"] = not mismatched
     (out / "results.json").write_text(json.dumps(results, indent=1))
 
-    lines = [f"# OpenGrowth vs FastAPI benchmark, {results['environment']['date']}", ""]
+    lines = [f"# opengrowth vs FastAPI benchmark, {results['environment']['date']}", ""]
     lines += [f"- {k}: `{v}`" for k, v in results["environment"].items()]
     lines += ["", "## Correctness", "", "Identical answers outside provenance for every endpoint." if not mismatched else f"**MISMATCH** for: {', '.join(mismatched)}. Timings below do not count."]
     lines += ["", "## Round 1: one request at a time (10 requests/s)", "", "| Endpoint | Python p50 | Python p99 | Rust p50 | Rust p99 |", "| --- | ---: | ---: | ---: | ---: |"]

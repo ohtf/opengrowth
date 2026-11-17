@@ -17,7 +17,7 @@ use crate::paths::{self, DataDir};
 pub enum DataCommand {
     /// Show which reference tables are present and verified.
     Status,
-    /// Verify reference tables in DIR and copy them into OpenGrowth's data directory.
+    /// Verify reference tables in DIR and copy them into opengrowth's data directory.
     ///
     /// DIR uses the rcpchgrowth `data_tables` layout; an installed rcpchgrowth
     /// package's `data_tables` directory works as-is. Every file must match its
@@ -27,7 +27,7 @@ pub enum DataCommand {
         #[arg(value_parser = paths::tilde_path, value_hint = clap::ValueHint::DirPath)]
         source: PathBuf,
     },
-    /// List every table OpenGrowth knows, with its origin and terms.
+    /// List every table opengrowth knows, with its origin and terms.
     Manifest,
 }
 
@@ -153,7 +153,7 @@ fn import(context: &Context, source: &std::path::Path) -> anyhow::Result<ExitCod
         }
     }
     eprintln!(
-        "note: reference tables carry their own terms, separate from OpenGrowth's licence. \
+        "note: reference tables carry their own terms, separate from opengrowth's licence. \
          UK90 is owned by UKRI; make sure your use is permitted (`opengrowth data manifest`)."
     );
     Ok(ExitCode::SUCCESS)

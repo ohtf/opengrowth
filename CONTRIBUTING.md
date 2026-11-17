@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping. OpenGrowth calculates values that inform clinical decisions about children, so some changes need more evidence than passing tests. This page says which, and what to bring.
+Thank you for helping. opengrowth calculates values that inform clinical decisions about children, so some changes need more evidence than passing tests. This page says which, and what to bring.
 
 ## The basics
 

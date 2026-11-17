@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! The OpenGrowth calculation engine.
+//! The opengrowth calculation engine.
 //!
 //! Computes SDS and centiles for children's growth measurements using the
 //! LMS method against published growth references. It is a Rust

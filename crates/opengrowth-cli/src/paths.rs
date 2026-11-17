@@ -23,7 +23,7 @@ use serde::Serialize;
 
 /// Directory of tables to use directly.
 pub const DATA_DIR_ENV: &str = "OPENGROWTH_REFERENCE_DATA_DIR";
-/// Root of OpenGrowth's own data directory.
+/// Root of opengrowth's own data directory.
 pub const DATA_HOME_ENV: &str = "OPENGROWTH_DATA_HOME";
 
 /// A resolved reference-data directory and the rule that chose it.

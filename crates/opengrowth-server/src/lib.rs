@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! The OpenGrowth HTTP API, compatible with the RCPCH Digital Growth Charts
+//! The opengrowth HTTP API, compatible with the RCPCH Digital Growth Charts
 //! API (`digital-growth-charts-server`).
 //!
 //! The goal is byte-identical response bodies outside `provenance`
@@ -205,7 +205,7 @@ async fn not_implemented(request: Request) -> Response {
     detail(
         StatusCode::NOT_IMPLEMENTED,
         &format!(
-            "{} is not implemented in OpenGrowth yet.",
+            "{} is not implemented in opengrowth yet.",
             request.uri().path()
         ),
     )
@@ -245,7 +245,7 @@ fn parse_body(bytes: &Bytes) -> Result<Value, Box<Response>> {
         let text = String::from_utf8_lossy(bytes);
         let (message, position) = match pyjson::python_decode_error(&text) {
             Some(error) => (error.message, error.position),
-            // CPython would accept this (NaN, Infinity, lone surrogates); OpenGrowth does not.
+            // CPython would accept this (NaN, Infinity, lone surrogates); opengrowth does not.
             None => (serde_error.to_string(), 0),
         };
         Box::new(validation_failed(vec![FieldError {

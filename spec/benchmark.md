@@ -1,6 +1,6 @@
-# Benchmark plan: Python dGC API vs OpenGrowth
+# Benchmark plan: Python dGC API vs opengrowth
 
-How `R29` measures the speed, load behaviour, concurrency, and cost of the Python Digital Growth Charts server against the OpenGrowth Rust server. The aim is evidence for the performance claim in `standard.md` section 1. It should also be fun to watch.
+How `R29` measures the speed, load behaviour, concurrency, and cost of the Python Digital Growth Charts server against the opengrowth Rust server. The aim is evidence for the performance claim in `standard.md` section 1. It should also be fun to watch.
 
 Every round answers one question, uses the same inputs for both contestants, and checks the answers as well as the timings. A fast wrong answer scores zero.
 
@@ -34,7 +34,7 @@ First result, 2026-11-17, Linux x86_64, one core:
 
 | Engine | Per SDS | Per second |
 | --- | ---: | ---: |
-| OpenGrowth `sds_for_measurement` | 432 ns | 2.3 million |
+| opengrowth `sds_for_measurement` | 432 ns | 2.3 million |
 | `rcpchgrowth` `sds_for_measurement` | 77 µs | 12,900 |
 | `rcpchgrowth` `Measurement` (2 SDS plus comments, bands, validation) | 908 µs per child | 1,100 |
 

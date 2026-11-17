@@ -46,7 +46,7 @@ Decisions are made through this project's clinical safety process, with the Clin
 **Resolved by:** the OHTF maintainers, during `R15`. Informed by `digital-growth-charts-server#207` upstream if RCPCH defines it first.
 **Blocks:** the response shape in `R15`. Does **not** block `R12`.
 
-**Settled:** the engine-level shape is decided. OpenGrowth adopts the nested `provenance` object from the Python `37-measurement-provenance` branch, containing `growth_reference` and a `calculation_engine` block of `name`, `version`, and `commit`, plus the additive `reference_data` block. See [provenance.md](provenance.md).
+**Settled:** the engine-level shape is decided. opengrowth adopts the nested `provenance` object from the Python `37-measurement-provenance` branch, containing `growth_reference` and a `calculation_engine` block of `name`, `version`, and `commit`, plus the additive `reference_data` block. See [provenance.md](provenance.md).
 
 **Still open:** whether the server adds an `api_server` sibling identifying the deployment, and with which fields: presumably a name and version, possibly a commit and environment. Upstream `#207` proposes this but has not defined the fields.
 
@@ -141,12 +141,12 @@ Needed: a statement of the intended policy. Reproducing a contradictory configur
 
 ---
 
-## Q9 - How is equivalence with the Python server demonstrated before anyone relies on OpenGrowth?
+## Q9 - How is equivalence with the Python server demonstrated before anyone relies on opengrowth?
 
 **Resolved by:** the OHTF maintainers and the Clinical Safety Officer, as part of `R21`.
 **Blocks:** `R20`, `R21`, and the ambition level for Profile B.
 
-OpenGrowth is not replacing RCPCH's server, so there is no cutover of RCPCH traffic to plan. The question is what evidence is enough before an integrator points production traffic at an OpenGrowth server instead of the RCPCH API.
+opengrowth is not replacing RCPCH's server, so there is no cutover of RCPCH traffic to plan. The question is what evidence is enough before an integrator points production traffic at an opengrowth server instead of the RCPCH API.
 
 Options:
 
@@ -157,25 +157,25 @@ Options:
 **Working assumption:** self-hosted differential replay as the required gate, because it needs nobody's permission. Integrator shadow mode is welcome as extra evidence. Profile B is pursued only if replay comparison needs byte-level diffs.
 ---
 
-## Q10 - How does OpenGrowth track the upstream Python engine?
+## Q10 - How does opengrowth track the upstream Python engine?
 
 **Resolved by:** the OHTF maintainers. RCPCH's own plans for `rcpchgrowth` are outside this project's control.
 **Blocks:** `R3` (which version to pin), `R18`.
 
-RCPCH may continue to change `rcpchgrowth`, freeze it, or deprecate it. OpenGrowth needs a policy that works in all three cases, because the Python engine is the reference implementation for everything the independent R vectors do not cover.
+RCPCH may continue to change `rcpchgrowth`, freeze it, or deprecate it. opengrowth needs a policy that works in all three cases, because the Python engine is the reference implementation for everything the independent R vectors do not cover.
 
 Needed: which upstream version the goldens are pinned to; how upstream changes are reviewed (adopt, decline, or record as divergence); and what becomes the reference if upstream stops being maintained.
 
-**Working assumption:** pin goldens to the latest released `rcpchgrowth` version at the time of `R3`. Review each later upstream release for clinical changes and adopt them through the normal clinical safety process, recording any declined change as an intentional divergence. If upstream stops, the pinned version plus the independent vectors remain the reference, and OpenGrowth becomes the maintained implementation. The Python bindings (`R18`) are published as `opengrowth` on PyPI, not under the `rcpchgrowth` name.
+**Working assumption:** pin goldens to the latest released `rcpchgrowth` version at the time of `R3`. Review each later upstream release for clinical changes and adopt them through the normal clinical safety process, recording any declined change as an intentional divergence. If upstream stops, the pinned version plus the independent vectors remain the reference, and opengrowth becomes the maintained implementation. The Python bindings (`R18`) are published as `opengrowth` on PyPI, not under the `rcpchgrowth` name.
 
 ---
 
-## Q11 - What is OpenGrowth's regulatory position?
+## Q11 - What is opengrowth's regulatory position?
 
 **Resolved by:** the Clinical Safety Officer and OHTF, with regulatory advice where needed. Not resolvable by engineering.
 **Blocks:** any clinical use, any hosted OHTF service used for patient care, and `R21`.
 
-The engine calculates values that inform clinical decisions, so a product built on it for patient care is likely to be software as a medical device under UK MDR. OpenGrowth is not covered by the RCPCH dGC registration.
+The engine calculates values that inform clinical decisions, so a product built on it for patient care is likely to be software as a medical device under UK MDR. opengrowth is not covered by the RCPCH dGC registration.
 
 Needed: whether OHTF places anything on the market (for example a hosted API), and if so as manufacturer of what; or whether OHTF publishes the engine as open-source software only, with each deploying organisation taking the manufacturer role for its own product.
 
@@ -201,7 +201,7 @@ Options: fetch the tables at job start from private storage using a repository s
 **Resolved by:** the OHTF maintainers and the Clinical Safety Officer.
 **Blocks:** nothing; the current behaviour is safe. Affects `R20` only as an enumerated difference if changed.
 
-When `gestation_weeks` or `gestation_days` is sent as `null`, upstream returns a 422 whose message is a raw Python `TypeError`, such as "unsupported operand type(s) for *: 'NoneType' and 'int'". OpenGrowth reproduces it byte for byte. It is a correct refusal with a useless message.
+When `gestation_weeks` or `gestation_days` is sent as `null`, upstream returns a 422 whose message is a raw Python `TypeError`, such as "unsupported operand type(s) for *: 'NoneType' and 'int'". opengrowth reproduces it byte for byte. It is a correct refusal with a useless message.
 
 Options: keep it for byte identity; or replace it with a clear message ("gestation_weeks must be a number from 22 to 44, not null") and list it as a known difference. Changing the message is a contract change, though no client can sensibly depend on this text.
 

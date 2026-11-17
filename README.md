@@ -4,7 +4,7 @@ An open-source growth calculation engine for children: SDS, centiles, centile ba
 
 > **Status: Experimental.** UK-WHO works in the CLI and the HTTP API. `POST /uk-who/calculation` and `/uk-who/bulk-calculation` return the same bytes as the RCPCH FastAPI server, outside provenance, for 5,284 of 5,286 captured requests. Other references and the MCP server are not built yet. Do not use this for anything clinical.
 
-OpenGrowth is an [Open Health Technology Foundation](https://openhealthtechnology.org) project, hosted at [github.com/ohtf/opengrowth](https://github.com/ohtf/opengrowth). Its OHTF lifecycle status is **Experimental**.
+opengrowth is an [Open Health Technology Foundation](https://openhealthtechnology.org) project, hosted at [github.com/ohtf/opengrowth](https://github.com/ohtf/opengrowth). Its OHTF lifecycle status is **Experimental**.
 
 ## What this is
 
@@ -20,7 +20,7 @@ Today the equivalent functionality is spread across a Python package, an API ser
 
 ## Relationship to RCPCH
 
-OpenGrowth is an independent derivative of [`rcpchgrowth`](https://github.com/rcpch/rcpchgrowth-python), the Python growth engine published by the Royal College of Paediatrics and Child Health under AGPL-3.0-or-later. It is **not an RCPCH project** and is not affiliated with or endorsed by RCPCH. References to RCPCH software describe compatibility and attribution only.
+opengrowth is an independent derivative of [`rcpchgrowth`](https://github.com/rcpch/rcpchgrowth-python), the Python growth engine published by the Royal College of Paediatrics and Child Health under AGPL-3.0-or-later. It is **not an RCPCH project** and is not affiliated with or endorsed by RCPCH. References to RCPCH software describe compatibility and attribution only.
 
 - **Clinical behaviour is defined by the published methods and the Python reference implementation.** This is a reimplementation, not a new clinical method. See [spec/standard.md](spec/standard.md).
 - **Attribution.** The calculation logic is ported from `rcpchgrowth`, copyright Royal College of Paediatrics and Child Health. That copyright is preserved in this repository's notices and in the SPDX headers of ported files.
@@ -36,7 +36,7 @@ OpenGrowth is an independent derivative of [`rcpchgrowth`](https://github.com/rc
 
 The reference datasets are not covered by this repository's code licence and carry their own terms. WHO and CDC data are open. The UK90 reference, which UK-WHO depends on, was produced under the Medical Research Council and is now owned by UK Research and Innovation (UKRI). A licence application to UKRI is pending.
 
-OpenGrowth is designed to work under either outcome:
+opengrowth is designed to work under either outcome:
 
 - if redistribution is permitted, UK90 tables are embedded in the binary like the others
 - if it is not, the binary ships without them, and users who hold their own licence supply the data at install time through a verified import command, much as SNOMED CT releases are loaded
@@ -85,7 +85,7 @@ og completions install   # tab completion for both names; detects your shell, or
 
 ### 2. Get the reference tables
 
-OpenGrowth ships no tables (see [Reference data](#reference-data)). The easiest licensed copy to hand is the one inside the Python package. `s/reference-python` installs `rcpchgrowth` 4.6.5 into its own environment under `~/.cache/opengrowth`:
+opengrowth ships no tables (see [Reference data](#reference-data)). The easiest licensed copy to hand is the one inside the Python package. `s/reference-python` installs `rcpchgrowth` 4.6.5 into its own environment under `~/.cache/opengrowth`:
 
 ```sh
 s/reference-python
@@ -123,7 +123,7 @@ opengrowth --format json calculate --sex male --birth-date 2019-03-04 --observat
 
 - **Required inputs.** Leave out `--gestation` or `--sex`: the CLI refuses rather than assuming term or a sex.
 - **Implausible gestation.** `--gestation 21+0` or `45+0` is rejected; the accepted range is 22+0 to 44+6.
-- **Tampered table.** Copy the tables, change one digit, and point OpenGrowth at the copy (GNU `sed`; on macOS write `sed -i ''`):
+- **Tampered table.** Copy the tables, change one digit, and point opengrowth at the copy (GNU `sed`; on macOS write `sed -i ''`):
 
   ```sh
   W=$(mktemp -d) && cp -r "$TABLES/." "$W/"
@@ -150,7 +150,7 @@ m = Measurement(sex='female', birth_date=date(2026, 10, 6), observation_date=dat
 print(repr(m['chronological_sds']), repr(m['corrected_sds']))"
 ```
 
-The SDS should match OpenGrowth's `--format json` output to every digit. Centiles agree to about 15 significant figures but not always to the last digit; see [conformance/README.md](conformance/README.md).
+The SDS should match opengrowth's `--format json` output to every digit. Centiles agree to about 15 significant figures but not always to the last digit; see [conformance/README.md](conformance/README.md).
 
 ### 6. The HTTP API
 
@@ -163,7 +163,7 @@ curl -s -X POST http://127.0.0.1:8000/uk-who/calculation -H 'content-type: appli
 
 Things to try:
 
-- Point an existing Digital Growth Charts client or the React chart component at it. It should not notice the difference, apart from `provenance`, which names OpenGrowth and lists the checksum of each table it read.
+- Point an existing Digital Growth Charts client or the React chart component at it. It should not notice the difference, apart from `provenance`, which names opengrowth and lists the checksum of each table it read.
 - Send something wrong: a missing field, `"sex": "Male"`, `"gestation_weeks": 50`, a measurement of 300 cm, malformed JSON. The 422 bodies should be exactly the upstream ones.
 - `POST /uk-who/bulk-calculation` with up to 200 observations; a bad observation becomes an inline error and the rest still calculate.
 - `GET /uk-who/calculation` (405), `POST /uk-who/calculation/` (307), and a CDC endpoint (501: not ported yet).
@@ -180,7 +180,7 @@ s/bench --quick      # HTTP race against the real FastAPI server; report in .pri
 
 ### What we would like to hear
 
-- Any calculation where OpenGrowth and `rcpchgrowth` disagree. That would be a defect in one of them, so include the exact command.
+- Any calculation where opengrowth and `rcpchgrowth` disagree. That would be a defect in one of them, so include the exact command.
 - Anything confusing in the output, the error messages, or the `data` commands.
 - Whether the text output is what you would want to see at a terminal, and whether the JSON is what an agent or script needs.
 - Any HTTP response that differs from the RCPCH API other than in `provenance`. Include the request body.

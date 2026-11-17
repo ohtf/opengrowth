@@ -3,7 +3,7 @@
 
 [package]
 name = "opengrowth-data"
-description = "Reference table loading, verification, and provenance for OpenGrowth"
+description = "Reference table loading, verification, and provenance for opengrowth"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

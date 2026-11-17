@@ -80,9 +80,9 @@ async fn replay(app: axum::Router, case: &Case) -> Outcome {
     }
 }
 
-/// Cases where OpenGrowth deliberately differs from upstream, each a
+/// Cases where opengrowth deliberately differs from upstream, each a
 /// Category 3 fix listed in `spec/standard.md` section 6.3. Each must still
-/// differ in exactly the stated way: upstream 500, OpenGrowth 422. A case
+/// differ in exactly the stated way: upstream 500, opengrowth 422. A case
 /// that starts to match, or differs differently, fails the test, so this
 /// list cannot go stale or hide a regression.
 const KNOWN_DIFFERENCES: &[(&str, &str)] = &[

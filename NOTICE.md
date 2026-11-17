@@ -1,13 +1,13 @@
 # Notice
 
-OpenGrowth is a modified version of `rcpchgrowth`, reimplemented in Rust.
+opengrowth is a modified version of `rcpchgrowth`, reimplemented in Rust.
 
 - **Upstream work:** [`rcpchgrowth`](https://github.com/rcpch/rcpchgrowth-python), the Python growth calculation engine published by the Royal College of Paediatrics and Child Health under AGPL-3.0-or-later.
 - **Ported from:** release 4.6.5, as published on PyPI. The upstream repository's `live` branch was at `f6fe5bfc122c6717b35b57ed76e327d127d38de3` when the port began.
 - **Modification:** the calculation logic is reimplemented in Rust, with structural and quality changes recorded in `spec/standard.md` section 6. Begun November 2026.
 - **Copyright:** portions derived from `rcpchgrowth` are copyright Royal College of Paediatrics and Child Health. New work is copyright Open Health Technology Foundation contributors.
 
-This notice satisfies AGPL-3.0 section 5(a). OpenGrowth is not an RCPCH project and is not endorsed by RCPCH.
+This notice satisfies AGPL-3.0 section 5(a). opengrowth is not an RCPCH project and is not endorsed by RCPCH.
 
 ## Methods
 
@@ -17,7 +17,7 @@ This notice satisfies AGPL-3.0 section 5(a). OpenGrowth is not an RCPCH project 
 
 ## Third-party data
 
-No reference table values are distributed with OpenGrowth. Tables are supplied at install time and verified against the checksums in `crates/opengrowth-data/src/manifest.rs`.
+No reference table values are distributed with opengrowth. Tables are supplied at install time and verified against the checksums in `crates/opengrowth-data/src/manifest.rs`.
 
 | Table | Owner | Terms |
 | --- | --- | --- |

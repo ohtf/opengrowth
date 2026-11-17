@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! The checksum manifest: every table OpenGrowth knows how to use, where it
+//! The checksum manifest: every table opengrowth knows how to use, where it
 //! comes from, and what it is allowed to contain.
 //!
 //! The manifest holds metadata and SHA-256 digests only, never table values.
@@ -12,7 +12,7 @@
 //! Digests are of the files distributed in the `rcpchgrowth` 4.6.5 wheel on
 //! PyPI, which are byte-identical to the same files in the upstream
 //! repository at that release. Users who hold the data under their own
-//! terms can point OpenGrowth at that package's `data_tables` directory.
+//! terms can point opengrowth at that package's `data_tables` directory.
 
 use opengrowth_core::TableId;
 
@@ -73,7 +73,7 @@ const WHO_TERMS: Terms = Terms::Unrecorded {
 
 const ORIGIN: &str = "rcpchgrowth 4.6.5 (PyPI), rcpchgrowth/data_tables";
 
-/// Every table OpenGrowth can load.
+/// Every table opengrowth can load.
 pub const MANIFEST: &[TableSource] = &[
     TableSource {
         id: TableId::Uk90Preterm,
