@@ -175,11 +175,13 @@ Needed: which upstream version the goldens are pinned to; how upstream changes a
 **Resolved by:** the Clinical Safety Officer and OHTF, with regulatory advice where needed. Not resolvable by engineering.
 **Blocks:** any clinical use, any hosted OHTF service used for patient care, and `R21`.
 
-The engine calculates values that inform clinical decisions, so a product built on it for patient care is likely to be software as a medical device under UK MDR. opengrowth is not covered by the RCPCH dGC registration.
+The engine calculates anthropometric values used in clinical care, so a product built on it for patient care is likely to be software as a medical device under UK MDR. opengrowth is not covered by the RCPCH dGC registration.
 
 Needed: whether OHTF places anything on the market (for example a hosted API), and if so as manufacturer of what; or whether OHTF publishes the engine as open-source software only, with each deploying organisation taking the manufacturer role for its own product.
 
 **Working assumption:** OHTF publishes the engine as open-source software that is not for clinical use, and does not operate a clinical service. Deployers carry the manufacturer and DCB0160 responsibilities for their own products. The safety evidence in this repository is written to make their job easy.
+
+**Decided, 2026-11-17:** opengrowth will be a Class I medical device in Great Britain, with **Open Health Technology CIC** as legal manufacturer and **Dr Marcus Baw** as PRRC. It is an anthropometric calculation tool that does not diagnose. The QMS, intended purpose, and classification rationale are in `qms/`. The working assumption above is superseded. The EU and Northern Ireland are deferred until the EU MDR amendment COM(2025) 1023 is adopted ([qms/regulatory-strategy.md](../qms/regulatory-strategy.md)). Closed.
 
 ---
 
@@ -206,3 +208,16 @@ When `gestation_weeks` or `gestation_days` is sent as `null`, upstream returns a
 Options: keep it for byte identity; or replace it with a clear message ("gestation_weeks must be a number from 22 to 44, not null") and list it as a known difference. Changing the message is a contract change, though no client can sensibly depend on this text.
 
 **Working assumption:** keep it until decided, because the goal is byte identity and the behaviour is already a safe refusal.
+
+---
+
+## Q14 - Does the inherited centile-band wording read as interpretation?
+
+**Resolved by:** the PRRC, with regulatory advice (`R41`).
+**Blocks:** nothing now; affects the Class I argument and, if changed, `R20`.
+
+The upstream centile-band sentences say a measurement is "on or near the 50th centile" or "between the 2nd and 9th centiles", which describe position, but also "below the normal range", "above the normal range", and "well outside the normal range. Please check its accuracy." The first two describe position relative to the outermost centile lines; the last is an input plausibility prompt. "Normal range" could be read as a clinical interpretation, which the intended purpose disclaims.
+
+Options: keep them, byte-identical to the upstream Class I device, with the argument recorded; or replace "normal range" with positional wording, such as "below the 0.4th centile line", as an enumerated difference from upstream and a clinical change.
+
+**Working assumption:** keep them, since they are the wording of a registered Class I device, and record the argument in the classification rationale.

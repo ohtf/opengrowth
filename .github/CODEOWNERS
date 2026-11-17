@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The Clinical Safety Officer / PRRC reviews the regulated documents, the
+# clinical calculation, the conformance evidence, and the QMS configuration.
+# Review is enforced only once branch protection on `main` requires review
+# from code owners, which happens when the QMS comes into force (qms/README.md).
+
+# Clinical safety, regulatory, and quality management documents
+/SAFETY.md                               @pacharanero
+/qms/                                    @pacharanero
+/spec/versioning.md                      @pacharanero
+/NOTICE.md                               @pacharanero
+
+# Clinical calculation and reference data
+/crates/opengrowth-core/                 @pacharanero
+/crates/opengrowth-data/src/manifest.rs  @pacharanero
+
+# Verification evidence: goldens are never hand-edited
+/conformance/                            @pacharanero
+
+# QMS process configuration
+/.github/CODEOWNERS                      @pacharanero
+/.github/labels.yml                      @pacharanero
+/.github/ISSUE_TEMPLATE/                 @pacharanero
+/.github/workflows/                      @pacharanero
+/deny.toml                               @pacharanero

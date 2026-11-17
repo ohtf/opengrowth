@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/ohtf/opengrowth/security/advisories/new
+    about: Do not open a public issue for a vulnerability. See SECURITY.md.
+  - name: Quality management system
+    url: https://github.com/ohtf/opengrowth/blob/main/qms/README.md
+    about: How these issue types fit into the QMS, before raising one.

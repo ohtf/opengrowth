@@ -5,6 +5,7 @@
 | --- | --- |
 | `s/test` | `cargo test --workspace`. Conformance tests that need reference data are skipped. |
 | `s/lint` | `cargo fmt --check` and `cargo clippy -D warnings`, as CI runs them. |
+| `s/soup` | Regenerates `qms/soup.md`, the IEC 62304 SOUP register, from `Cargo.lock`. `--check` verifies it is current, as CI does. |
 | `s/deny` | `cargo deny check`: dependency licences, advisories, bans, and sources (`deny.toml`). |
 | `s/conformance` | The conformance suite: independent R vectors, Python goldens, and the SciPy normal grid. Needs reference data (see below). |
 | `s/reference-python` | Creates the pinned Python reference environment (`rcpchgrowth==4.6.5` from PyPI) with `uv`, in `~/.cache/opengrowth/reference-python` or `$OPENGROWTH_REFERENCE_VENV`. |

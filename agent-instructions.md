@@ -13,12 +13,15 @@ Crates: `opengrowth-core` (the engine, a leaf), `opengrowth-data` (table manifes
 3. [spec/ubiquitous-language.md](spec/ubiquitous-language.md) - canonical terms and the name collisions that cause defects.
 4. [spec/roadmap.md](spec/roadmap.md) and [spec/queries.md](spec/queries.md) - what to work on, and what is blocked.
 5. [SAFETY.md](SAFETY.md) - the clinical-use boundary.
-6. [CONTRIBUTING.md](CONTRIBUTING.md) and [spec/versioning.md](spec/versioning.md) - what needs extra evidence, what is a contract, and how clinical changes are released.
-7. [pacharanero/house-style](https://github.com/pacharanero/house-style) - cross-repository engineering standards, and the [OHTF community policies](https://openhealthtechnology.org/community/) for DCO, security, and conduct. The RCPCH house style does not apply to this project.
+6. [qms/README.md](qms/README.md) and [qms/intended-purpose.md](qms/intended-purpose.md) - the quality management system and what opengrowth is for.
+7. [CONTRIBUTING.md](CONTRIBUTING.md) and [spec/versioning.md](spec/versioning.md) - what needs extra evidence, what is a contract, and how clinical changes are released.
+8. [pacharanero/house-style](https://github.com/pacharanero/house-style) - cross-repository engineering standards, and the [OHTF community policies](https://openhealthtechnology.org/community/) for DCO, security, and conduct. The RCPCH house style does not apply to this project.
 
 ## Core invariants
 
 - **The name is written in lowercase: opengrowth**, including at the start of a sentence. Never "OpenGrowth".
+- **opengrowth is an anthropometric calculation tool, and a Class I medical device in development.** It never diagnoses, interprets, alerts, recommends, or predicts. In user-facing text, follow the wording rules in [qms/intended-purpose.md](qms/intended-purpose.md). Do not build a feature listed under "Features that would change the class" in [qms/regulatory-strategy.md](qms/regulatory-strategy.md) without a regulatory impact assessment approved by the PRRC.
+- **The QMS is in the repository.** `qms/` documents, `.github/ISSUE_TEMPLATE/`, `.github/labels.yml`, and `.github/CODEOWNERS` are controlled documents. After any dependency change run `s/soup` and commit `qms/soup.md`; CI checks it.
 - **This is not an RCPCH project.** Do not describe it as RCPCH software, use RCPCH branding, or imply RCPCH endorsement. Naming RCPCH for compatibility ("compatible with the RCPCH Digital Growth Charts API") and attribution is correct and required.
 - **Preserve upstream attribution.** Files that port logic from `rcpchgrowth` carry the RCPCH copyright line alongside the OHTF one. See `standard.md` section 3.1.
 - **Published methods and the reference implementation define clinical behaviour.** Never change a number to make a test pass. If Rust disagrees with a golden, the default assumption is that Rust is wrong. Investigate before adjusting anything.

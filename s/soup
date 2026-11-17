@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Regenerate qms/soup.md, the SOUP register, from Cargo.lock. `s/soup --check` verifies it is current.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec python3 -I "$root/qms/tools/soup.py" "$@"

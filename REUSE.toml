@@ -22,3 +22,12 @@ path = "conformance/independent/uk-who-cole-r-vectors.json"
 precedence = "override"
 SPDX-FileCopyrightText = "Royal College of Paediatrics and Child Health"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# QMS issue templates and labels, adapted from the RCPCH Digital Growth Charts
+# QMS (rcpch/digital-growth-charts-documentation, CC BY-SA 4.0).
+[[annotations]]
+path = [".github/ISSUE_TEMPLATE/**", ".github/labels.yml"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2026 Open Health Technology Foundation contributors", "Royal College of Paediatrics and Child Health"]
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+

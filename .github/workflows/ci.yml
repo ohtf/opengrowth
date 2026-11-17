@@ -34,6 +34,8 @@ jobs:
       # spec/queries.md Q1 is open; it runs under s/conformance (Q12). The
       # SciPy-grid and CPython-rounding conformance tests run here.
       - run: cargo test --workspace
+      - name: SOUP register is current
+        run: s/soup --check
 
   dco:
     name: DCO sign-off

@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping. opengrowth calculates values that inform clinical decisions about children, so some changes need more evidence than passing tests. This page says which, and what to bring.
+Thank you for helping. opengrowth calculates children's growth measurements against reference populations for use in clinical care, and is being developed as a Class I medical device ([qms/](qms/README.md)), so some changes need more evidence than passing tests. This page says which, and what to bring.
 
 ## The basics
 
@@ -30,6 +30,7 @@ s/conformance   # if you touched calculation, dates, validation, or the API (nee
 | Reference tables | Source, licence, transformation, and validation evidence, in the same change. Never commit a UK90-derived table (`spec/queries.md` Q1). |
 | A conformance golden | Regenerate it with `s/goldens`; never edit it by hand. Say why it changed in the commit. |
 | The HTTP API, CLI JSON, or MCP tool schemas | Follow [spec/versioning.md](spec/versioning.md). A new difference from the upstream API goes in `KNOWN_DIFFERENCES` with a reason. |
+| Anything that adds interpretation, alerts, recommendations, or predictions, or changes what opengrowth says it is for | A regulatory impact assessment against [qms/intended-purpose.md](qms/intended-purpose.md) before the work starts. Such features could change the device class. |
 | A new dependency | Check it is maintained and its licence is in `deny.toml`. Explain why it is needed. |
 
 ## Style

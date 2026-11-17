@@ -361,7 +361,7 @@ Load the manifest, run the implementation, compare semantically against expected
 
 ## 9. Clinical safety
 
-This engine computes values that inform clinical assessment of children's growth, so it needs its own clinical safety process. It is not part of the RCPCH dGC platform, is not covered by that platform's MHRA registration or safety file, and is not registered as a medical device. Its regulatory position is `Q11`. Hazards are kept in this repository's own hazard log; hazards from the dGC log that also apply are copied in with a cross-reference.
+This engine calculates anthropometric values used in children's clinical care, so it needs its own clinical safety process. It is not part of the RCPCH dGC platform and is not covered by that platform's MHRA registration or safety file. It is being developed as a Class I medical device with Open Health Technology CIC as manufacturer (`Q11`, [qms/](../qms/README.md)). Hazards are kept in this repository's own hazard log; hazards from the dGC log that also apply are copied in with a cross-reference.
 
 Safety-relevant commitments:
 

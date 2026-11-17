@@ -2,30 +2,30 @@
 
 ## Status
 
-**Experimental. Not for clinical use.** The engine calculates UK-WHO SDS and centiles and matches the Python engine bit for bit on the conformance corpus, but has had no clinical review (`R35`), no hazard log entries (`R27`), and no regulatory determination (`Q11`).
+**Experimental. Not for clinical use.** The engine calculates UK-WHO SDS and centiles and matches the upstream engine bit for bit on the conformance corpus, but has had no clinical review (`R35`), has no hazard log entries yet (`R27`), and has no declaration of conformity (`R43`).
 
 ## What this software does
 
-Calculates SDS, centiles, centile bands, and chart coordinates for children's growth measurements against published growth references, given a measurement, a date of birth, an observation date, a sex, and a gestation at birth.
+opengrowth is an anthropometric calculation tool. It calculates SDS, centiles, a description of the measurement's position relative to the reference's centile lines, and chart coordinates, for children's growth measurements against a published growth reference, given a measurement, a date of birth, an observation date, a sex, and a gestation at birth. The canonical statement is [qms/intended-purpose.md](qms/intended-purpose.md).
 
 ## What it does not do
 
-- It does not diagnose. A growth chart is one input to a clinical assessment, not a conclusion.
+- It does not diagnose, and gives no clinical interpretation, recommendation, alert, or risk score.
 - It does not replace clinical judgement, examination, or confirmatory evidence.
 - It does not validate that the growth reference chosen is clinically appropriate for the child. Choosing a syndrome-specific reference requires a documented diagnosis, and that judgement belongs to the clinician and the implementing system.
 - It does not decide when a measurement is implausible beyond its declared SDS limits.
 
 ## Intended users and environment
 
-Software engineers integrating growth calculations into clinical systems, researchers, and AI agents acting for them through the CLI or MCP server. Not intended for direct use by clinicians, patients, or families; those users are served by products built on top of it.
+Healthcare professionals, through the clinical software that calls opengrowth, and the engineers who integrate it. Not for use by children, families, or the public without a healthcare professional. Use by AI agents through the MCP server is outside the intended purpose until assessed. See [qms/intended-purpose.md](qms/intended-purpose.md).
 
 ## Regulatory position
 
 opengrowth is an independent Open Health Technology Foundation project. It is **not** a component of the RCPCH Digital Growth Charts platform and is **not** covered by that platform's MHRA registration or clinical safety file.
 
-opengrowth is not registered as a medical device. Its regulatory position, including whether OHTF or the deploying organisation acts as manufacturer for any hosted service, must be settled before any clinical use. This is `Q11`.
+opengrowth will be placed on the market as a **Class I medical device** in Great Britain, under the UK MDR 2002, by **Open Health Technology CIC** as legal manufacturer, with Dr Marcus Baw as PRRC. It is not registered yet: until the quality management system is in force and a declaration of conformity is made for a named version, every release is not for clinical use. See [qms/](qms/README.md) and [qms/regulatory-strategy.md](qms/regulatory-strategy.md).
 
-Organisations deploying software built on this engine assume their own responsibilities under DCB0160, and under DCB0129 and UK MDR where they place a product on the market.
+Organisations deploying opengrowth assume their own responsibilities under DCB0160. Anyone who modifies opengrowth, or builds it into their own product and places that on the market, is the manufacturer of what they place on the market; the opengrowth declaration of conformity covers only the manufacturer's own released versions.
 
 ## Hazard log
 

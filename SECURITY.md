@@ -8,7 +8,7 @@ The full OHTF security policy, including response times and coordinated disclosu
 
 ## Clinical safety
 
-opengrowth computes values that inform clinical assessment of children's growth. A vulnerability that could cause a wrong result to be returned silently, or that could let an attacker alter calculation logic, reference data, or provenance, is a clinical safety concern as well as a security one. Say so clearly in your report; it will be triaged into the hazard log. See [SAFETY.md](SAFETY.md).
+opengrowth calculates anthropometric values (SDS and centiles) used in children's clinical care. A vulnerability that could cause a wrong result to be returned silently, or that could let an attacker alter calculation logic, reference data, or provenance, is a clinical safety concern as well as a security one. Say so clearly in your report; it will be triaged into the hazard log. See [SAFETY.md](SAFETY.md).
 
 ## Data
 
