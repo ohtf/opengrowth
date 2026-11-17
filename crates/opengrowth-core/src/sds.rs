@@ -64,26 +64,63 @@ pub fn sds_for_measurement(
     observation: f64,
     sex: Sex,
 ) -> Result<SdsResult, CalcError> {
+    let (table, lms) = lms_for_age(data, reference, age, method, sex, || {
+        // Checked after the age rules so the reported error matches upstream.
+        if observation.is_finite() && observation > 0.0 {
+            Ok(())
+        } else {
+            Err(CalcError::InvalidObservation(observation))
+        }
+    })?;
+    Ok(SdsResult {
+        sds: sds_from_lms(observation, &lms),
+        table,
+        lms,
+    })
+}
+
+/// A child's BMI as a percentage of the median BMI for age and sex (the
+/// upstream `percentage_median_bmi`), with the table it came from.
+///
+/// # Errors
+///
+/// As for [`sds_for_measurement`], when there is no BMI reference at this age.
+pub fn percentage_median_bmi(
+    data: &dyn ReferenceData,
+    reference: GrowthReference,
+    age: f64,
+    bmi: f64,
+    sex: Sex,
+) -> Result<(f64, TableId), CalcError> {
+    let (table, lms) = lms_for_age(data, reference, age, MeasurementMethod::Bmi, sex, || Ok(()))?;
+    Ok(((bmi / lms.m) * 100.0, table))
+}
+
+/// Selects the table for `age` and looks up its LMS values (the upstream
+/// `lms_value_array_for_measurement_for_reference` and `fetch_lms`).
+/// `before_lookup` runs after the reference's own age rules, so callers can
+/// add checks without changing which error upstream would report first.
+fn lms_for_age(
+    data: &dyn ReferenceData,
+    reference: GrowthReference,
+    age: f64,
+    method: MeasurementMethod,
+    sex: Sex,
+    before_lookup: impl FnOnce() -> Result<(), CalcError>,
+) -> Result<(TableId, Lms), CalcError> {
     match reference {
         GrowthReference::UkWho => {
             let table_id = uk_who::table_for_age(age, false)?;
             if let Some(absence) = uk_who::data_absent(age, method, sex) {
                 return Err(absence.into());
             }
-            // Checked after the age rules so the reported error matches upstream.
-            if !(observation.is_finite() && observation > 0.0) {
-                return Err(CalcError::InvalidObservation(observation));
-            }
+            before_lookup()?;
             let table = data.table(table_id, method, sex)?;
             let lms = table.lms_at(
                 age_for_lms_lookup(reference, age, table),
                 Interpolation::CubicWherePossible,
             )?;
-            Ok(SdsResult {
-                sds: sds_from_lms(observation, &lms),
-                table: table_id,
-                lms,
-            })
+            Ok((table_id, lms))
         }
         other => Err(CalcError::ReferenceNotImplemented(other)),
     }

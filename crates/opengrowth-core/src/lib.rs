@@ -17,11 +17,14 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod advice;
 pub mod data;
 pub mod dates;
 pub mod interpolation;
 pub mod lms;
+pub mod measurement;
 pub mod normal;
+pub mod pyfmt;
 pub mod round;
 pub mod sds;
 pub mod table;
@@ -30,6 +33,7 @@ pub mod vocabulary;
 
 pub use data::{DataError, ReferenceData, TableId};
 pub use dates::Gestation;
+pub use measurement::{MeasureError, Measurement, MeasurementInput, measure};
 pub use sds::{CalcError, SdsResult, centile, sds_for_measurement};
 pub use table::{LmsPoint, LmsTable};
 pub use vocabulary::{GrowthReference, MeasurementMethod, Sex};

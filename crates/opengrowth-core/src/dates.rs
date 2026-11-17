@@ -150,6 +150,141 @@ pub fn corrected_decimal_age(
     Ok(chronological_decimal_age(edd, observation_date))
 }
 
+/// Calendar difference in whole years, months, and days, as
+/// `dateutil.relativedelta(later, earlier)` computes it for dates.
+///
+/// Months are counted first, clamping the day to the end of shorter
+/// months (31 January plus one month is 28 or 29 February), then the
+/// remaining days.
+fn relative_delta(earlier: Date, later: Date) -> (i64, i64, i64) {
+    let add_months = |months: i64| -> Date {
+        let total = i64::from(earlier.year()) * 12 + i64::from(earlier.month()) - 1 + months;
+        let year = i16::try_from(total.div_euclid(12)).expect("year in range");
+        let month = i8::try_from(total.rem_euclid(12) + 1).expect("month in range");
+        let first = Date::new(year, month, 1).expect("valid first of month");
+        let day = earlier.day().min(first.days_in_month());
+        Date::new(year, month, day).expect("clamped day is valid")
+    };
+    let mut months = (i64::from(later.year()) - i64::from(earlier.year())) * 12
+        + (i64::from(later.month()) - i64::from(earlier.month()));
+    let mut anchor = add_months(months);
+    while later < anchor {
+        months -= 1;
+        anchor = add_months(months);
+    }
+    let days = days_between(anchor, later);
+    (months / 12, months % 12, days)
+}
+
+/// Calendar age as words, for example "8 years and 2 months" or
+/// "1 month, 1 week and 4 days" (the upstream `chronological_calendar_age`).
+///
+/// Pass the EDD as `birth_date` for a corrected calendar age.
+///
+/// # Errors
+///
+/// [`DateError::BirthAfterObservation`] if `birth_date` is after `observation_date`.
+pub fn calendar_age(birth_date: Date, observation_date: Date) -> Result<String, DateError> {
+    if birth_date > observation_date {
+        return Err(DateError::BirthAfterObservation);
+    }
+    let (years, months, days) = relative_delta(birth_date, observation_date);
+    let weeks = days / 7;
+    let plural = |n: i64, unit: &str| {
+        if n == 1 {
+            format!("{n} {unit}")
+        } else {
+            format!("{n} {unit}s")
+        }
+    };
+
+    // The branch structure follows upstream exactly, including that a lone
+    // day is shown as "1 day" but 2 to 6 days without a whole week are shown
+    // as "N days", and that weeks are only mentioned when days exceed 1.
+    let mut parts = Vec::new();
+    if years >= 1 {
+        parts.push(plural(years, "year"));
+    }
+    if months >= 1 {
+        parts.push(plural(months, "month"));
+    }
+    if days == 1 {
+        parts.push(plural(days, "day"));
+    }
+    if days > 1 {
+        if weeks > 0 {
+            let remaining_days = days - weeks * 7;
+            parts.push(plural(weeks, "week"));
+            if remaining_days >= 1 {
+                parts.push(plural(remaining_days, "day"));
+            }
+        } else {
+            parts.push(plural(days, "day"));
+        }
+    }
+    Ok(match parts.as_slice() {
+        [] if birth_date == observation_date => "Birth date".to_owned(),
+        [] => String::new(),
+        [only] => only.clone(),
+        [init @ .., last] => format!("{} and {last}", init.join(", ")),
+    })
+}
+
+/// Corrected gestational age in completed weeks and days, while the baby is
+/// younger than 42 weeks corrected (the upstream `corrected_gestational_age`).
+/// `None` from two weeks after the EDD onwards.
+#[must_use]
+pub fn corrected_gestational_age(
+    birth_date: Date,
+    observation_date: Date,
+    gestation: Gestation,
+) -> Option<(i64, i64)> {
+    let edd = estimated_date_delivery(birth_date, gestation).ok()?;
+    let forty_two_weeks = edd.checked_add(14.days()).ok()?;
+    if observation_date >= forty_two_weeks {
+        return None;
+    }
+    let days_since_conception = days_between(birth_date, observation_date) + gestation.total_days();
+    let weeks = days_since_conception.div_euclid(7);
+    let days = days_since_conception - weeks * 7;
+    if (weeks == 42 && days > 0) || weeks > 42 {
+        return None;
+    }
+    Some((weeks, days))
+}
+
+/// A date as Python's `strftime('%a %d %B, %Y')` writes it in the C locale,
+/// for example "Sun 12 April, 2020".
+#[must_use]
+pub fn long_date(date: Date) -> String {
+    use jiff::civil::Weekday;
+    const MONTHS: [&str; 12] = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ];
+    let weekday = match date.weekday() {
+        Weekday::Monday => "Mon",
+        Weekday::Tuesday => "Tue",
+        Weekday::Wednesday => "Wed",
+        Weekday::Thursday => "Thu",
+        Weekday::Friday => "Fri",
+        Weekday::Saturday => "Sat",
+        Weekday::Sunday => "Sun",
+    };
+    let month = MONTHS[usize::try_from(date.month() - 1).expect("month 1 to 12")];
+    format!("{weekday} {:02} {month}, {}", date.day(), date.year())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,6 +333,44 @@ mod tests {
             err.to_string(),
             "Birth date cannot be after the date of observation."
         );
+    }
+
+    #[test]
+    fn calendar_age_matches_upstream_phrasing() {
+        // Expected strings are what rcpchgrowth 4.6.5 returns for the same dates.
+        let cases = [
+            ((2020, 4, 12), (2028, 6, 12), "8 years and 2 months"),
+            ((2026, 10, 6), (2026, 11, 17), "1 month, 1 week and 4 days"),
+            ((2020, 1, 1), (2020, 1, 1), "Birth date"),
+            ((2020, 5, 15), (2020, 5, 16), "1 day"),
+            ((2020, 5, 15), (2020, 5, 22), "1 week"),
+            ((2020, 5, 15), (2020, 5, 23), "1 week and 1 day"),
+            ((2020, 5, 15), (2020, 5, 19), "4 days"),
+            ((2020, 1, 31), (2020, 2, 29), "1 month"),
+            ((2020, 2, 29), (2021, 2, 28), "1 year"),
+        ];
+        for ((by, bm, bd), (oy, om, od), expected) in cases {
+            assert_eq!(
+                calendar_age(date(by, bm, bd), date(oy, om, od)).unwrap(),
+                expected
+            );
+        }
+        assert!(calendar_age(date(2020, 1, 2), date(2020, 1, 1)).is_err());
+    }
+
+    #[test]
+    fn corrected_gestational_age_stops_after_42_weeks() {
+        let preterm = Gestation::new(27, 3).unwrap();
+        assert_eq!(
+            corrected_gestational_age(date(2026, 10, 6), date(2026, 11, 17), preterm),
+            Some((33, 3))
+        );
+        assert_eq!(
+            corrected_gestational_age(date(2020, 1, 1), date(2020, 3, 1), Gestation::TERM),
+            None
+        );
+        assert_eq!(long_date(date(2020, 4, 12)), "Sun 12 April, 2020");
+        assert_eq!(long_date(date(2027, 1, 2)), "Sat 02 January, 2027");
     }
 
     #[test]
