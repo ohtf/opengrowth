@@ -67,6 +67,111 @@ corrected            -0.1259    -1.6745      4.70  uk90-preterm
 
 Add `--format json` for full-precision output with provenance: the engine version and the checksum of every table read.
 
+## Playtesting
+
+A hands-on tour of what works today, for maintainers and reviewers. Allow about 20 minutes. Everything here runs locally and touches nothing outside `~/.local/share/opengrowth` and `~/.cache/opengrowth`.
+
+### 1. Install
+
+You need a stable Rust toolchain, [`uv`](https://docs.astral.sh/uv/) (for the Python reference engine and its tables), and optionally `jq`.
+
+```sh
+git clone git@github.com:ohtf/opengrowth.git && cd opengrowth
+cargo install --locked --path crates/opengrowth-cli
+opengrowth            # bare invocation lists the commands
+```
+
+### 2. Get the reference tables
+
+OpenGrowth ships no tables (see [Reference data](#reference-data)). The easiest licensed copy to hand is the one inside the Python package. `s/reference-python` installs `rcpchgrowth` 4.6.5 into its own environment under `~/.cache/opengrowth`:
+
+```sh
+s/reference-python
+TABLES=$(~/.cache/opengrowth/reference-python/bin/python -c \
+  "import rcpchgrowth, pathlib; print(pathlib.Path(rcpchgrowth.__file__).parent / 'data_tables')")
+opengrowth data import "$TABLES"
+opengrowth data status      # all four should say "verified"
+opengrowth data manifest    # where each table comes from, and its terms
+```
+
+Run the import a second time: every table should say "already present".
+
+### 3. Calculations to try
+
+Each of these exercises a different part of UK-WHO. Look at the `table` column as well as the numbers.
+
+| Case | Command | What to look for |
+| --- | --- | --- |
+| Term 7-year-old | `opengrowth calculate --sex male --birth-date 2019-03-04 --observation-date 2026-11-17 --gestation 40+0 --measurement height --value 121.5` | UK90 child table; chronological and corrected ages agree |
+| Extremely preterm, 6 weeks old | `opengrowth calculate --sex female --birth-date 2026-10-06 --observation-date 2026-11-17 --gestation 27+3 --measurement weight --value 1.42` | Corrected age is negative and uses UK90 preterm; chronological age uses WHO and gives a startling SDS, which is why correction matters |
+| Second birthday | `opengrowth calculate --sex male --birth-date 2024-11-17 --observation-date 2026-11-17 --gestation 40+0 --measurement height --value 87.1` | 730 days is 1.9986 years, so still the WHO infant (lying) table. Try a day later |
+| Fourth birthday | `opengrowth calculate --sex female --birth-date 2022-11-17 --observation-date 2026-11-17 --gestation 40+0 --measurement weight --value 16.1` | Exactly 4.0 switches from WHO to UK90 |
+| Born post-term at 42+3 | `opengrowth calculate --sex female --birth-date 2025-06-01 --observation-date 2026-06-01 --gestation 42+3 --measurement ofc --value 45.2` | Corrected age is *older* than chronological |
+| BMI at 5 days | `opengrowth calculate --sex female --birth-date 2026-11-12 --observation-date 2026-11-17 --gestation 39+1 --measurement bmi --value 12.9` | No result, with the upstream message: UK-WHO has no BMI below 2 weeks. Exit code 1 |
+| Head circumference at 17.5 years, girl | `opengrowth calculate --sex female --birth-date 2009-05-01 --observation-date 2026-11-17 --gestation 40+0 --measurement ofc --value 55` | No result: girls' OFC data stops at 17 |
+
+Add `--format json` to any of them for full precision and provenance, for example:
+
+```sh
+opengrowth --format json calculate --sex male --birth-date 2019-03-04 --observation-date 2026-11-17 \
+  --gestation 40+0 --measurement height --value 121.5 | jq '{sds: .corrected.sds, tables: .provenance.reference_data}'
+```
+
+### 4. Safety behaviours to try
+
+- **Required inputs.** Leave out `--gestation` or `--sex`: the CLI refuses rather than assuming term or a sex.
+- **Implausible gestation.** `--gestation 21+0` or `45+0` is rejected; the accepted range is 22+0 to 44+6.
+- **Tampered table.** Copy the tables, change one digit, and point OpenGrowth at the copy (GNU `sed`; on macOS write `sed -i ''`):
+
+  ```sh
+  W=$(mktemp -d) && cp -r "$TABLES/." "$W/"
+  sed -i '0,/"M": 102.49/s//"M": 102.50/' "$W/uk90_child.json"
+  opengrowth --data-dir "$W" data status    # uk90-child: checksum mismatch
+  opengrowth --data-dir "$W" calculate --sex male --birth-date 2019-03-04 \
+    --observation-date 2026-11-17 --gestation 40+0 --measurement height --value 121.5
+  ```
+
+  The calculation refuses to run at all. That includes calculations that would not have needed the tampered table, which is deliberately conservative. Tell us whether you think it is right.
+- **Missing tables.** `OPENGROWTH_DATA_HOME=$(mktemp -d) opengrowth calculate ...` reports which table is missing and how to import it. It never substitutes another reference.
+
+### 5. Check it against the Python engine yourself
+
+Any case from step 3 can be checked against `rcpchgrowth` directly:
+
+```sh
+~/.cache/opengrowth/reference-python/bin/python -c "
+from datetime import date
+from rcpchgrowth import Measurement
+m = Measurement(sex='female', birth_date=date(2026, 10, 6), observation_date=date(2026, 11, 17),
+                gestation_weeks=27, gestation_days=3, measurement_method='weight',
+                observation_value=1.42, reference='uk-who').measurement['measurement_calculated_values']
+print(repr(m['chronological_sds']), repr(m['corrected_sds']))"
+```
+
+The SDS should match OpenGrowth's `--format json` output to every digit. Centiles agree to about 15 significant figures but not always to the last digit; see [conformance/README.md](conformance/README.md).
+
+### 6. Run the evidence
+
+```sh
+s/conformance     # 3,984 R-vector children against R and Python, plus SciPy and CPython comparisons
+s/bench-round0    # in-process speed race: Rust engine against Python engine
+```
+
+### What we would like to hear
+
+- Any calculation where OpenGrowth and `rcpchgrowth` disagree. That would be a defect in one of them, so include the exact command.
+- Anything confusing in the output, the error messages, or the `data` commands.
+- Whether the text output is what you would want to see at a terminal, and whether the JSON is what an agent or script needs.
+
+Open an issue. For anything that could affect a clinical result, label it `hazard`, as described in [SAFETY.md](SAFETY.md).
+
+### Clean up
+
+```sh
+cargo uninstall opengrowth-cli
+rm -r ~/.local/share/opengrowth ~/.cache/opengrowth
+```
+
 ## Development
 
 ```sh
