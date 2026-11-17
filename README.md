@@ -1,4 +1,4 @@
-# OpenGrowth
+# opengrowth
 
 An open-source growth calculation engine for children: SDS, centiles, centile bands, and chart coordinates against the UK-WHO, WHO, CDC, Trisomy 21, and Turner syndrome growth references. One Rust binary provides the library, CLI, HTTP API, and MCP server.
 
@@ -46,7 +46,7 @@ Every table records its own provenance and terms, enforced by a test. See [spec/
 ## Quick start
 
 ```sh
-cargo install --locked --path crates/opengrowth-cli
+cargo install --locked --path crates/opengrowth-cli   # installs `opengrowth` and its short alias `og`
 
 # Reference tables are not shipped. If you hold them (an installed rcpchgrowth
 # package's data_tables directory works as-is), import and verify them:
@@ -79,6 +79,7 @@ You need a stable Rust toolchain, [`uv`](https://docs.astral.sh/uv/) (for the Py
 git clone git@github.com:ohtf/opengrowth.git && cd opengrowth
 cargo install --locked --path crates/opengrowth-cli
 opengrowth            # bare invocation lists the commands
+og                    # the same program, shorter to type
 ```
 
 ### 2. Get the reference tables

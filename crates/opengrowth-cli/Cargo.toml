@@ -15,6 +15,11 @@ publish = false
 name = "opengrowth"
 path = "src/main.rs"
 
+# Short alias: the same program, built from the same entry point.
+[[bin]]
+name = "og"
+path = "src/bin/og.rs"
+
 [dependencies]
 opengrowth-core.workspace = true
 opengrowth-data.workspace = true
