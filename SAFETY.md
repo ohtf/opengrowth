@@ -2,7 +2,7 @@
 
 ## Status
 
-**Pre-implementation. Not for clinical use.** This repository contains a specification and no working engine.
+**Experimental. Not for clinical use.** The engine calculates UK-WHO SDS and centiles and matches the Python engine bit for bit on the conformance corpus, but has had no clinical review (`R35`), no hazard log entries (`R27`), and no regulatory determination (`Q11`).
 
 ## What this software does
 

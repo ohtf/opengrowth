@@ -109,7 +109,15 @@ Everything in Profile A, plus the serialised response body is byte-identical for
 - Python float-to-string spelling, including `115.0` versus `115`, scientific-notation thresholds, and negative zero.
 - Exact ordering and text of validation error arrays.
 
-Profile B is a target, not a gate. It is worth having because it lets a proxy or replay harness diff old and new responses directly, but it is a large amount of work for a benefit that mainly accrues during migration. Pursue it only after Profile A holds, and only for the endpoints where a replay comparison is actually planned.
+Profile B is the **goal for every operation** (maintainer decision, 2026-11-16: the API should be as byte-identical with the FastAPI server as it is possible to get). It remains a target rather than the release gate, because some differences may prove impossible or not worth their cost; each one that remains is enumerated in the migration notes with its reason, never waived in bulk. Byte identity lets a proxy, replay harness, or the benchmark's correctness check (`benchmark.md`) diff old and new responses directly, and lets integrators switch servers without noticing.
+
+**One designed exception:** the `provenance` object can never be byte-identical, because OpenGrowth must report its own engine name, version, and commit, and adds the `reference_data` list (`provenance.md`). Profile B therefore means byte-identical *outside* `provenance.calculation_engine` and `provenance.reference_data`, and the replay harness masks exactly those paths and no others.
+
+Measured so far (`conformance/README.md`):
+
+- **SDS and decimal ages are bit-identical** to Python for all 3,984 UK-WHO R-vector children on Linux, so their serialised text can be identical.
+- **Centiles are not yet bit-identical** (differences around 1e-15, from the normal CDF; `Q5`). The API rounds every measurement centile to four decimal places, so the rounded text matches except at an exact rounding boundary. Closing this fully needs a bit-exact port of SciPy's `ndtr`.
+- Python float formatting (`repr`) differs from Rust's in places: Python writes `1e-05` where `serde_json` writes `1e-5`, and `115.0` where Rust's `Display` writes `115`. The switch to exponent notation also happens at different magnitudes. The server needs a dedicated Python-compatible float writer, tested against CPython `repr`; this is a Profile B requirement on `R15`, not an engine change.
 
 ### 4.3 Profile C - `wire-http` (explicitly not promised)
 
@@ -178,7 +186,24 @@ Crash-class and contract-violating behaviour. Reproducing these would be activel
 - `uk_who_reference()` returns a `ValueError` object rather than raising it on out-of-domain input, so the type error surfaces later at an unrelated place. Rust returns a typed error at the point of failure.
 - `create_thrive_lines()` calls `plt.plot` while the matplotlib import is commented out, so it raises `NameError` on any call. Rust does not port a plotting call into a calculation library.
 
+- LMS lookup at an age between the last row of one table and the first row of the next (for example between 1.9986 and 2.0 years in the WHO infant table) raises an `IndexError`, and an age below a table's first row raises a SciPy bounds `ValueError`. Neither is reachable from whole-day ages through UK-WHO selection. Rust returns `TableError::AgeOutOfRange`.
+- A zero or negative observation makes `z_score` raise or return a complex number. Rust returns `CalcError::InvalidObservation`, checked after the age rules so that the reported error matches upstream wherever upstream reports one.
+
 Every Category 3 fix is a behaviour change relative to Python and must appear in the migration notes, even though each replaces a failure with a defined response.
+
+### 6.4 Quality findings with no behavioural effect
+
+The port takes the function and feature set, not the code. These upstream problems are left behind without any change to results, and are listed so that reviewers can see nothing clinical was altered:
+
+- Debug `print()` calls on calculation paths, in `percentage_median_bmi` and in `Measurement`'s BMI block, which write to the server's stdout on ordinary requests (every BMI below two weeks of age prints the absence message).
+- `measurement_for_z` prints `"measurement_for_z error: {e}"` literally, because the f-string prefix is missing.
+- Commented-out alternatives (CubicSpline, splrep, the WHO beyond-3-SD measurement rule, height prediction fields) left in calculation modules.
+- A sigma branch inside cubic interpolation that can never run, because cubic interpolation is skipped whenever a table has sigma.
+- `corrected_decimal_age`'s docstring says babies of 37 to 42 weeks get a decimal age of 0.0; the code does not do that, and should not.
+- `nearest_lowest_index` scans the whole table on every lookup and re-rounds every age; Rust binary-searches precomputed rounded ages, with a test proving equivalence to the upstream loop.
+- Bare `except:` clauses that turn any error, including programming errors, into a generic message.
+- Data: `uk90_preterm.json` contains BMI rows whose L, M, and S are all empty strings. Upstream never reads them because UK-WHO has no BMI data below 42 weeks. Rust treats an all-placeholder table as absent and rejects a partly empty one.
+- Deployment: the server's Dockerfile runs `uvicorn --reload`, a development setting, while `s/start-prod-server` uses gunicorn workers. The benchmark uses the latter.
 
 ## 7. Architecture
 
@@ -223,6 +248,8 @@ Rules for runtime-supplied data:
 - Provenance records the data version and checksum used for the calculation (see [provenance.md](provenance.md)).
 - `opengrowth data status` lists every table, whether it is embedded, imported, or missing, and its version.
 - The data directory location follows house-style deterministic configuration discovery and can be overridden by flag or environment variable, so containers and CI can mount it.
+
+**JSON floats must be parsed exactly.** `serde_json` is built with `float_roundtrip`; without it, parsing can be off by one unit in the last place, which made 12% of ages and SDS differ from Python by 1 ulp until it was enabled. This applies equally to reference tables, goldens, and API requests.
 
 A build step converts the source JSON into Rust data, and integrity tests assert per-table invariants: expected point counts, ascending age ordering, no duplicate ages, and endpoint values matching the source. The same checks run at import time for runtime-supplied tables. These are the defence against a silent transcription error, which is the highest-consequence failure mode in this project.
 

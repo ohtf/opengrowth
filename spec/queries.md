@@ -64,6 +64,15 @@ Needed: confirmation after `R5` measures actual agreement across the fixture cor
 
 **Working assumption:** the proposed values. If measurement shows they cannot be met, the correct response is to investigate the cause rather than widen the tolerance, because a wide tolerance would mask genuine algorithmic divergence.
 
+**Measured, 2026-11-17** (UK-WHO only; `conformance/README.md`):
+
+- **SDS: exceeded.** All 7,721 UK-WHO SDS on the R-vector corpus are bit-identical to Python on Linux, so the 1e-9 tolerance holds with zero margin used. Keep 1e-9 as the gate so that a platform with a different `pow` still passes, and report the bit-exact rate alongside it.
+- **Ages: bit-identical** (7,968 of 7,968).
+- **Centiles: not yet confirmed.** Unrounded centiles differ by about 1e-15; the four-decimal comparison needs the centile-band and response work (`R11`, `R12`).
+- **Chart coordinates: not yet measured** (`R13`).
+
+Still open for the other references and for centiles and chart coordinates.
+
 ---
 
 ## Q5 - Which normal distribution implementation?
@@ -76,6 +85,18 @@ The choice determines how closely centiles and SDS can track SciPy, particularly
 Needed: an experiment evaluating candidate Rust implementations against a SciPy-generated grid spanning the ordinary range and the extreme tails, reporting maximum absolute and relative deviation, plus a maintenance and licence review of each candidate.
 
 **Working assumption:** none. Do not pick a crate before the experiment.
+
+**Experiment, 2026-11-17** (`crates/opengrowth-conformance/tests/normal_vs_scipy.rs`, SciPy 1.18.1):
+
+| Candidate | Max relative difference from SciPy | Bit-exact |
+| --- | --- | --- |
+| CDF A: Cephes `ndtr` structure on `libm` `erf`/`erfc` | 5.7e-14 for \|z\| < 37; 2.5e-15 within ±8 SD | 54% (59% within ±8 SD) |
+| CDF B: `0.5 * erfc(-z / sqrt 2)` on `libm` | 5.7e-14 | 54% |
+| PPF: AS241 `PPND16`, implemented in the engine | 8.4e-16 | 31% |
+
+`libm` is the rust-lang-maintained port of musl's maths library (MIT/Apache-2.0); AS241 is a published algorithm with no licence encumbrance.
+
+**Working decision:** CDF A and AS241, now in the engine, with the measured bounds asserted by the test. This is not yet closed, because byte-identical API output (Profile B) would favour bit-exact agreement. The next step is a candidate porting SciPy's own `ndtr` and `ndtri` (Cephes, BSD-3-Clause via SciPy's `xsf`), measured the same way. Adopt it only if it is bit-exact or close to it, and only after the licence review.
 
 ---
 

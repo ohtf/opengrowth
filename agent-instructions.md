@@ -2,7 +2,9 @@
 
 OpenGrowth is an Open Health Technology Foundation project: a Rust reimplementation of the `rcpchgrowth` growth calculation engine, driving a library, CLI, MCP server, HTTP API, and later Python bindings from one engine. It is an independent derivative of RCPCH's AGPL-licensed Python engine, not an RCPCH project. This file is the entry point for AI coding agents. Read it before changing anything.
 
-The project is currently **specification only**. There is no engine code. If you are about to write Rust, check the [roadmap](spec/roadmap.md) first. Phase 0 does not block everything: the numerical primitives (`R5`), the workspace scaffold (`R6`), and the data crate (`R7`) can start immediately. What Phase 0 blocks is anything whose correctness is judged against the reference implementation, which is `R9` onward. Distribution of UK90-derived tables is gated on `Q1`.
+The project is **experimental**. The engine computes UK-WHO SDS and centiles, bit-identical to the Python engine on the conformance corpus; the other references, the full result object, the HTTP server, and the MCP server do not exist yet. Check the [roadmap](spec/roadmap.md) before starting work. Distribution of UK90-derived tables is gated on `Q1`.
+
+Crates: `opengrowth-core` (the engine, a leaf), `opengrowth-data` (table manifest, verification, import), `opengrowth-cli` (the `opengrowth` binary), `opengrowth-conformance` (the differential suite; not published).
 
 ## Read first
 
@@ -24,17 +26,20 @@ The project is currently **specification only**. There is no engine code. If you
 - **No reference table without provenance and a licence.** A table lacking either fails the registry test. See `standard.md` section 3.3.
 - **Never commit or publish UK90-derived tables while `Q1` is open.** That includes the data crate, fixtures that contain LMS values, release artefacts, and CI caches. Calculated outputs (SDS, centiles) in goldens are not tables and are fine.
 - **Provenance reports what was computed, never what was requested.** A surface that derives provenance from its own routing has defeated the point. This is a safety control, not a convenience field.
-- **Use Python-compatible rounding.** `f64::round()` is half-away-from-zero; Python is half-to-even. Never let `f64::round()` reach an output field.
+- **Use Python-compatible rounding.** `f64::round()` is half-away-from-zero; Python is half-to-even. Use `opengrowth_core::round::python_round`. Never let `f64::round()` reach an output field.
+- **Parse floats exactly.** `serde_json` must keep its `float_roundtrip` feature; without it, parsed tables and goldens can be 1 ulp off and bit-identity with Python is lost. Don't add a JSON parser that lacks an exact mode.
+- **Keep the platform `pow`, `ln`, and `exp`.** They make SDS bit-identical to CPython on Linux; the portable `libm` versions do not (`conformance/README.md`).
 - **Do not vendor restrictively licensed source material.** Reimplement from published method descriptions. Named exclusions are in `standard.md` section 3.4.
 - **Preterm and early-infant behaviour is the highest-risk area.** Changes there need clinical review, not just passing tests.
 
 ## Workflow
 
-Scripts arrive with `R6`. The intended surface:
+See [s/README.md](s/README.md). The main ones:
 
-- `s/test` - run the test suite
+- `s/test` - run the test suite (skips UK-WHO conformance, which needs reference tables)
 - `s/lint` - format check and clippy
-- `s/conformance` - run the differential suite against captured goldens and the R vectors
+- `s/conformance` - the differential suite against the R vectors, Python goldens, and SciPy grid
+- `s/reference-python` and `s/goldens` - the pinned Python reference environment, and regenerating goldens from it
 
 ## Before every commit
 

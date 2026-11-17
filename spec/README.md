@@ -9,6 +9,7 @@ Design specifications for OpenGrowth, the Open Health Technology Foundation's Ru
 3. [provenance.md](provenance.md) - the calculation-provenance contract. Read this before touching the result object; it is a safety control with non-obvious invariants.
 4. [roadmap.md](roadmap.md) - phased delivery with stable `R<number>` codes.
 5. [queries.md](queries.md) - open decisions that need a human, including the UK90 licensing question and the bug-for-bug compatibility choices.
+6. [benchmark.md](benchmark.md) - how the Python and Rust servers are compared for speed, load, concurrency, and cost.
 
 ## Conventions
 
@@ -19,4 +20,4 @@ Design specifications for OpenGrowth, the Open Health Technology Foundation's Ru
 
 ## Status
 
-Pre-implementation. No Rust code exists yet. The specification is being written first because the hardest problems in this project are contractual (what "identical" means) and legal (what data may be redistributed), not mechanical.
+Experimental. The first slice (UK-WHO SDS, the numerical primitives, runtime-supplied data, and the CLI) is implemented and measured; see `conformance/README.md`.

@@ -2,7 +2,7 @@
 
 An open-source growth calculation engine for children: SDS, centiles, centile bands, and chart coordinates against the UK-WHO, WHO, CDC, Trisomy 21, and Turner syndrome growth references. One Rust binary provides the library, CLI, HTTP API, and MCP server.
 
-> **Status: Experimental, specification only.** No engine code exists yet. The design is being written first, in [spec/](spec/), because the hardest problems are contractual and legal rather than mechanical. Do not use this for anything clinical.
+> **Status: Experimental.** UK-WHO SDS and centiles work, and match the Python engine bit for bit on the 3,984-child conformance corpus. Other references, the HTTP API, and the MCP server are not built yet. Do not use this for anything clinical.
 
 OpenGrowth is an [Open Health Technology Foundation](https://openhealthtechnology.org) project, hosted at [github.com/ohtf/opengrowth](https://github.com/ohtf/opengrowth). Its OHTF lifecycle status is **Experimental**.
 
@@ -43,9 +43,39 @@ OpenGrowth is designed to work under either outcome:
 
 Every table records its own provenance and terms, enforced by a test. See [spec/standard.md](spec/standard.md) section 3 and `Q1` in [spec/queries.md](spec/queries.md).
 
+## Quick start
+
+```sh
+cargo install --locked --path crates/opengrowth-cli
+
+# Reference tables are not shipped. If you hold them (an installed rcpchgrowth
+# package's data_tables directory works as-is), import and verify them:
+opengrowth data import /path/to/rcpchgrowth/data_tables
+opengrowth data status
+
+opengrowth calculate --sex female --birth-date 2026-10-06 --observation-date 2026-11-17 \
+  --gestation 27+3 --measurement weight --value 1.42
+```
+
+```text
+UK-WHO: weight 1.42 kg, female, born 2026-10-06 at 27+3 weeks, measured 2026-11-17
+
+                 decimal age        SDS   centile  table
+chronological         0.1150    -8.0665      0.00  who-2006-infant
+corrected            -0.1259    -1.6745      4.70  uk90-preterm
+```
+
+Add `--format json` for full-precision output with provenance: the engine version and the checksum of every table read.
+
 ## Development
 
-Nothing to run yet. Tooling arrives with `R6` in the [roadmap](spec/roadmap.md).
+```sh
+s/test          # unit and SciPy/CPython conformance tests
+s/lint          # rustfmt and clippy, as CI runs them
+s/conformance   # UK-WHO against Tim Cole's R vectors and the Python engine (needs reference tables)
+```
+
+See [s/README.md](s/README.md) and [conformance/README.md](conformance/README.md), which records the current agreement figures.
 
 ## Contributing
 

@@ -17,11 +17,13 @@ OpenGrowth adopts the shape implemented on the Python `37-measurement-provenance
       "version": "0.1.0",
       "commit": "unknown"
     },
-    "reference_data": {
-      "version": "uk90-1990-v1",
-      "sha256": "…",
-      "source": "embedded"
-    }
+    "reference_data": [
+      {
+        "table": "uk90-preterm",
+        "file": "uk90_preterm.json",
+        "sha256": "fcd126301d8fb961e3006b828688022ce950f085b0ec1d877a40c8f6df21f3ef"
+      }
+    ]
   },
   "birth_data": { "...": "..." }
 }
@@ -29,7 +31,7 @@ OpenGrowth adopts the shape implemented on the Python `37-measurement-provenance
 
 Reference: `rcpchgrowth/measurement.py:202-210` on that branch.
 
-`reference_data` is an OpenGrowth addition and is purely additive, so clients written against the Python shape are unaffected. It exists because UK90 tables may be supplied by the user at install time (`Q1`), which makes "which data did this calculation use?" a real question rather than one answered by the engine version. It records the data version and checksum of the tables the calculation actually read, and whether they were `embedded` or `imported`. The values above are illustrative; the version scheme is set in `R7`.
+`reference_data` is an OpenGrowth addition and is purely additive, so clients written against the Python shape are unaffected. It exists because tables are supplied by the user at install time (`Q1`), which makes "which data did this calculation use?" a real question rather than one answered by the engine version. It lists each table the calculation actually read, once, with the SHA-256 of the verified file; a measurement whose chronological and corrected ages fall in different UK-WHO segments lists both. The `opengrowth calculate --format json` output already follows this shape. Whether embedded tables (after `Q1`) add a `source` field is decided in `R7`.
 
 ## 2. Invariants
 
@@ -42,11 +44,11 @@ These are normative and are carried over from the Python test suite at `rcpchgro
 5. **`trisomy-21` and `trisomy-21-aap` remain distinguishable.** They are different references with different data, and collapsing them to a shared "Down syndrome" label would defeat the control for exactly the population most likely to be plotted on a syndrome-specific chart.
 6. **Engine fields are non-empty strings.** Never null, never absent, never `""`.
 7. **A drift guard test asserts the provenance test cases cover all six references.** If a seventh reference is ever added, the test fails rather than silently skipping it. This pattern is worth preserving; it is the reason the Python suite cannot quietly lose coverage.
-8. **`reference_data` describes the tables actually read.** Never the tables configured, installed, or expected. If a calculation reads no table, for example because validation failed before lookup, `reference_data` is `null` rather than guessed.
+8. **`reference_data` describes the tables actually read.** Never the tables configured, installed, or expected. If a calculation reads no table, for example because the age has no reference data, `reference_data` is an empty list rather than guessed.
 
 ## 3. Engine identity must differ from Python
 
-**The engine reports `name: "opengrowth"`, not `"rcpchgrowth"`.**
+**The engine reports `name: "opengrowth"`, not the Python engine's `"rcpch/rcpchgrowth-python"`** (the value `rcpchgrowth` 4.6.5 actually emits, at `measurement.py:201`).
 
 This is a deliberate divergence from strict byte-compatibility, and it is required rather than merely permitted. The purpose of the field is to identify the engine that produced the result. While both engines are in use, during equivalence testing (`Q9`) or when an integrator moves between the RCPCH API and an OpenGrowth server, an engine that reports its predecessor's name makes it impossible to attribute a divergent result to either implementation. Provenance would fail at precisely the moment it is most needed.
 
