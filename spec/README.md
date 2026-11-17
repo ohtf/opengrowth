@@ -10,6 +10,7 @@ Design specifications for OpenGrowth, the Open Health Technology Foundation's Ru
 4. [roadmap.md](roadmap.md) - phased delivery with stable `R<number>` codes.
 5. [queries.md](queries.md) - open decisions that need a human, including the UK90 licensing question and the bug-for-bug compatibility choices.
 6. [benchmark.md](benchmark.md) - how the Python and Rust servers are compared for speed, load, concurrency, and cost.
+7. [versioning.md](versioning.md) - what is a contract, how clinical changes are released, and how things are deprecated.
 
 ## Conventions
 

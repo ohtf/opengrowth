@@ -13,7 +13,8 @@ Crates: `opengrowth-core` (the engine, a leaf), `opengrowth-data` (table manifes
 3. [spec/ubiquitous-language.md](spec/ubiquitous-language.md) - canonical terms and the name collisions that cause defects.
 4. [spec/roadmap.md](spec/roadmap.md) and [spec/queries.md](spec/queries.md) - what to work on, and what is blocked.
 5. [SAFETY.md](SAFETY.md) - the clinical-use boundary.
-6. [pacharanero/house-style](https://github.com/pacharanero/house-style) - cross-repository engineering standards, and the [OHTF community policies](https://openhealthtechnology.org/community/) for DCO, security, and conduct. The RCPCH house style does not apply to this project.
+6. [CONTRIBUTING.md](CONTRIBUTING.md) and [spec/versioning.md](spec/versioning.md) - what needs extra evidence, what is a contract, and how clinical changes are released.
+7. [pacharanero/house-style](https://github.com/pacharanero/house-style) - cross-repository engineering standards, and the [OHTF community policies](https://openhealthtechnology.org/community/) for DCO, security, and conduct. The RCPCH house style does not apply to this project.
 
 ## Core invariants
 
@@ -39,6 +40,7 @@ See [s/README.md](s/README.md). The main ones:
 
 - `s/test` - run the test suite (skips UK-WHO conformance, which needs reference tables)
 - `s/lint` - format check and clippy
+- `s/deny` - dependency policy (licences, advisories, sources)
 - `s/conformance` - the differential suite against the R vectors, Python goldens, and SciPy grid
 - `s/reference-python` and `s/goldens` - the pinned Python reference environment, and regenerating goldens from it
 
@@ -48,6 +50,7 @@ See [s/README.md](s/README.md). The main ones:
 cargo fmt --all --check
 cargo clippy --all-targets -- -D warnings
 cargo test
+cargo deny --locked check
 ```
 
 CI enforces all three. Do not commit red.

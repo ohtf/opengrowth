@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# cargo-deny policy: licences, advisories, duplicate versions, and sources.
+# Run with `s/deny`; CI runs it on every push. See house-style dependencies.md.
+
+[graph]
+all-features = true
+
+[advisories]
+# Every RustSec advisory fails the build unless listed here with a reason.
+ignore = []
+
+[licenses]
+# Licences compatible with distributing the whole under AGPL-3.0-or-later.
+# Adding one needs a reason in the commit.
+allow = [
+    "AGPL-3.0-or-later",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "MIT",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+# Workspace crates that are never published (opengrowth-data while Q1 is open,
+# the CLI, server, and conformance crates) are checked as part of the graph
+# but not as packages of their own.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

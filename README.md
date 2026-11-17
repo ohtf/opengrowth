@@ -204,7 +204,7 @@ See [s/README.md](s/README.md) and [conformance/README.md](conformance/README.md
 
 ## Contributing
 
-Read [agent-instructions.md](agent-instructions.md) and [SAFETY.md](SAFETY.md) first. Do not change clinical behaviour, reference data, or the API contract without the evidence those documents require.
+Read [CONTRIBUTING.md](CONTRIBUTING.md), [agent-instructions.md](agent-instructions.md), and [SAFETY.md](SAFETY.md) first. Maintainers are listed in [MAINTAINERS.md](MAINTAINERS.md); we are looking for a second maintainer and an independent clinical reviewer. Do not change clinical behaviour, reference data, or the API contract without the evidence those documents require.
 
 Sign off every commit under the [Developer Certificate of Origin](https://openhealthtechnology.org/community/dco/) (`git commit -s`). Report security issues as described in [SECURITY.md](SECURITY.md).
 
