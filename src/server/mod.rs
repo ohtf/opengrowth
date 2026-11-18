@@ -6,11 +6,12 @@
 //!
 //! The goal is byte-identical response bodies outside `provenance`
 //! (`spec/standard.md` section 4.2). Every upstream operation is implemented
-//! ([`IMPLEMENTED`]), with bearer-token authorisation, 404, 405, and
-//! trailing-slash redirects.
+//! ([`IMPLEMENTED`]), with bearer-token authorisation, CORS ([`cors`]), 404,
+//! 405, and trailing-slash redirects.
 //!
 //! The `/growth/v1` prefix belongs to the gateway, not this router.
 
+pub mod cors;
 pub mod pyjson;
 pub mod response;
 pub mod validate;
@@ -67,6 +68,8 @@ pub struct AppState {
     chart_cache: Mutex<HashMap<ChartKey, Arc<Vec<u8>>>>,
     /// Where fictional children's measurement noise comes from.
     noise: NoiseSource,
+    /// Which origins browsers may call the API from.
+    pub cors: cors::CorsPolicy,
 }
 
 type ChartKey = (GrowthReference, CentileFormat, MeasurementMethod, Sex);
@@ -80,6 +83,7 @@ impl AppState {
             authorization_key,
             chart_cache: Mutex::new(HashMap::new()),
             noise: NoiseSource::Random,
+            cors: cors::CorsPolicy::AnyOrigin,
         }
     }
 
@@ -89,6 +93,13 @@ impl AppState {
     #[must_use]
     pub fn with_fixed_noise(mut self, fraction: f64) -> Self {
         self.noise = NoiseSource::Fixed(fraction);
+        self
+    }
+
+    /// Sets which origins browsers may call the API from.
+    #[must_use]
+    pub fn with_cors(mut self, policy: cors::CorsPolicy) -> Self {
+        self.cors = policy;
         self
     }
 }
@@ -209,9 +220,14 @@ pub fn router(state: Arc<AppState>) -> Router {
     for path in NOT_YET_IMPLEMENTED {
         app = app.route(path, post(not_implemented).fallback(method_not_allowed));
     }
-    app.fallback(not_found)
+    let api = app.fallback(not_found).with_state(state.clone());
+    // The middleware wraps the whole router, as upstream's wraps its app, so
+    // that method routing cannot add `Allow` to what the middleware returns.
+    // CORS is outermost, so preflights are answered before authorisation.
+    Router::new()
+        .fallback_service(api)
         .layer(middleware::from_fn_with_state(state.clone(), authorise))
-        .with_state(state)
+        .layer(middleware::from_fn_with_state(state, cors::cors))
 }
 
 /// Serves the API until interrupted.

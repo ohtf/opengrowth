@@ -158,6 +158,16 @@ Needed: a statement of the intended policy. Reproducing a contradictory configur
 
 **Working assumption:** reproduce the current observable behaviour where a browser client could depend on it, resolve the contradiction rather than copy it (check what the current server actually sends; Starlette may echo the request origin when credentials are allowed, which is more permissive than intended), make the policy configurable per deployment, and record the difference in the migration notes.
 
+**Measured, 2026-11-18** (`conformance/expected/http-cors.json`, from the pinned server through Starlette's TestClient):
+
+- Without a key, preflights succeed, echo the caller's origin, and send `access-control-allow-credentials: true`. The CORS protocol does not allow a credentialed response to say `*`, so Starlette echoes whatever origin asks, which in effect allows credentialed requests from every website. Other responses say `access-control-allow-origin: *`, together with `allow-credentials: true`, which browsers ignore unless the request carried credentials; a request with a cookie gets its origin echoed.
+- With a key, the authorisation middleware runs first and refuses every preflight to a path other than `/` with a 403 and no CORS headers. Browsers never send credentials on a preflight, so no browser can call a key-protected server from another origin.
+- Requests without an `Origin` header, which is every request from a non-browser client, get no CORS headers in either case.
+- The demo client (`rcpch/digital-growth-charts-react-client` at `c0756f2`) calls `fetch` without the `credentials` option, so it sends no cookies cross-origin. It sends `Content-Type: application/json` and, if configured, `Subscription-Key`, so every call is preflighted. It needs the preflight to succeed and allow those headers, and `access-control-allow-origin` on the response; it does not need credentials.
+- opengrowth sent no CORS headers and answered preflights with 405, so the demo client could not call it from another origin at all.
+
+**Decision, 2026-11-18:** the demo client and every API client must keep working (maintainer). opengrowth sends what the pinned server's own Starlette middleware sends when configured with `allow_credentials=False` and placed in front of authorisation: any origin, without credentials, with preflights answered before authorisation. `tests/http_cors.rs` checks this byte for byte against that configuration, and checks that the pinned server differs from it only in three ways: the credentials header; preflights that echo the origin; and, with a key, the 403 on preflights. A deployment can restrict origins (`--cors-allow-origin`, `$OPENGROWTH_CORS_ALLOW_ORIGINS`) or turn CORS off for a gateway that adds its own (`--no-cors`). The redundant `http://localhost:8000` entry has no equivalent. The only client this could stop is a browser application that sends cookies cross-origin; the API does not use cookies, and no such client is known.
+
 ---
 
 ## Q9 - How is equivalence with the Python server demonstrated before anyone relies on opengrowth?

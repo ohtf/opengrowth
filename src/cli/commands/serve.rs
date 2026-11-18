@@ -8,6 +8,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use crate::server::AppState;
+use crate::server::cors::{self, CorsPolicy};
 use crate::store::ReferenceStore;
 use anyhow::Context as _;
 
@@ -29,6 +30,23 @@ pub struct Args {
     /// Number of worker threads (default: one per CPU).
     #[arg(long)]
     pub workers: Option<usize>,
+
+    /// Origins browsers may call the API from: `*` for any, or exact origins
+    /// such as `https://app.example.org`. Repeat the flag, or separate them
+    /// with commas.
+    #[arg(
+        long = "cors-allow-origin",
+        value_name = "ORIGIN",
+        env = "OPENGROWTH_CORS_ALLOW_ORIGINS",
+        value_delimiter = ',',
+        default_value = "*",
+        conflicts_with = "no_cors"
+    )]
+    pub cors_allow_origins: Vec<String>,
+
+    /// Send no CORS headers, for a deployment whose gateway adds its own.
+    #[arg(long)]
+    pub no_cors: bool,
 }
 
 /// Runs `serve` until interrupted.
@@ -43,10 +61,19 @@ pub fn run(context: &Context, args: &Args) -> anyhow::Result<ExitCode> {
             dir.source
         );
     }
-    let state = Arc::new(AppState::new(
-        store,
-        args.authorization_key.clone().filter(|k| !k.is_empty()),
-    ));
+    let cors = if args.no_cors {
+        CorsPolicy::Off
+    } else {
+        cors::parse_origins(&args.cors_allow_origins)
+            .map_err(|e| anyhow::anyhow!("--cors-allow-origin: {e}"))?
+    };
+    let state = Arc::new(
+        AppState::new(
+            store,
+            args.authorization_key.clone().filter(|k| !k.is_empty()),
+        )
+        .with_cors(cors),
+    );
 
     let mut runtime = tokio::runtime::Builder::new_multi_thread();
     runtime.enable_all();

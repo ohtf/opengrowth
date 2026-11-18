@@ -193,6 +193,7 @@ Crash-class and contract-violating behaviour. Reproducing these would be activel
 - `fictional-child-data` for CDC BMI at an SDS whose centile rounds to 100 (above about 8.3 SD): the extended BMI method's inverse normal of 1 is infinite, upstream builds measurements from it, and the response then fails with a 500. opengrowth returns the route's own 422. Enumerated in the CDC fictional-child test.
 - `mid-parental-height` for CDC with a negative parental height: CDC height L is not 1 at adult age, so upstream's SDS is a complex number, and comparing it with -8 raises a TypeError, which escapes as a 500. opengrowth reports the height as below -8 SD, as it does for zero. Enumerated in the mid-parental height test.
 - `chart-coordinates` for UK Trisomy 21 with a centile of 0, 100, or more: upstream's Trisomy 21 builder rounds the infinite SDS without failing, so the response carries an infinity and fails to serialise with a 500. opengrowth returns the route's 422, as the other references do. Enumerated in the Trisomy 21 chart test.
+- CORS (`Q8`): with an authorisation key set, upstream refuses every preflight with a 403, so no browser can call it from another origin. opengrowth answers preflights before authorisation, never sends `access-control-allow-credentials`, and answers preflights with `*` rather than by echoing the caller's origin. `tests/http_cors.rs` checks that upstream differs from opengrowth in exactly these ways (`pinned_from_resolved`).
 - Turner chart requests with an invalid sex or measurement method return a bare string from an endpoint declared to return a chart object, producing a `500`. Rust returns `422`, consistent with the Turner calculation and fictional-child endpoints.
 - `uk_who_reference()` returns a `ValueError` object rather than raising it on out-of-domain input, so the type error surfaces later at an unrelated place. Rust returns a typed error at the point of failure.
 - `create_thrive_lines()` calls `plt.plot` while the matplotlib import is commented out, so it raises `NameError` on any call. Rust does not port a plotting call into a calculation library.
@@ -299,7 +300,7 @@ Behaviour that must be reconsidered rather than copied:
 
 - The current server generates chart assets and rewrites `openapi.json` during module import. A Rust server must not mutate checked-in files at startup. Chart assets become build-time artefacts.
 - Authorisation is a bearer-token middleware configured by environment variable, exempting only the exact path `/`, and is not represented as an OpenAPI security scheme. Reproduce the behaviour; document it in the schema.
-- CORS is configured with both a wildcard origin and credentials, which is contradictory. `Q8`.
+- CORS is configured with both a wildcard origin and credentials, which the CORS protocol does not allow together, and runs after authorisation, so preflights fail whenever a key is set. opengrowth allows any origin without credentials and answers preflights first; a deployment can restrict origins or turn CORS off (`Q8`).
 - The `/growth/v1` prefix is not implemented in the server; it is applied by the gateway. Do not bake it into the Rust router.
 
 ### 7.5 Engine boundary for provenance

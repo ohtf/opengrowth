@@ -178,3 +178,98 @@ async fn missing_tables_are_reported_never_substituted() {
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
     assert!(body.contains("uk90-child"), "{body}");
 }
+
+/// Sends `method path` with these headers to a server with this CORS policy;
+/// returns the status and the response headers.
+async fn cors_request(
+    policy: opengrowth::server::cors::CorsPolicy,
+    method: &str,
+    path: &str,
+    headers: &[(&str, &str)],
+) -> (StatusCode, axum::http::HeaderMap) {
+    let app = router(Arc::new(
+        AppState::new(ReferenceStore::empty(), None).with_cors(policy),
+    ));
+    let mut request = Request::builder().method(method).uri(path);
+    for (name, value) in headers {
+        request = request.header(*name, *value);
+    }
+    let response = app
+        .oneshot(request.body(Body::from(VALID)).unwrap())
+        .await
+        .unwrap();
+    (response.status(), response.headers().clone())
+}
+
+#[tokio::test]
+async fn cors_can_be_limited_to_listed_origins() {
+    use opengrowth::server::cors::parse_origins;
+    let policy = || parse_origins(&["https://a.example".to_owned()]).unwrap();
+    let preflight = |origin| {
+        [
+            ("origin", origin),
+            ("access-control-request-method", "POST"),
+            ("access-control-request-headers", "content-type"),
+        ]
+    };
+    let (status, headers) = cors_request(
+        policy(),
+        "OPTIONS",
+        "/uk-who/calculation",
+        &preflight("https://a.example"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(headers["access-control-allow-origin"], "https://a.example");
+    assert_eq!(headers["vary"], "Origin");
+    let (status, headers) = cors_request(
+        policy(),
+        "OPTIONS",
+        "/uk-who/calculation",
+        &preflight("https://b.example"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(!headers.contains_key("access-control-allow-origin"));
+    let (_, headers) = cors_request(
+        policy(),
+        "POST",
+        "/uk-who/calculation",
+        &[("origin", "https://a.example")],
+    )
+    .await;
+    assert_eq!(headers["access-control-allow-origin"], "https://a.example");
+    let (_, headers) = cors_request(
+        policy(),
+        "POST",
+        "/uk-who/calculation",
+        &[("origin", "https://b.example")],
+    )
+    .await;
+    assert!(!headers.contains_key("access-control-allow-origin"));
+}
+
+#[tokio::test]
+async fn cors_can_be_turned_off_for_a_gateway() {
+    use opengrowth::server::cors::CorsPolicy;
+    let (status, headers) = cors_request(
+        CorsPolicy::Off,
+        "OPTIONS",
+        "/uk-who/calculation",
+        &[
+            ("origin", "https://a.example"),
+            ("access-control-request-method", "POST"),
+        ],
+    )
+    .await;
+    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+    assert!(!headers.contains_key("access-control-allow-origin"));
+    let (_, headers) = cors_request(
+        CorsPolicy::Off,
+        "POST",
+        "/uk-who/calculation",
+        &[("origin", "https://a.example")],
+    )
+    .await;
+    assert!(!headers.contains_key("access-control-allow-origin"));
+}

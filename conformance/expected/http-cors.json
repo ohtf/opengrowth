@@ -1,0 +1,865 @@
+{
+ "generator": "conformance/generators/http_cors.py",
+ "command": "s/goldens",
+ "description": "CORS responses from the pinned server, as pinned and with allow_credentials=False in front of authorisation (Q8).",
+ "environment": {
+  "rcpchgrowth": "4.6.5",
+  "scipy": "1.18.1",
+  "numpy": "2.5.5",
+  "fastapi": "0.116.1",
+  "pydantic": "2.11.7",
+  "starlette": "0.47.3",
+  "python": "3.13.7",
+  "digital-growth-charts-server": "29bb4e9e9d93a850a63d5233b927472f808fb9a8",
+  "platform": "Linux x86_64"
+ },
+ "cases": [
+  {
+   "name": "preflight, demo client",
+   "key": null,
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST",
+    "access-control-request-headers": "content-type"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-allow-headers": "content-type",
+     "access-control-max-age": "600",
+     "vary": "Origin",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-allow-headers": "content-type",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, demo client with a subscription key",
+   "key": null,
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST",
+    "access-control-request-headers": "content-type,subscription-key"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-allow-headers": "content-type,subscription-key",
+     "access-control-max-age": "600",
+     "vary": "Origin",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-allow-headers": "content-type,subscription-key",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, bearer token",
+   "key": null,
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST",
+    "access-control-request-headers": "authorization,content-type"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-allow-headers": "authorization,content-type",
+     "access-control-max-age": "600",
+     "vary": "Origin",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-allow-headers": "authorization,content-type",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, no request headers",
+   "key": null,
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "vary": "Origin",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, unsupported method",
+   "key": null,
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "PROPFIND"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 400,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "vary": "Origin",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "Disallowed CORS method"
+   },
+   "resolved": {
+    "status": 400,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "Disallowed CORS method"
+   }
+  },
+  {
+   "name": "preflight, unknown path",
+   "key": null,
+   "method": "OPTIONS",
+   "path": "/nowhere",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "vary": "Origin",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, root",
+   "key": null,
+   "method": "OPTIONS",
+   "path": "/",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "GET"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "vary": "Origin",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "browser POST",
+   "key": null,
+   "method": "POST",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000"
+   },
+   "request_body": "{\"birth_date\": \"2020-04-12\", \"observation_date\": \"2028-06-12\", \"observation_value\": 115, \"sex\": \"female\", \"gestation_weeks\": 40, \"gestation_days\": 0, \"measurement_method\": \"height\"}",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-credentials": "true",
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   }
+  },
+  {
+   "name": "browser POST with a cookie",
+   "key": null,
+   "method": "POST",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "cookie": "a=b"
+   },
+   "request_body": "{\"birth_date\": \"2020-04-12\", \"observation_date\": \"2028-06-12\", \"observation_value\": 115, \"sex\": \"female\", \"gestation_weeks\": 40, \"gestation_days\": 0, \"measurement_method\": \"height\"}",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "vary": "Origin",
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "vary": "Origin",
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   }
+  },
+  {
+   "name": "browser POST, validation error",
+   "key": null,
+   "method": "POST",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000"
+   },
+   "request_body": "{}",
+   "pinned": {
+    "status": 422,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-credentials": "true",
+     "content-type": "application/json"
+    },
+    "body_sha256": "1327dd22ee0a2f72d085249f0df36a2f3975a6681f9bf502978da89870342679"
+   },
+   "resolved": {
+    "status": 422,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "content-type": "application/json"
+    },
+    "body_sha256": "1327dd22ee0a2f72d085249f0df36a2f3975a6681f9bf502978da89870342679"
+   }
+  },
+  {
+   "name": "browser GET /",
+   "key": null,
+   "method": "GET",
+   "path": "/",
+   "request_headers": {
+    "origin": "http://localhost:3000"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-credentials": "true",
+     "content-type": "application/json"
+    },
+    "body_sha256": "bb2e834025bf7200389e3e8e194f7b4abbc4a240b8de1e20e2d4ce5c28578634"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "content-type": "application/json"
+    },
+    "body_sha256": "bb2e834025bf7200389e3e8e194f7b4abbc4a240b8de1e20e2d4ce5c28578634"
+   }
+  },
+  {
+   "name": "browser OPTIONS, not a preflight",
+   "key": null,
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 405,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-credentials": "true",
+     "content-type": "application/json",
+     "allow": "POST"
+    },
+    "body": "{\"detail\":\"Method Not Allowed\"}"
+   },
+   "resolved": {
+    "status": 405,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "content-type": "application/json",
+     "allow": "POST"
+    },
+    "body": "{\"detail\":\"Method Not Allowed\"}"
+   }
+  },
+  {
+   "name": "POST without Origin",
+   "key": null,
+   "method": "POST",
+   "path": "/uk-who/calculation",
+   "request_headers": {},
+   "request_body": "{\"birth_date\": \"2020-04-12\", \"observation_date\": \"2028-06-12\", \"observation_value\": 115, \"sex\": \"female\", \"gestation_weeks\": 40, \"gestation_days\": 0, \"measurement_method\": \"height\"}",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   }
+  },
+  {
+   "name": "OPTIONS without Origin",
+   "key": null,
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "access-control-request-method": "POST"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 405,
+    "headers": {
+     "content-type": "application/json",
+     "allow": "POST"
+    },
+    "body": "{\"detail\":\"Method Not Allowed\"}"
+   },
+   "resolved": {
+    "status": 405,
+    "headers": {
+     "content-type": "application/json",
+     "allow": "POST"
+    },
+    "body": "{\"detail\":\"Method Not Allowed\"}"
+   }
+  },
+  {
+   "name": "preflight, demo client",
+   "key": "test-key",
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST",
+    "access-control-request-headers": "content-type"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-allow-headers": "content-type",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, demo client with a subscription key",
+   "key": "test-key",
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST",
+    "access-control-request-headers": "content-type,subscription-key"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-allow-headers": "content-type,subscription-key",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, bearer token",
+   "key": "test-key",
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST",
+    "access-control-request-headers": "authorization,content-type"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-allow-headers": "authorization,content-type",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, no request headers",
+   "key": "test-key",
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, unsupported method",
+   "key": "test-key",
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "PROPFIND"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   },
+   "resolved": {
+    "status": 400,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "Disallowed CORS method"
+   }
+  },
+  {
+   "name": "preflight, unknown path",
+   "key": "test-key",
+   "method": "OPTIONS",
+   "path": "/nowhere",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "POST"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "preflight, root",
+   "key": "test-key",
+   "method": "OPTIONS",
+   "path": "/",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "access-control-request-method": "GET"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "vary": "Origin",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "browser POST",
+   "key": "test-key",
+   "method": "POST",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "authorization": "Bearer test-key"
+   },
+   "request_body": "{\"birth_date\": \"2020-04-12\", \"observation_date\": \"2028-06-12\", \"observation_value\": 115, \"sex\": \"female\", \"gestation_weeks\": 40, \"gestation_days\": 0, \"measurement_method\": \"height\"}",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-credentials": "true",
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   }
+  },
+  {
+   "name": "browser POST with a cookie",
+   "key": "test-key",
+   "method": "POST",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "authorization": "Bearer test-key",
+    "cookie": "a=b"
+   },
+   "request_body": "{\"birth_date\": \"2020-04-12\", \"observation_date\": \"2028-06-12\", \"observation_value\": 115, \"sex\": \"female\", \"gestation_weeks\": 40, \"gestation_days\": 0, \"measurement_method\": \"height\"}",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "access-control-allow-credentials": "true",
+     "vary": "Origin",
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "http://localhost:3000",
+     "vary": "Origin",
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   }
+  },
+  {
+   "name": "browser POST, validation error",
+   "key": "test-key",
+   "method": "POST",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000",
+    "authorization": "Bearer test-key"
+   },
+   "request_body": "{}",
+   "pinned": {
+    "status": 422,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-credentials": "true",
+     "content-type": "application/json"
+    },
+    "body_sha256": "1327dd22ee0a2f72d085249f0df36a2f3975a6681f9bf502978da89870342679"
+   },
+   "resolved": {
+    "status": 422,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "content-type": "application/json"
+    },
+    "body_sha256": "1327dd22ee0a2f72d085249f0df36a2f3975a6681f9bf502978da89870342679"
+   }
+  },
+  {
+   "name": "browser GET /",
+   "key": "test-key",
+   "method": "GET",
+   "path": "/",
+   "request_headers": {
+    "origin": "http://localhost:3000"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-credentials": "true",
+     "content-type": "application/json"
+    },
+    "body_sha256": "bb2e834025bf7200389e3e8e194f7b4abbc4a240b8de1e20e2d4ce5c28578634"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "content-type": "application/json"
+    },
+    "body_sha256": "bb2e834025bf7200389e3e8e194f7b4abbc4a240b8de1e20e2d4ce5c28578634"
+   }
+  },
+  {
+   "name": "browser OPTIONS, not a preflight",
+   "key": "test-key",
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   },
+   "resolved": {
+    "status": 403,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   }
+  },
+  {
+   "name": "POST without Origin",
+   "key": "test-key",
+   "method": "POST",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "authorization": "Bearer test-key"
+   },
+   "request_body": "{\"birth_date\": \"2020-04-12\", \"observation_date\": \"2028-06-12\", \"observation_value\": 115, \"sex\": \"female\", \"gestation_weeks\": 40, \"gestation_days\": 0, \"measurement_method\": \"height\"}",
+   "pinned": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   },
+   "resolved": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body_sha256": "dc8ff1bb72e4ba9b41602883f054763d8fa94625f2bfc9174e22d1a412b94b6f"
+   }
+  },
+  {
+   "name": "OPTIONS without Origin",
+   "key": "test-key",
+   "method": "OPTIONS",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "access-control-request-method": "POST"
+   },
+   "request_body": "",
+   "pinned": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   },
+   "resolved": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   }
+  },
+  {
+   "name": "browser POST without the key",
+   "key": "test-key",
+   "method": "POST",
+   "path": "/uk-who/calculation",
+   "request_headers": {
+    "origin": "http://localhost:3000"
+   },
+   "request_body": "{\"birth_date\": \"2020-04-12\", \"observation_date\": \"2028-06-12\", \"observation_value\": 115, \"sex\": \"female\", \"gestation_weeks\": 40, \"gestation_days\": 0, \"measurement_method\": \"height\"}",
+   "pinned": {
+    "status": 403,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   },
+   "resolved": {
+    "status": 403,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Forbidden\"}"
+   }
+  }
+ ]
+}

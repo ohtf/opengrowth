@@ -13,4 +13,4 @@ exec cargo test --release --test uk_who_r_vectors --test http_uk_who --test norm
   --test http_turner --test http_turner_charts --test http_turner_fictional_child \
   --test http_trisomy_21 --test http_trisomy_21_charts --test http_trisomy_21_fictional_child \
   --test http_trisomy_21_aap --test http_trisomy_21_aap_charts --test http_trisomy_21_aap_fictional_child \
-  --test http_utilities_mid_parental_height "$@" -- --nocapture
+  --test http_utilities_mid_parental_height --test http_cors "$@" -- --nocapture
