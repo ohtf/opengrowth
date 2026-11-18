@@ -7,7 +7,7 @@ Software of unknown provenance (IEC 62304): every third-party crate compiled int
 
 Licences, security advisories, and sources are checked on every push by `cargo deny` (`deny.toml`). Each release reviews the diff of this file ([procedures.md](procedures.md#suppliers-and-soup)). Platform-specific crates (for example for Windows) are listed whether or not they are built on a given platform.
 
-88 crates.
+87 crates.
 
 | Crate | Version | Licence | Source | Repository |
 | --- | --- | --- | --- | --- |
@@ -57,7 +57,6 @@ Licences, security advisories, and sources are checked on every push by `cargo d
 | jiff-core | 1.0.0 | Unlicense OR MIT | crates.io | https://github.com/BurntSushi/jiff |
 | jiff-static | 1.0.0 | Unlicense OR MIT | crates.io | https://github.com/BurntSushi/jiff |
 | libc | 0.2.191 | MIT OR Apache-2.0 | crates.io | https://github.com/rust-lang/libc |
-| libm | 0.2.16 | MIT | crates.io | https://github.com/rust-lang/compiler-builtins |
 | linux-raw-sys | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | crates.io | https://github.com/sunfishcode/linux-raw-sys |
 | log | 0.4.35 | MIT OR Apache-2.0 | crates.io | https://github.com/rust-lang/log |
 | matchit | 0.8.4 | MIT AND BSD-3-Clause | crates.io | https://github.com/ibraheemdev/matchit |

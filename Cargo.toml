@@ -41,7 +41,6 @@ required-features = ["embedded-data"]
 [dependencies]
 # The engine: always present, and all that `default-features = false` brings in.
 jiff = { version = "1.0.0", default-features = false, features = ["std"] }
-libm = "0.2.16"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["float_roundtrip", "preserve_order"] }
 sha2 = "0.11.1"
@@ -55,6 +54,8 @@ clap_complete = { version = "4.6.12", optional = true }
 tokio = { version = "1.54.1", features = ["macros", "net", "rt-multi-thread", "signal"], optional = true }
 
 [dev-dependencies]
+# Only to measure the platform maths functions against portable ones.
+libm = "0.2.16"
 http-body-util = "0.1.5"
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }
 tower = { version = "0.5.3", default-features = false, features = ["util"] }

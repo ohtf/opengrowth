@@ -112,7 +112,7 @@ Measured so far (`conformance/README.md`):
 
 - **UK-WHO `calculation` and `bulk-calculation` are byte-identical outside provenance** for 5,284 of 5,286 requests captured from the FastAPI server at a pinned commit: every R-vector child, an age and gestation grid across every UK-WHO join, calendar edge cases, pass-through fields, application errors, Pydantic validation errors, malformed JSON, routing, authorisation, and bulk limits. The other two are the enumerated Category 3 fixes in section 6.3.
 - **SDS and decimal ages are bit-identical** to Python for all 3,984 UK-WHO R-vector children on Linux.
-- **Unrounded centiles are not bit-identical** (differences around 1e-15, from the normal CDF; `Q5`), but every API centile is rounded to four decimal places, and no captured response differs. A difference is still possible at an exact rounding boundary; `R32` would remove it.
+- **Unrounded centiles are bit-identical** to Python for all 7,721 UK-WHO R-vector results on Linux, because the normal CDF and its inverse are SciPy's own `ndtr` and `ndtri`, translated (`R32`). Both agree with SciPy to the bit at all 16,299 points of the SciPy grid, deep tails included.
 - Floats are written with CPython `repr` spelling (`115.0`, `1e-05`, `1e+16`, ties to even), matching CPython on 10,484 values (`R31`).
 - Request validation reproduces Pydantic 2.11's lax coercions, error types, messages, contexts, and field order, and malformed JSON reports CPython's message and character position. Coverage is what the captured cases exercise; untested Pydantic corners (unusual date strings, very large integers) may differ in message but not in status.
 
@@ -130,7 +130,7 @@ Independent of profile, the API contract must not regress. Existing fields keep 
 
 Exact bit-level agreement with the Python engine cannot be assumed, because the Python engine's numerical behaviour is partly inherited from SciPy and NumPy:
 
-- `scipy.stats.norm.cdf` and `norm.ppf` use specific approximations. A Rust normal distribution implementation will differ in the final bits, and the difference is largest in the extreme tails, which is exactly where clinically abnormal measurements live.
+- `scipy.stats.norm.cdf` and `norm.ppf` use specific approximations. A Rust normal distribution implementation will differ in the final bits, and the difference is largest in the extreme tails, which is exactly where clinically abnormal measurements live. opengrowth avoids this by translating SciPy's own `ndtr` and `ndtri` (`R32`), which agree with SciPy to the bit on Linux.
 - `scipy.interpolate.interp1d` returns NumPy scalars, whose coercion behaviour is not identical to `f64`.
 - Python's `round()` is round-half-to-even over binary floating point. Rust's `f64::round()` is half-away-from-zero. These differ at exact ties, and the API rounds centiles to four decimal places, so a tie lands on a user-visible field.
 - Floating-point operation order matters in the four-point Lagrange cubic interpolation. Compiler autovectorisation or fused multiply-add can change the result in the last bits.
@@ -229,7 +229,7 @@ opengrowth/
 
 | Feature | Adds | Default |
 | --- | --- | --- |
-| *(none)* | The engine and `store`: `serde`, `serde_json`, `jiff`, `libm`, `sha2`, `thiserror` | always |
+| *(none)* | The engine and `store`: `serde`, `serde_json`, `jiff`, `sha2`, `thiserror` | always |
 | `embedded-data` | The tables in `data/`, compiled in | yes |
 | `server` | The HTTP API: `axum`, `tokio` | via `cli` |
 | `cli` | The binaries: `clap`, `anyhow`, and `server` | yes |

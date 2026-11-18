@@ -1,11 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! R5: measured agreement of the normal CDF and PPF with SciPy (Q4, Q5).
+//! R5 and R32: agreement of the normal CDF and PPF with SciPy (Q4, Q5).
 //!
-//! Prints the agreement statistics for each candidate so the decision in
-//! `spec/queries.md` is grounded in a measurement, then asserts the bounds
-//! recorded there. Run with `--nocapture` to see the report.
+//! The engine's `cdf` and `ppf` are translations of SciPy's own `ndtr` and
+//! `ndtri`, so on Linux with glibc, which supplies the `exp` and `log` that
+//! both use, they must agree with SciPy to the bit at every grid point,
+//! including the deep tails. Elsewhere the platform maths library may
+//! differ in the last bit, so the test asserts the relative bounds instead
+//! (`R34`). Run with `--nocapture` to see the report.
 
 mod common;
 
@@ -30,13 +33,17 @@ struct PpfCase {
     ppf: f64,
 }
 
-/// Candidate B for the CDF: the one-line erfc form.
-fn cdf_erfc_only(z: f64) -> f64 {
-    0.5 * libm::erfc(-z * std::f64::consts::FRAC_1_SQRT_2)
-}
+/// Whether this platform's maths library is the one SciPy was measured on.
+const SAME_MATHS_LIBRARY_AS_SCIPY: bool = cfg!(all(target_os = "linux", target_env = "gnu"));
 
-/// Tails where `|z|` is this large are bounded by relative error, not ulps:
-/// there the CDF is below 1e-300 and subnormal.
+/// Bounds for other platforms, from the Cephes accuracy figures and the
+/// measurement before `R32`: they hold for a correct implementation on any
+/// correctly working maths library. Neither is a licence to widen.
+const CDF_MAX_REL: f64 = 1e-13;
+const PPF_MAX_REL: f64 = 2e-15;
+
+/// Beyond this `|z|` the CDF is below 1e-300 and subnormal, so it has too
+/// few significant bits for a relative bound.
 const DEEP_TAIL: f64 = 37.0;
 
 #[test]
@@ -44,64 +51,30 @@ fn normal_distribution_agreement_with_scipy() {
     let golden: Golden<Grid> = read_json("expected/normal-grid.json");
     eprintln!("reference environment: {}", golden.environment);
 
-    let mut cdf_a = Agreement::default();
-    let mut cdf_b = Agreement::default();
-    for case in golden.cases.cdf.iter().filter(|c| c.z.abs() < DEEP_TAIL) {
-        cdf_a.record(normal::cdf(case.z), case.cdf);
-        cdf_b.record(cdf_erfc_only(case.z), case.cdf);
-    }
-    eprintln!(
-        "cdf  A (Cephes ndtr structure, libm erf/erfc): {}",
-        cdf_a.summary()
-    );
-    eprintln!(
-        "cdf  B (0.5 * erfc(-z / sqrt 2)):              {}",
-        cdf_b.summary()
-    );
-
-    let mut cdf_clinical = Agreement::default();
-    for case in golden
-        .cases
-        .cdf
-        .iter()
-        .filter(|c| c.z.abs() <= CLINICAL_SDS)
-    {
-        cdf_clinical.record(normal::cdf(case.z), case.cdf);
-    }
-    eprintln!(
-        "cdf  A, |z| <= 8 only:                         {}",
-        cdf_clinical.summary()
-    );
-
-    let mut ppf = Agreement::default();
-    let mut ppf_clinical = Agreement::default();
-    let clinical_p = normal::cdf(-CLINICAL_SDS)..=normal::cdf(CLINICAL_SDS);
-    for case in &golden.cases.ppf {
-        ppf.record(normal::ppf(case.p), case.ppf);
-        if clinical_p.contains(&case.p) {
-            ppf_clinical.record(normal::ppf(case.p), case.ppf);
+    let mut cdf = Agreement::default();
+    let mut cdf_not_subnormal = Agreement::default();
+    for case in &golden.cases.cdf {
+        cdf.record(normal::cdf(case.z), case.cdf);
+        if case.z.abs() < DEEP_TAIL {
+            cdf_not_subnormal.record(normal::cdf(case.z), case.cdf);
         }
     }
-    eprintln!(
-        "ppf  AS241 PPND16:                             {}",
-        ppf.summary()
-    );
-    eprintln!(
-        "ppf  AS241, p within +/-8 SD only:             {}",
-        ppf_clinical.summary()
-    );
+    let mut ppf = Agreement::default();
+    for case in &golden.cases.ppf {
+        ppf.record(normal::ppf(case.p), case.ppf);
+    }
+    eprintln!("cdf (SciPy ndtr, translated): {}", cdf.summary());
+    eprintln!("ppf (SciPy ndtri, translated): {}", ppf.summary());
 
-    assert!(cdf_a.max_rel < CDF_MAX_REL, "cdf: {}", cdf_a.summary());
-    assert!(ppf.max_rel < PPF_MAX_REL, "ppf: {}", ppf.summary());
+    if SAME_MATHS_LIBRARY_AS_SCIPY {
+        assert_eq!(cdf.bit_exact, cdf.compared, "cdf: {}", cdf.summary());
+        assert_eq!(ppf.bit_exact, ppf.compared, "ppf: {}", ppf.summary());
+    } else {
+        assert!(
+            cdf_not_subnormal.max_rel < CDF_MAX_REL,
+            "cdf: {}",
+            cdf_not_subnormal.summary()
+        );
+        assert!(ppf.max_rel < PPF_MAX_REL, "ppf: {}", ppf.summary());
+    }
 }
-
-/// The +/-8 SD range the engine accepts for height, weight, and OFC.
-const CLINICAL_SDS: f64 = 8.0;
-
-/// Bounds recorded against Q4 from measurement (2026-11-17, SciPy 1.18.1,
-/// exact float parsing): CDF max relative difference 5.7e-14 over |z| < 37
-/// (2.5e-15 within +/-8 SD), PPF 8.4e-16. The bounds sit just above those
-/// values; a regression past them fails. Neither is a licence to widen:
-/// investigate any increase.
-const CDF_MAX_REL: f64 = 1e-13;
-const PPF_MAX_REL: f64 = 2e-15;

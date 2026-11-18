@@ -34,7 +34,7 @@ One crate, `opengrowth`, with features: the engine (every module outside `store`
 - **Use Python-compatible rounding.** `f64::round()` is half-away-from-zero; Python is half-to-even. Use `opengrowth::round::python_round`. Never let `f64::round()` reach an output field.
 - **Parse floats exactly.** `serde_json` must keep its `float_roundtrip` feature; without it, parsed tables and goldens can be 1 ulp off and bit-identity with Python is lost. Don't add a JSON parser that lacks an exact mode.
 - **The HTTP API is byte-identical to upstream outside `provenance`.** Response field order follows the upstream Pydantic models, floats go through `pyjson`, and request validation follows Pydantic's order and messages. Any new difference goes into `KNOWN_DIFFERENCES` in `tests/http_uk_who.rs` and `spec/standard.md` section 6.3, with a reason.
-- **Keep the platform `pow`, `ln`, and `exp`.** They make SDS bit-identical to CPython on Linux; the portable `libm` versions do not (`conformance/README.md`).
+- **Keep the platform `pow`, `ln`, and `exp`.** They make SDS and centiles bit-identical to CPython and SciPy on Linux; the portable `libm` versions do not (`conformance/README.md`). `src/normal/cephes.rs` is SciPy's code translated line for line: never rearrange an expression in it, even into an equal one.
 - **Do not vendor restrictively licensed source material.** Reimplement from published method descriptions. Named exclusions are in `standard.md` section 3.4.
 - **Preterm and early-infant behaviour is the highest-risk area.** Changes there need clinical review, not just passing tests.
 

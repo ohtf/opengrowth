@@ -30,6 +30,9 @@ use opengrowth::{
 const R_TOLERANCE: f64 = 1e-3;
 /// The Python goldens' tolerance for SDS (`spec/standard.md` section 5.2).
 const PYTHON_TOLERANCE: f64 = 1e-9;
+/// Where the platform maths library is the one the goldens were made with,
+/// centiles must be bit-identical, since the CDF is SciPy's own (`R32`).
+const SAME_MATHS_LIBRARY_AS_SCIPY: bool = cfg!(all(target_os = "linux", target_env = "gnu"));
 
 #[derive(serde::Deserialize)]
 struct RVector {
@@ -51,6 +54,8 @@ struct PythonCase {
     corrected_decimal_age: f64,
     chronological_sds: Option<f64>,
     corrected_sds: Option<f64>,
+    chronological_centile: Option<f64>,
+    corrected_centile: Option<f64>,
     chronological_measurement_error: Option<String>,
     corrected_measurement_error: Option<String>,
 }
@@ -92,6 +97,7 @@ fn uk_who_sds_matches_r_vectors_and_python() {
     let mut vs_r = Agreement::default();
     let mut vs_python = Agreement::default();
     let mut vs_python_libm_pow = Agreement::default();
+    let mut centiles = Agreement::default();
     let mut ages = Agreement::default();
     let mut both_absent = 0;
 
@@ -123,6 +129,7 @@ fn uk_who_sds_matches_r_vectors_and_python() {
                 calculate(corrected_age),
                 vector.corrected_sds,
                 python.corrected_sds,
+                python.corrected_centile,
                 &python.corrected_measurement_error,
             ),
             (
@@ -130,10 +137,11 @@ fn uk_who_sds_matches_r_vectors_and_python() {
                 calculate(chronological_age),
                 vector.chronological_sds,
                 python.chronological_sds,
+                python.chronological_centile,
                 &python.chronological_measurement_error,
             ),
         ];
-        for (kind, rust, r, py, py_error) in kinds {
+        for (kind, rust, r, py, py_centile, py_error) in kinds {
             let rust_sds = rust.as_ref().ok().map(|r: &SdsResult| r.sds);
             let label = format!(
                 "case {i} {kind} ({} {} {})",
@@ -164,6 +172,24 @@ fn uk_who_sds_matches_r_vectors_and_python() {
                     if (result.sds - theirs).abs() > PYTHON_TOLERANCE {
                         failures.push(format!("{label}: Python {theirs}, Rust {}", result.sds));
                     }
+                    let ours = opengrowth::sds::centile(result.sds);
+                    match py_centile {
+                        Some(theirs) => {
+                            centiles.record(ours, theirs);
+                            let agrees = if SAME_MATHS_LIBRARY_AS_SCIPY {
+                                ours.to_bits() == theirs.to_bits()
+                            } else {
+                                (ours - theirs).abs() <= PYTHON_TOLERANCE
+                            };
+                            if !agrees {
+                                failures
+                                    .push(format!("{label}: Python centile {theirs}, Rust {ours}"));
+                            }
+                        }
+                        None => {
+                            failures.push(format!("{label}: Python has no centile, Rust {ours}"))
+                        }
+                    }
                 }
                 (Err(error), None) => {
                     if py_error.as_deref() != Some(error.to_string().as_str()) {
@@ -186,6 +212,7 @@ fn uk_who_sds_matches_r_vectors_and_python() {
         "SDS vs Python (libm pow):  {}",
         vs_python_libm_pow.summary()
     );
+    eprintln!("centile vs Python:         {}", centiles.summary());
     eprintln!("absent in both R and Rust: {both_absent}");
     assert!(
         failures.is_empty(),

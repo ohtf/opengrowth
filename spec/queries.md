@@ -74,10 +74,10 @@ Needed: confirmation after `R5` measures actual agreement across the fixture cor
 
 - **SDS: exceeded.** All 7,721 UK-WHO SDS on the R-vector corpus are bit-identical to Python on Linux, so the 1e-9 tolerance holds with zero margin used. Keep 1e-9 as the gate so that a platform with a different `pow` still passes, and report the bit-exact rate alongside it.
 - **Ages: bit-identical** (7,968 of 7,968).
-- **Centiles: not yet confirmed.** Unrounded centiles differ by about 1e-15; the four-decimal comparison needs the centile-band and response work (`R11`, `R12`).
+- **Centiles: bit-identical** (2026-11-18), unrounded, for 7,721 of 7,721, since the normal CDF became SciPy's own (`Q5`, `R32`).
 - **Chart coordinates: not yet measured** (`R13`).
 
-Still open for the other references and for centiles and chart coordinates.
+Still open for the other references and for chart coordinates.
 
 ---
 
@@ -103,6 +103,17 @@ Needed: an experiment evaluating candidate Rust implementations against a SciPy-
 `libm` is the rust-lang-maintained port of musl's maths library (MIT/Apache-2.0); AS241 is a published algorithm with no licence encumbrance.
 
 **Working decision:** CDF A and AS241, now in the engine, with the measured bounds asserted by the test. This is not yet closed, because byte-identical API output (Profile B) would favour bit-exact agreement. The next step is a candidate porting SciPy's own `ndtr` and `ndtri` (Cephes, BSD-3-Clause via SciPy's `xsf`), measured the same way. Adopt it only if it is bit-exact or close to it, and only after the licence review.
+
+**Decision, 2026-11-18 (`R32`):** SciPy's own `ndtr` and `ndtri`, translated line for line from `xsf` at the commit SciPy 1.18.1 builds (`src/normal/cephes.rs`), replace CDF A and AS241.
+
+| Candidate | Max relative difference from SciPy | Bit-exact |
+| --- | --- | --- |
+| CDF: SciPy `ndtr`, translated | 0 | 100%: 11,969 of 11,969, \|z\| up to 40 |
+| PPF: SciPy `ndtri`, translated | 0 | 100%: 4,330 of 4,330 |
+
+Licence review: the code is the Cephes Math Library by Stephen L. Moshier, which `xsf` distributes under BSD-3-Clause with the author's permission (`xsf` `LICENSES_bundled.txt`), in SciPy's 2024 C++ translation, also BSD-3-Clause. BSD-3-Clause is compatible with AGPL-3.0-or-later. The file keeps its licence, and binary distributions must reproduce the notice (`NOTICE.md`).
+
+With this, unrounded centiles are bit-identical to Python (`Q4`). Bit-identity depends on the platform `exp` and `log` matching SciPy's, as SDS already depends on `pow`: true on Linux with glibc, unmeasured elsewhere (`R34`). The `libm` crate is no longer an engine dependency. **Closed.**
 
 ---
 
