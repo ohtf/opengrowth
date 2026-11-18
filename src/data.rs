@@ -24,6 +24,13 @@ pub enum TableId {
     Uk90Child,
     /// WHO 2007 growth reference, 5 to 19 years (monthly).
     Who2007Child,
+    /// The earlier WHO 2006 infant table, birth to 2 years, which the CDC
+    /// reference uses for height and weight.
+    Who2006InfantPre2025,
+    /// CDC infant head circumference (with height and weight), birth to 3 years.
+    CdcInfant,
+    /// CDC 2000, 2 to 20 years, with the extended-BMI sigma.
+    CdcChild,
 }
 
 impl TableId {
@@ -36,6 +43,9 @@ impl TableId {
             Self::Who2006Child => "who-2006-child",
             Self::Uk90Child => "uk90-child",
             Self::Who2007Child => "who-2007-child",
+            Self::Who2006InfantPre2025 => "who-2006-infant-pre-2025",
+            Self::CdcInfant => "cdc-infant",
+            Self::CdcChild => "cdc-child",
         }
     }
 }

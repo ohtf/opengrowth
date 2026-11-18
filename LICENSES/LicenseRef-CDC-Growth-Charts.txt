@@ -1,0 +1,18 @@
+CDC 2000 growth charts data
+
+The CDC 2000 growth charts (Kuczmarski RJ, Ogden CL, Guo SS, et al. 2000
+CDC Growth Charts for the United States: methods and development. Vital
+Health Stat 11. 2002;(246):1-190) were produced by the National Center for
+Health Statistics of the US Centers for Disease Control and Prevention. As
+a work of the United States federal government, they are not subject to
+copyright in the United States (17 U.S.C. 105).
+
+These files are copied unmodified from the rcpchgrowth Python package
+(version 4.6.5, published on PyPI by the Royal College of Paediatrics and
+Child Health), which transcribed them, including the extended BMI-for-age
+sigma values, from the CDC's published tables.
+
+The terms that apply to their redistribution in software outside the
+United States have not yet been recorded by opengrowth (roadmap item R2).
+The opengrowth software licence (AGPL-3.0-or-later) does not apply to these
+files and grants no rights in them.

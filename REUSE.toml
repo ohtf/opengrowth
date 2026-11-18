@@ -46,8 +46,13 @@ SPDX-FileCopyrightText = ["World Health Organization", "Royal College of Paediat
 SPDX-License-Identifier = "LicenseRef-WHO-Growth-Reference-2007"
 
 [[annotations]]
-path = ["data/who/who_infants.json", "data/who/who_children.json"]
+path = ["data/who/who_infants.json", "data/who/who_children.json", "data/who/pre_2025/who_infants.json"]
 precedence = "override"
 SPDX-FileCopyrightText = ["World Health Organization", "Royal College of Paediatrics and Child Health"]
 SPDX-License-Identifier = "LicenseRef-WHO-Child-Growth-Standards"
 
+[[annotations]]
+path = ["data/cdc_infants.json", "data/cdc2-20.json"]
+precedence = "override"
+SPDX-FileCopyrightText = ["Centers for Disease Control and Prevention, National Center for Health Statistics", "Royal College of Paediatrics and Child Health"]
+SPDX-License-Identifier = "LicenseRef-CDC-Growth-Charts"

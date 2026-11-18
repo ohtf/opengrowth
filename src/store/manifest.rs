@@ -71,6 +71,10 @@ const WHO_TERMS: Terms = Terms::Unrecorded {
     note: "described upstream as open data; terms to be recorded in R2",
 };
 
+const CDC_TERMS: Terms = Terms::Unrecorded {
+    note: "CDC 2000 growth charts, a US federal government work (CDC National Center for Health Statistics); terms to be recorded in R2",
+};
+
 const ORIGIN: &str = "rcpchgrowth 4.6.5 (PyPI), rcpchgrowth/data_tables";
 
 /// Every table opengrowth can load.
@@ -114,6 +118,30 @@ pub const MANIFEST: &[TableSource] = &[
         title: "WHO 2007 growth reference, 5 to 19 years, monthly",
         origin: ORIGIN,
         terms: WHO_TERMS,
+    },
+    TableSource {
+        id: TableId::Who2006InfantPre2025,
+        file: "who/pre_2025/who_infants.json",
+        sha256: "4f8b3e3d1dc9eed9baf2ce9265ea836e0d033614c101f0325d4d7753996f044e",
+        title: "WHO 2006 growth standard, birth to 2 years, the earlier table the CDC reference uses",
+        origin: ORIGIN,
+        terms: WHO_TERMS,
+    },
+    TableSource {
+        id: TableId::CdcInfant,
+        file: "cdc_infants.json",
+        sha256: "c0b0556d48e33b6d6f3c6f5d455ed672739089a7fbf0075a257886da48a40b36",
+        title: "CDC infant, birth to 3 years (head circumference to 3 years)",
+        origin: ORIGIN,
+        terms: CDC_TERMS,
+    },
+    TableSource {
+        id: TableId::CdcChild,
+        file: "cdc2-20.json",
+        sha256: "6284ddf33ac305047f5ddb3f4d68c418c025dcb9e070ddcc3e23bff6880a58ef",
+        title: "CDC 2000, 2 to 20 years, with the extended-BMI sigma",
+        origin: ORIGIN,
+        terms: CDC_TERMS,
     },
 ];
 
