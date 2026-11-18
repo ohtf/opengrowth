@@ -25,6 +25,7 @@
 #![warn(missing_docs)]
 
 pub mod advice;
+pub mod chart;
 pub mod data;
 pub mod dates;
 pub mod interpolation;

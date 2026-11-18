@@ -401,8 +401,9 @@ pub struct RouteError {
     /// `value_error` or `lookup_error`.
     #[serde(rename = "type")]
     pub kind: &'static str,
-    /// Upstream puts a label here, such as `"observation_value"`, not the input.
-    pub input: &'static str,
+    /// Upstream puts a label here, such as `"observation_value"`, not the
+    /// input; or `null` for an error converted from a plain-string detail.
+    pub input: Value,
 }
 
 impl RouteError {
@@ -413,7 +414,19 @@ impl RouteError {
             loc: vec!["body".into()],
             msg: msg.into(),
             kind: "value_error",
-            input,
+            input: Value::String(input.to_owned()),
+        }
+    }
+
+    /// A route that raised `HTTPException` with a plain-string detail, which
+    /// upstream's `consistent_http_exception_handler` rewrites to this shape.
+    #[must_use]
+    pub fn request(msg: impl Into<String>) -> Self {
+        Self {
+            loc: vec!["request".into()],
+            msg: msg.into(),
+            kind: "value_error",
+            input: Value::Null,
         }
     }
 }
@@ -433,7 +446,7 @@ pub struct InlineError {
     kind: &'static str,
     loc: Vec<LocItem>,
     msg: String,
-    input: &'static str,
+    input: Value,
     ctx: Option<Value>,
     url: Option<String>,
 }
@@ -453,3 +466,94 @@ impl From<RouteError> for InlineError {
 
 /// Pydantic request-validation errors, as FastAPI returns them.
 pub type ValidationErrors = Detail<Vec<FieldError>>;
+
+/// One point of a chart line: `Data`.
+#[derive(Debug, Serialize)]
+struct ChartPointObject {
+    l: f64,
+    x: f64,
+    y: Option<f64>,
+}
+
+/// One chart line: `Centile`.
+#[derive(Debug, Serialize)]
+struct ChartLineObject {
+    sds: f64,
+    centile: f64,
+    data: Vec<ChartPointObject>,
+}
+
+/// `MeasurementMethod`: every key written, `null` except the one requested.
+#[derive(Debug, Default, Serialize)]
+struct ChartMethods {
+    height: Option<Vec<ChartLineObject>>,
+    weight: Option<Vec<ChartLineObject>>,
+    ofc: Option<Vec<ChartLineObject>>,
+    bmi: Option<Vec<ChartLineObject>>,
+}
+
+/// `Sex`: both keys written, `null` except the one requested.
+#[derive(Debug, Default, Serialize)]
+struct ChartSexes {
+    male: Option<ChartMethods>,
+    female: Option<ChartMethods>,
+}
+
+/// `Centile_Data`, with `provenance` first as on upstream's newer servers.
+#[derive(Debug, Serialize)]
+pub struct ChartResponse {
+    provenance: Provenance,
+    centile_data: Vec<std::collections::BTreeMap<&'static str, ChartSexes>>,
+}
+
+impl ChartResponse {
+    /// The response for a calculated chart.
+    #[must_use]
+    pub fn new(
+        chart: &crate::chart::Chart,
+        method: MeasurementMethod,
+        sex: Sex,
+        provenance: Provenance,
+    ) -> Self {
+        let centile_data = chart
+            .segments
+            .iter()
+            .map(|segment| {
+                let lines = segment
+                    .lines
+                    .iter()
+                    .map(|line| ChartLineObject {
+                        sds: line.sds,
+                        centile: line.centile,
+                        data: line
+                            .data
+                            .iter()
+                            .map(|p| ChartPointObject {
+                                l: p.label,
+                                x: p.x,
+                                y: p.y,
+                            })
+                            .collect(),
+                    })
+                    .collect();
+                let mut methods = ChartMethods::default();
+                match method {
+                    MeasurementMethod::Height => methods.height = Some(lines),
+                    MeasurementMethod::Weight => methods.weight = Some(lines),
+                    MeasurementMethod::Ofc => methods.ofc = Some(lines),
+                    MeasurementMethod::Bmi => methods.bmi = Some(lines),
+                }
+                let mut sexes = ChartSexes::default();
+                match sex {
+                    Sex::Male => sexes.male = Some(methods),
+                    Sex::Female => sexes.female = Some(methods),
+                }
+                std::iter::once((segment.name, sexes)).collect()
+            })
+            .collect();
+        Self {
+            provenance,
+            centile_data,
+        }
+    }
+}

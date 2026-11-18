@@ -34,31 +34,9 @@ with contextlib.redirect_stdout(io.StringIO()):
 from rcpchgrowth.global_functions import measurement_from_sds  # noqa: E402
 from rcpchgrowth.date_calculations import corrected_decimal_age  # noqa: E402
 
-from _common import INDEPENDENT, write  # noqa: E402
+from _common import INDEPENDENT, RECORDED_HEADERS, mask_provenance, write  # noqa: E402
 
 client = TestClient(main.app, raise_server_exceptions=False)
-RECORDED_HEADERS = ("content-type", "allow", "location", "x-git-revision")
-
-
-def mask_provenance(body: str) -> str:
-    """Remove every `"provenance": <value>` member, and its separating comma."""
-    decoder = json.JSONDecoder()
-    key = '"provenance":'
-    out = body
-    start = 0
-    while (i := out.find(key, start)) != -1:
-        if i == 0 or out[i - 1] not in "{,":
-            start = i + len(key)
-            continue
-        _, end = decoder.raw_decode(out, i + len(key))
-        if end < len(out) and out[end] == ",":
-            out = out[:i] + out[end + 1 :]
-        elif out[i - 1] == ",":
-            out = out[: i - 1] + out[end:]
-        else:
-            out = out[:i] + out[end:]
-        start = max(i - 1, 0)
-    return out
 
 
 def call(name, path="/uk-who/calculation", body=None, raw=None, method="POST", headers=None, full=True):

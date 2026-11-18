@@ -12,77 +12,17 @@
 
 mod common;
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use axum::body::Body;
-use axum::http::Request;
-use common::{DATA_DIR_ENV, Golden, mask_provenance, read_json, sha256_hex};
-use http_body_util::BodyExt;
+use common::http::{Case, assert_no_failures, identical_including_provenance, problems, replay};
+use common::{DATA_DIR_ENV, Golden, read_json};
 use opengrowth::server::{AppState, router};
 use opengrowth::store::ReferenceStore;
-use tower::ServiceExt;
-
-#[derive(serde::Deserialize)]
-struct Case {
-    name: String,
-    method: String,
-    path: String,
-    request_headers: BTreeMap<String, String>,
-    request_body: String,
-    status: u16,
-    headers: BTreeMap<String, String>,
-    body_sha256: String,
-    masked_sha256: String,
-    body: Option<String>,
-}
 
 #[derive(serde::Deserialize)]
 struct Cases {
     curated: Vec<Case>,
     r_vectors: Vec<Case>,
-}
-
-struct Outcome {
-    status: u16,
-    headers: BTreeMap<String, String>,
-    body: String,
-}
-
-async fn replay(app: axum::Router, case: &Case) -> Outcome {
-    let mut request = Request::builder()
-        .method(case.method.as_str())
-        .uri(case.path.as_str())
-        .header("host", "testserver")
-        .header("content-type", "application/json");
-    for (name, value) in &case.request_headers {
-        request = request.header(name.as_str(), value.as_str());
-    }
-    let request = request
-        .body(Body::from(case.request_body.clone()))
-        .expect("request");
-    let response = app.oneshot(request).await.expect("infallible");
-    let status = response.status().as_u16();
-    let headers = ["content-type", "allow", "location", "x-git-revision"]
-        .into_iter()
-        .filter_map(|h| {
-            response
-                .headers()
-                .get(h)
-                .map(|v| (h.to_owned(), v.to_str().unwrap_or("").to_owned()))
-        })
-        .collect();
-    let bytes = response
-        .into_body()
-        .collect()
-        .await
-        .expect("body")
-        .to_bytes();
-    Outcome {
-        status,
-        headers,
-        body: String::from_utf8(bytes.to_vec()).expect("UTF-8 body"),
-    }
 }
 
 /// Cases where opengrowth deliberately differs from upstream, each a
@@ -101,34 +41,15 @@ const KNOWN_DIFFERENCES: &[(&str, &str)] = &[
     ),
 ];
 
-/// The first point where two strings differ, with context.
-fn first_difference(expected: &str, actual: &str) -> String {
-    let at = expected
-        .char_indices()
-        .zip(actual.chars())
-        .find(|((_, a), b)| a != b)
-        .map_or(expected.len().min(actual.len()), |((i, _), _)| i);
-    let from = at.saturating_sub(80);
-    let window = |s: &str| s.get(from..(at + 80).min(s.len())).unwrap_or("").to_owned();
-    format!(
-        "at byte {at}:\n    expected …{}…\n    actual   …{}…",
-        window(expected),
-        window(actual)
-    )
-}
-
 #[tokio::test]
 async fn uk_who_http_matches_fastapi_byte_for_byte() {
     let dir = std::env::var_os(DATA_DIR_ENV).map(std::path::PathBuf::from);
     let store = || ReferenceStore::standard(dir.as_deref()).expect("tables load");
-    let open = router(Arc::new(AppState {
-        store: store(),
-        authorization_key: None,
-    }));
-    let locked = router(Arc::new(AppState {
-        store: store(),
-        authorization_key: Some("test-key".to_owned()),
-    }));
+    let open = router(Arc::new(AppState::new(store(), None)));
+    let locked = router(Arc::new(AppState::new(
+        store(),
+        Some("test-key".to_owned()),
+    )));
 
     let golden: Golden<Cases> = read_json("expected/http-uk-who.json");
     eprintln!("reference server environment: {}", golden.environment);
@@ -160,44 +81,14 @@ async fn uk_who_http_matches_fastapi_byte_for_byte() {
             }
             continue;
         }
-        let mut problems = Vec::new();
-        if outcome.status != case.status {
-            problems.push(format!("status {} != {}", outcome.status, case.status));
-        }
-        if outcome.headers != case.headers {
-            problems.push(format!(
-                "headers {:?} != {:?}",
-                outcome.headers, case.headers
-            ));
-        }
-        let masked = mask_provenance(&outcome.body);
-        if sha256_hex(outcome.body.as_bytes()) == case.body_sha256 {
+        if identical_including_provenance(case, &outcome) {
             identical += 1;
         }
-        if sha256_hex(masked.as_bytes()) == case.masked_sha256 {
+        let found = problems(case, &outcome);
+        if found.is_empty() {
             masked_identical += 1;
         } else {
-            match &case.body {
-                Some(expected) => {
-                    problems.push(first_difference(&mask_provenance(expected), &masked))
-                }
-                None => problems.push(format!(
-                    "masked body differs (digest only); ours starts {}",
-                    &masked[..masked.len().min(300)]
-                )),
-            }
-        }
-        if outcome.status == 200 && outcome.body.contains("\"provenance\"") {
-            let ok = outcome.body.contains("\"growth_reference\":\"uk-who\"")
-                && outcome
-                    .body
-                    .contains("\"calculation_engine\":{\"name\":\"opengrowth\"");
-            if !ok {
-                problems.push("provenance does not identify uk-who and opengrowth".to_owned());
-            }
-        }
-        if !problems.is_empty() {
-            failures.push(format!("{}: {}", case.name, problems.join("; ")));
+            failures.push(format!("{}: {}", case.name, found.join("; ")));
         }
     }
     eprintln!(
@@ -205,16 +96,5 @@ async fn uk_who_http_matches_fastapi_byte_for_byte() {
         all.len(),
         KNOWN_DIFFERENCES.len()
     );
-    assert!(
-        failures.is_empty(),
-        "{} of {} cases differ:\n{}",
-        failures.len(),
-        all.len(),
-        failures
-            .iter()
-            .take(25)
-            .cloned()
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
+    assert_no_failures(&failures, all.len());
 }

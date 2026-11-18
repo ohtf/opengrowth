@@ -5,6 +5,9 @@
 
 #![allow(dead_code, reason = "each test binary uses a subset")]
 
+#[cfg(feature = "server")]
+pub mod http;
+
 use std::path::{Path, PathBuf};
 
 use serde::de::DeserializeOwned;

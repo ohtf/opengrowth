@@ -15,9 +15,12 @@ pub mod pyjson;
 pub mod response;
 pub mod validate;
 
+use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use crate::advice::CentileFormat;
+use crate::chart::{CentileSpec, ChartError, chart};
 use crate::dates::{calendar_age, corrected_decimal_age};
 use crate::measurement::{MeasureError, MeasurementInput, measure};
 use crate::store::ReferenceStore;
@@ -36,9 +39,10 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use response::{
-    Detail, EchoedGestation, InlineError, MeasurementObject, Provenance, RouteError, TableUsed,
+    ChartResponse, Detail, EchoedGestation, InlineError, MeasurementObject, Provenance, RouteError,
+    TableUsed,
 };
-use validate::{BirthFields, FieldError, LocItem, ObservationFields};
+use validate::{BirthFields, CentileFormatRequest, FieldError, LocItem, ObservationFields};
 
 /// Most observations a bulk request may carry, as upstream.
 pub const MAX_BULK_OBSERVATIONS: usize = 200;
@@ -50,6 +54,24 @@ pub struct AppState {
     pub store: ReferenceStore,
     /// If set, every request except `/` must send `Authorization: Bearer <key>`.
     pub authorization_key: Option<String>,
+    /// Rendered responses for the named chart formats, calculated on first
+    /// request. Upstream serves these from files; opengrowth calculates them
+    /// with the same engine and tables as its measurements.
+    chart_cache: Mutex<HashMap<ChartKey, Arc<Vec<u8>>>>,
+}
+
+type ChartKey = (CentileFormat, MeasurementMethod, Sex);
+
+impl AppState {
+    /// State serving `store`, optionally requiring a bearer token.
+    #[must_use]
+    pub fn new(store: ReferenceStore, authorization_key: Option<String>) -> Self {
+        Self {
+            store,
+            authorization_key,
+            chart_cache: Mutex::new(HashMap::new()),
+        }
+    }
 }
 
 /// The application router.
@@ -63,6 +85,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route(
             "/uk-who/bulk-calculation",
             post(uk_who_bulk_calculation).fallback(method_not_allowed),
+        )
+        .route(
+            "/uk-who/chart-coordinates",
+            post(uk_who_chart_coordinates).fallback(method_not_allowed),
         );
     for path in NOT_YET_IMPLEMENTED {
         app = app.route(path, post(not_implemented).fallback(method_not_allowed));
@@ -88,7 +114,6 @@ pub async fn serve(address: SocketAddr, state: Arc<AppState>) -> std::io::Result
 
 /// The other upstream operations, routed so they report 501 rather than 404.
 const NOT_YET_IMPLEMENTED: &[&str] = &[
-    "/uk-who/chart-coordinates",
     "/uk-who/fictional-child-data",
     "/turners-syndrome/calculation",
     "/turners-syndrome/bulk-calculation",
@@ -165,8 +190,10 @@ async fn not_found(request: Request) -> Response {
     let path = request.uri().path();
     if path != "/" && path.ends_with('/') {
         let trimmed = path.trim_end_matches('/');
-        let known = matches!(trimmed, "/uk-who/calculation" | "/uk-who/bulk-calculation")
-            || NOT_YET_IMPLEMENTED.contains(&trimmed);
+        let known = matches!(
+            trimmed,
+            "/uk-who/calculation" | "/uk-who/bulk-calculation" | "/uk-who/chart-coordinates"
+        ) || NOT_YET_IMPLEMENTED.contains(&trimmed);
         if known {
             let host = request
                 .headers()
@@ -257,7 +284,7 @@ fn parse_body(bytes: &Bytes) -> Result<Value, Box<Response>> {
 
 /// A route-level failure: an error to report, or a response to send as is.
 enum Rejection {
-    Report(RouteError),
+    Report(Box<RouteError>),
     Respond(Box<Response>),
 }
 
@@ -270,7 +297,9 @@ fn validate_observation_value(
     birth: &BirthFields,
     observation: &ObservationFields,
 ) -> Result<(Gestation, Sex, MeasurementMethod), Rejection> {
-    let report = |msg: String| Rejection::Report(RouteError::value_error(msg, "observation_value"));
+    let report = |msg: String| {
+        Rejection::Report(Box::new(RouteError::value_error(msg, "observation_value")))
+    };
     // Upstream computes `(weeks * 7) + days` with whatever it was sent, so a
     // null reaches Python's arithmetic. The TypeError text is its message.
     let (weeks, days) = match (birth.gestation_weeks, birth.gestation_days) {
@@ -374,10 +403,10 @@ fn calculate_one(
             return Err(Rejection::Respond(Box::new(data_unavailable(&error))));
         }
         Err(MeasureError::Raised(message)) => {
-            return Err(Rejection::Report(RouteError::value_error(
+            return Err(Rejection::Report(Box::new(RouteError::value_error(
                 message,
                 "calculation_error",
-            )));
+            ))));
         }
         Err(error @ MeasureError::ReferenceNotImplemented(_)) => {
             return Err(Rejection::Respond(Box::new(detail(
@@ -447,7 +476,7 @@ async fn uk_who_calculation(State(state): State<Arc<AppState>>, body: Bytes) -> 
         &request.observation,
     ) {
         Ok(bytes) => raw_json(StatusCode::OK, bytes),
-        Err(Rejection::Report(error)) => route_failed(error),
+        Err(Rejection::Report(error)) => route_failed(*error),
         Err(Rejection::Respond(response)) => *response,
     }
 }
@@ -484,7 +513,7 @@ async fn uk_who_bulk_calculation(State(state): State<Arc<AppState>>, body: Bytes
         match calculate_one(&state, GrowthReference::UkWho, &request.birth, observation) {
             Ok(bytes) => out.extend_from_slice(&bytes),
             Err(Rejection::Report(error)) => {
-                out.extend_from_slice(&pyjson::to_vec(&InlineError::from(error)));
+                out.extend_from_slice(&pyjson::to_vec(&InlineError::from(*error)));
             }
             Err(Rejection::Respond(response)) => return *response,
         }
@@ -493,10 +522,96 @@ async fn uk_who_bulk_calculation(State(state): State<Arc<AppState>>, body: Bytes
     raw_json(StatusCode::OK, out)
 }
 
+/// Python's `str()` of a list of floats, for messages that embed one.
+fn python_list(values: &[f64]) -> String {
+    let items: Vec<String> = values
+        .iter()
+        .map(|&v| crate::pyfmt::python_repr(v))
+        .collect();
+    format!("[{}]", items.join(", "))
+}
+
+async fn uk_who_chart_coordinates(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
+    let value = match parse_body(&body) {
+        Ok(v) => v,
+        Err(response) => return *response,
+    };
+    let request = match validate::chart_coordinate_request(&value) {
+        Ok(r) => r,
+        Err(errors) => return validation_failed(errors),
+    };
+    let sex: Sex = request.sex.parse().expect("validated literal");
+    let method: MeasurementMethod = request
+        .measurement_method
+        .parse()
+        .expect("validated literal");
+    let render = |spec: CentileSpec<'_>| -> Result<Vec<u8>, ChartError> {
+        let chart = chart(&state.store, GrowthReference::UkWho, method, sex, spec)?;
+        let provenance = Provenance::new(
+            GrowthReference::UkWho.as_str(),
+            tables_used(&state.store, &chart.tables_read),
+        );
+        Ok(pyjson::to_vec(&ChartResponse::new(
+            &chart, method, sex, provenance,
+        )))
+    };
+    let not_found = |name: &str| {
+        route_failed(RouteError::request(format!(
+            "Item not found: chart-data/{name}-uk-who-{sex}-{method}.json"
+        )))
+    };
+
+    let result = match &request.centile_format {
+        CentileFormatRequest::Custom(values) => match render(CentileSpec::Custom {
+            values,
+            is_sds: request.is_sds,
+        }) {
+            Ok(bytes) => Ok(Arc::new(bytes)),
+            Err(ChartError::NonFinite(_)) => {
+                return route_failed(RouteError::request(format!(
+                    "Error creating {sex} {method} UK-WHO chart on the server, using {} centile format.",
+                    python_list(values)
+                )));
+            }
+            Err(error) => Err(error),
+        },
+        CentileFormatRequest::Named(name) => match CentileFormat::from_name(name) {
+            None => return not_found(name),
+            Some(format) => {
+                let key = (format, method, sex);
+                let cached = state
+                    .chart_cache
+                    .lock()
+                    .expect("cache lock")
+                    .get(&key)
+                    .cloned();
+                match cached {
+                    Some(bytes) => Ok(bytes),
+                    None => render(CentileSpec::Named(format)).map(|bytes| {
+                        let bytes = Arc::new(bytes);
+                        state
+                            .chart_cache
+                            .lock()
+                            .expect("cache lock")
+                            .insert(key, bytes.clone());
+                        bytes
+                    }),
+                }
+            }
+        },
+        CentileFormatRequest::Null => return not_found("None"),
+    };
+    match result {
+        Ok(bytes) => raw_json(StatusCode::OK, bytes.as_ref().clone()),
+        Err(ChartError::Data(error)) => data_unavailable(&error),
+        Err(error) => detail(StatusCode::NOT_IMPLEMENTED, &error.to_string()),
+    }
+}
+
 impl IntoResponse for Rejection {
     fn into_response(self) -> Response {
         match self {
-            Self::Report(error) => route_failed(error),
+            Self::Report(error) => route_failed(*error),
             Self::Respond(response) => *response,
         }
     }

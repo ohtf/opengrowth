@@ -43,10 +43,10 @@ pub fn run(context: &Context, args: &Args) -> anyhow::Result<ExitCode> {
             dir.source
         );
     }
-    let state = Arc::new(AppState {
+    let state = Arc::new(AppState::new(
         store,
-        authorization_key: args.authorization_key.clone().filter(|k| !k.is_empty()),
-    });
+        args.authorization_key.clone().filter(|k| !k.is_empty()),
+    ));
 
     let mut runtime = tokio::runtime::Builder::new_multi_thread();
     runtime.enable_all();

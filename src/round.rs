@@ -13,8 +13,44 @@
 //! and `str::parse::<f64>` is correctly rounded, which together reproduce
 //! CPython's `double_round`. The conformance suite checks this against values
 //! captured from CPython, including the classic `round(2.675, 2) == 2.67`.
+//!
+//! A NumPy `float64`, which is what SciPy functions return, has its own
+//! `round` ([`numpy_round`]), and Python's `round()` calls it instead.
+//! Upstream values are one or the other depending on where they came from,
+//! so code that reproduces upstream rounding carries the kind with the value
+//! ([`PyFloat`]).
 
 use std::fmt::Write;
+
+/// A float as the upstream engine holds it: a Python `float` or a NumPy
+/// `float64`. The value and its printed form are the same either way; only
+/// rounding differs.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PyFloat {
+    /// A Python `float`.
+    Builtin(f64),
+    /// A NumPy `float64`, as returned by SciPy, or by arithmetic with one.
+    NumPy(f64),
+}
+
+impl PyFloat {
+    /// The value.
+    #[must_use]
+    pub const fn value(self) -> f64 {
+        match self {
+            Self::Builtin(x) | Self::NumPy(x) => x,
+        }
+    }
+
+    /// Python's `round(self, ndigits)`, which keeps the kind.
+    #[must_use]
+    pub fn round(self, ndigits: usize) -> Self {
+        match self {
+            Self::Builtin(x) => Self::Builtin(python_round(x, ndigits)),
+            Self::NumPy(x) => Self::NumPy(numpy_round(x, ndigits)),
+        }
+    }
+}
 
 /// Rounds like Python's `round(x, ndigits)` for `ndigits` in `0..=17`.
 ///
@@ -32,9 +68,37 @@ pub fn python_round(x: f64, ndigits: usize) -> f64 {
         .expect("a formatted finite f64 always parses back")
 }
 
+/// Rounds like Python's `round(x, decimals)` on a NumPy `float64`, for
+/// `decimals` in `0..=8`: scale by a power of ten, round half to even, and
+/// scale back, as NumPy's `round` does.
+///
+/// This differs from [`python_round`] where the scaling lands exactly on a
+/// tie that the exact value of `x` is not on. `42.34725` is stored just above
+/// the tie, so a Python float rounds to `42.3473` at four places; but
+/// `42.34725 * 10000` is exactly `423472.5` in floating point, so a `float64`
+/// rounds to `42.3472`. The sign of zero is kept, as NumPy keeps it.
+#[must_use]
+pub fn numpy_round(x: f64, decimals: usize) -> f64 {
+    const POWERS_OF_TEN: [f64; 9] = [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8];
+    debug_assert!(decimals <= 8, "numpy_round supports up to 8 decimals");
+    let scale = POWERS_OF_TEN[decimals];
+    (x * scale).round_ties_even() / scale
+}
+
+/// Python's `round(x)` with no `ndigits`, for a Python float or a NumPy
+/// `float64` alike: the nearest integer, ties to even. Python returns an
+/// `int`, which has no negative zero, so neither does this.
+///
+/// Only for finite `x`; Python raises for infinity and NaN.
+#[must_use]
+pub fn python_round_int(x: f64) -> f64 {
+    let rounded = x.round_ties_even();
+    if rounded == 0.0 { 0.0 } else { rounded }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::python_round;
+    use super::{PyFloat, numpy_round, python_round, python_round_int};
 
     #[test]
     fn matches_known_cpython_results() {
@@ -70,5 +134,26 @@ mod tests {
     fn non_finite_values_pass_through() {
         assert!(python_round(f64::NAN, 4).is_nan());
         assert_eq!(python_round(f64::INFINITY, 4), f64::INFINITY);
+        assert!(numpy_round(f64::NAN, 4).is_nan());
+        assert_eq!(numpy_round(f64::NEG_INFINITY, 4), f64::NEG_INFINITY);
+    }
+
+    #[test]
+    fn numpy_and_python_rounding_differ_at_a_scaled_tie() {
+        // Both expected values are what Python 3.13 with NumPy 2.5 returns.
+        assert_eq!(python_round(42.347_25, 4), 42.3473);
+        assert_eq!(numpy_round(42.347_25, 4), 42.3472);
+        assert_eq!(PyFloat::NumPy(42.347_25).round(4), PyFloat::NumPy(42.3472));
+        assert_eq!(
+            PyFloat::Builtin(42.347_25).round(4),
+            PyFloat::Builtin(42.3473)
+        );
+    }
+
+    #[test]
+    fn rounding_to_an_integer_never_gives_negative_zero() {
+        assert_eq!(python_round_int(-0.25).to_bits(), 0.0_f64.to_bits());
+        assert_eq!(python_round_int(-2.5), -2.0);
+        assert_eq!(python_round_int(3.5), 4.0);
     }
 }

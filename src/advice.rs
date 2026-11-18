@@ -97,7 +97,7 @@ pub fn prematurity_comments(
 }
 
 /// A named collection of centile lines.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CentileFormat {
     /// 0.4, 2, 9, 25, 50, 75, 91, 98, 99.6: two-thirds of an SD apart (UK-WHO).
     ColeNineCentiles,
@@ -110,6 +110,19 @@ pub enum CentileFormat {
 }
 
 impl CentileFormat {
+    /// The collection for an upstream format name, if opengrowth has it.
+    /// `extended-who-centiles` is accepted upstream but has no data (`Q7`).
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "cole-nine-centiles" => Some(Self::ColeNineCentiles),
+            "three-percent-centiles" => Some(Self::ThreePercentCentiles),
+            "five-percent-centiles" => Some(Self::FivePercentCentiles),
+            "eighty-five-percent-centiles" => Some(Self::EightyFivePercentCentiles),
+            _ => None,
+        }
+    }
+
     /// The centiles in the collection, as upstream lists them.
     #[must_use]
     pub const fn centiles(self) -> &'static [f64] {

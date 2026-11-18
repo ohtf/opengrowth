@@ -32,8 +32,9 @@ One crate, `opengrowth`, with features: the engine (every module outside `store`
 - **The UK90 tables are for research only until UKRI grants a licence (`Q1`).** Never describe opengrowth as usable for patient care, and never publish it to a package registry, while `Q1` is open. Do not change files in `data/` except by copying a new verified source with a manifest update.
 - **Provenance reports what was computed, never what was requested.** A surface that derives provenance from its own routing has defeated the point. This is a safety control, not a convenience field.
 - **Use Python-compatible rounding.** `f64::round()` is half-away-from-zero; Python is half-to-even. Use `opengrowth::round::python_round`. Never let `f64::round()` reach an output field.
+- **Round as upstream's value type rounds.** Python's `round()` on a NumPy `float64` (anything from SciPy or `interp1d`, or arithmetic with one) uses NumPy's algorithm, which differs from CPython's at scaled ties such as `42.34725`. Where upstream's value may be NumPy, carry the kind with `round::PyFloat`. `round(x)` with no digits returns an `int`, so it never gives `-0.0`: use `round::python_round_int`.
 - **Parse floats exactly.** `serde_json` must keep its `float_roundtrip` feature; without it, parsed tables and goldens can be 1 ulp off and bit-identity with Python is lost. Don't add a JSON parser that lacks an exact mode.
-- **The HTTP API is byte-identical to upstream outside `provenance`.** Response field order follows the upstream Pydantic models, floats go through `pyjson`, and request validation follows Pydantic's order and messages. Any new difference goes into `KNOWN_DIFFERENCES` in `tests/http_uk_who.rs` and `spec/standard.md` section 6.3, with a reason.
+- **The HTTP API is byte-identical to upstream outside `provenance`.** Response field order follows the upstream Pydantic models, floats go through `pyjson`, and request validation follows Pydantic's order and messages. Any new difference goes into a `KNOWN_DIFFERENCES` list in the HTTP conformance tests (`tests/http_uk_who.rs`, `tests/http_uk_who_charts.rs`) and `spec/standard.md` section 6.3, with a reason.
 - **Keep the platform `pow`, `ln`, and `exp`.** They make SDS and centiles bit-identical to CPython and SciPy on Linux; the portable `libm` versions do not (`conformance/README.md`). `src/normal/cephes.rs` is SciPy's code translated line for line: never rearrange an expression in it, even into an equal one.
 - **Do not vendor restrictively licensed source material.** Reimplement from published method descriptions. Named exclusions are in `standard.md` section 3.4.
 - **Preterm and early-infant behaviour is the highest-risk area.** Changes there need clinical review, not just passing tests.
@@ -42,7 +43,7 @@ One crate, `opengrowth`, with features: the engine (every module outside `store`
 
 See [s/README.md](s/README.md). The main ones:
 
-- `s/test` - run the test suite (skips UK-WHO conformance, which needs reference tables)
+- `s/test` - run every test, conformance suites included, for the default build and for the engine alone
 - `s/lint` - format check and clippy
 - `s/deny` - dependency policy (licences, advisories, sources)
 - `s/conformance` - the differential suite against the R vectors, Python goldens, and SciPy grid

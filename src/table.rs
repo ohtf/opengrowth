@@ -48,6 +48,19 @@ pub enum Interpolation {
     LinearOnly,
 }
 
+/// How a lookup found its LMS values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Lookup {
+    /// From the row at the age.
+    Exact,
+    /// By cubic interpolation between four rows.
+    Cubic,
+    /// By linear interpolation between two rows. Upstream uses SciPy's
+    /// `interp1d`, so these values are NumPy floats there, which changes how
+    /// results calculated from them round ([`crate::round::PyFloat`]).
+    Linear,
+}
+
 /// A table could not be built or could not answer a lookup.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum TableError {
@@ -179,16 +192,30 @@ impl LmsTable {
     /// [`TableError::AgeOutOfRange`] if `age` is not an exact match and lies
     /// outside the tabulated range.
     pub fn lms_at(&self, age: f64, interpolation: Interpolation) -> Result<Lms, TableError> {
+        self.lookup(age, interpolation).map(|(lms, _)| lms)
+    }
+
+    /// As [`Self::lms_at`], and how the values were found.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::lms_at`].
+    pub fn lookup(
+        &self,
+        age: f64,
+        interpolation: Interpolation,
+    ) -> Result<(Lms, Lookup), TableError> {
         let index = self.nearest_lowest_index(age);
         let below = &self.points[index];
 
         if python_round(age, 4) == self.rounded_ages[index] {
-            return Ok(Lms {
+            let lms = Lms {
                 l: below.l,
                 m: below.m,
                 s: below.s,
                 sigma: below.sigma,
-            });
+            };
+            return Ok((lms, Lookup::Exact));
         }
 
         let out_of_range = || TableError::AgeOutOfRange {
@@ -213,21 +240,23 @@ impl LmsTable {
             let pick = |f: fn(&LmsPoint) -> f64| {
                 cubic_lagrange(age, ages, [f(two_below), f(below), f(above), f(two_above)])
             };
-            return Ok(Lms {
+            let lms = Lms {
                 l: pick(|p| p.l),
                 m: pick(|p| p.m),
                 s: pick(|p| p.s),
                 sigma: None,
-            });
+            };
+            return Ok((lms, Lookup::Cubic));
         }
 
         let pick = |lo: f64, hi: f64| linear(age, below.age, above.age, lo, hi);
-        Ok(Lms {
+        let lms = Lms {
             l: pick(below.l, above.l),
             m: pick(below.m, above.m),
             s: pick(below.s, above.s),
             sigma: below.sigma.zip(above.sigma).map(|(lo, hi)| pick(lo, hi)),
-        })
+        };
+        Ok((lms, Lookup::Linear))
     }
 }
 

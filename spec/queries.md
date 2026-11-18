@@ -75,9 +75,9 @@ Needed: confirmation after `R5` measures actual agreement across the fixture cor
 - **SDS: exceeded.** All 7,721 UK-WHO SDS on the R-vector corpus are bit-identical to Python on Linux, so the 1e-9 tolerance holds with zero margin used. Keep 1e-9 as the gate so that a platform with a different `pow` still passes, and report the bit-exact rate alongside it.
 - **Ages: bit-identical** (7,968 of 7,968).
 - **Centiles: bit-identical** (2026-11-18), unrounded, for 7,721 of 7,721, since the normal CDF became SciPy's own (`Q5`, `R32`).
-- **Chart coordinates: not yet measured** (`R13`).
+- **Chart coordinates: byte-identical** through the API for UK-WHO, 60 of 60 captured requests (2026-11-18). This needed NumPy's rounding wherever upstream rounds a NumPy float (`round::PyFloat`, `standard.md` section 5.1).
 
-Still open for the other references and for chart coordinates.
+Still open for the other references.
 
 ---
 
@@ -130,6 +130,8 @@ Needed: a decision, ideally informed by why those points are null in the first p
 
 **Working assumption:** investigate the cause first. A data fix is preferable to either schema change because it removes the problem instead of encoding it.
 
+**Overtaken, 2026-11-18:** at the pinned server (29bb4e9) upstream has already made `y` nullable (`Optional[float] = None`), so there is no `500` left to fix: null points serialise as `null`, and opengrowth emits them identically, as Profile B requires. The cause is known and is not a data defect: `measurement_for_z` returns `None` where `1 + L S z` is negative, so the LMS transform has no real answer at that extreme SDS. Upstream's schema comment says the same, and renderers leave a gap. Nothing remains to decide unless a consumer cannot handle `null`.
+
 ---
 
 ## Q7 - Should `extended-who-centiles` work?
@@ -140,6 +142,8 @@ Needed: a decision, ideally informed by why those points are null in the first p
 The chart request schema accepts `extended-who-centiles`, but no such asset is generated and the constant is not handled by the centile-band logic, so a request produces a `500`. Either the format should be implemented, or it should be removed from the accepted values and rejected with a `422`.
 
 **Working assumption:** implement it, since it is already advertised in the public schema and some integrator may have written it into a client. Confirm whether any client actually uses it before deciding.
+
+**Measured, 2026-11-18:** at the pinned server the request is a 422, not a 500: the server reads a stored file that was never generated, `Item not found: chart-data/extended-who-centiles-uk-who-{sex}-{method}.json`. opengrowth returns the same 422, byte for byte, until this is decided.
 
 ---
 

@@ -50,4 +50,4 @@ Reference tables are identified by checksum, not by name. A corrected or updated
 
 ## 6. Differences from the upstream API
 
-Every intentional difference from the RCPCH API is enumerated in three places, kept in step: `standard.md` section 6.3, the `KNOWN_DIFFERENCES` list in `tests/http_uk_who.rs`, and the migration notes in the documentation (`R30`). A difference that appears in only one of them is a defect.
+Every intentional difference from the RCPCH API is enumerated in three places, kept in step: `standard.md` section 6.3, the `KNOWN_DIFFERENCES` lists in the HTTP conformance tests (`tests/http_uk_who.rs`, `tests/http_uk_who_charts.rs`), and the migration notes in the documentation (`R30`). A difference that appears in only one of them is a defect.

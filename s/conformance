@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Run the conformance suites with their reports: R vectors, Python goldens, SciPy,
-# CPython, and the FastAPI HTTP replay. Uses the embedded tables; set
+# NumPy, CPython, and the FastAPI HTTP replays. Uses the embedded tables; set
 # OPENGROWTH_REFERENCE_DATA_DIR to layer imported files over them.
 set -euo pipefail
 exec cargo test --release --test uk_who_r_vectors --test http_uk_who --test normal_vs_scipy \
-  --test python_round --test python_repr "$@" -- --nocapture
+  --test python_round --test python_repr --test http_uk_who_charts "$@" -- --nocapture

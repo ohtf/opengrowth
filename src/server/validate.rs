@@ -795,6 +795,205 @@ fn zero_time(bytes: &[u8]) -> Result<bool, DateProblem> {
     Ok(hour == 0 && minute == 0 && second == 0 && fraction_zero)
 }
 
+/// What `centile_format` asked for.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CentileFormatRequest {
+    /// One of the literal names, which upstream serves from stored files.
+    Named(String),
+    /// A list of centiles, or SDS when `is_sds` is true.
+    Custom(Vec<f64>),
+    /// An explicit `null`, which upstream accepts and then fails to find.
+    Null,
+}
+
+/// `ChartCoordinateRequest`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChartCoordinateRequest {
+    /// `male` or `female`.
+    pub sex: String,
+    /// `height`, `weight`, `ofc`, or `bmi`.
+    pub measurement_method: String,
+    /// Whether a custom list is of SDS rather than centiles.
+    pub is_sds: bool,
+    /// The centile collection.
+    pub centile_format: CentileFormatRequest,
+}
+
+const CENTILE_FORMATS: &[&str] = &[
+    "cole-nine-centiles",
+    "extended-who-centiles",
+    "three-percent-centiles",
+    "five-percent-centiles",
+    "eighty-five-percent-centiles",
+];
+
+/// Validates a chart-coordinates body, including the upstream model
+/// validator's limits on custom lists.
+///
+/// # Errors
+///
+/// Every field error, in Pydantic's order; or the model validator's error.
+pub fn chart_coordinate_request(body: &Value) -> Result<ChartCoordinateRequest, Vec<FieldError>> {
+    let mut errors = Vec::new();
+    let object = model_object(body, &["body".into()], &mut errors).ok_or(errors.clone())?;
+    let mut fields = Fields::new(object, vec!["body".into()], &mut errors);
+    let sex = fields.required("sex", |v| literal(v, SEXES));
+    let measurement_method =
+        fields.required("measurement_method", |v| literal(v, MEASUREMENT_METHODS));
+    let is_sds = match fields.get("is_sds") {
+        Field::Absent => Some(false),
+        Field::Present(value) => fields.check("is_sds", value, boolean),
+    };
+    let centile_format = fields.centile_format();
+    let (Some(sex), Some(measurement_method), Some(is_sds), Some(centile_format)) =
+        (sex, measurement_method, is_sds, centile_format)
+    else {
+        return Err(errors);
+    };
+    if !errors.is_empty() {
+        return Err(errors);
+    }
+
+    // The upstream `custom_centiles_must_not_exceed_fifteen` model validator.
+    if let CentileFormatRequest::Custom(values) = &centile_format {
+        let message = if values.len() > 15 {
+            Some("Centile/SDS formats cannot exceed 15 items.")
+        } else if values.is_empty() {
+            Some(
+                "Empty list. Please provide at least one value or one of the standard collection flags.",
+            )
+        } else if !is_sds && values.iter().any(|&c| c < 0.0) {
+            Some("Centile values cannot be negative.")
+        } else {
+            None
+        };
+        if let Some(message) = message {
+            let problem = value_error(message);
+            return Err(vec![FieldError {
+                kind: problem.kind,
+                loc: vec!["body".into()],
+                msg: problem.msg,
+                input: body.clone(),
+                ctx: problem.ctx,
+            }]);
+        }
+    }
+    Ok(ChartCoordinateRequest {
+        sex,
+        measurement_method,
+        is_sds,
+        centile_format,
+    })
+}
+
+impl Fields<'_, '_> {
+    /// `Optional[Union[Literal[...], List[float]]]`, defaulting to the Cole
+    /// nine centiles. When both union members fail, Pydantic reports each,
+    /// tagged with the member's name in the location.
+    fn centile_format(&mut self) -> Option<CentileFormatRequest> {
+        let value = match self.get("centile_format") {
+            Field::Absent => {
+                return Some(CentileFormatRequest::Named("cole-nine-centiles".to_owned()));
+            }
+            Field::Present(Value::Null) => return Some(CentileFormatRequest::Null),
+            Field::Present(value) => value,
+        };
+        let literal_result = literal(value, CENTILE_FORMATS);
+        if let Ok(name) = literal_result {
+            return Some(CentileFormatRequest::Named(name));
+        }
+        let list_problems: Vec<(Option<usize>, Problem, Value)> = match value {
+            Value::Array(items) => {
+                let mut values = Vec::with_capacity(items.len());
+                let mut problems = Vec::new();
+                for (index, item) in items.iter().enumerate() {
+                    match float(item) {
+                        Ok(v) => values.push(v),
+                        Err(problem) => problems.push((Some(index), problem, item.clone())),
+                    }
+                }
+                if problems.is_empty() {
+                    return Some(CentileFormatRequest::Custom(values));
+                }
+                problems
+            }
+            other => vec![(
+                None,
+                Problem::new("list_type", "Input should be a valid list"),
+                other.clone(),
+            )],
+        };
+
+        let base = {
+            let mut loc = self.loc.clone();
+            loc.push("centile_format".into());
+            loc
+        };
+        let literal_tag = format!(
+            "literal[{}]",
+            CENTILE_FORMATS
+                .iter()
+                .map(|f| format!("'{f}'"))
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        let problem = literal_result.expect_err("checked above");
+        let mut loc = base.clone();
+        loc.push(LocItem::Key(literal_tag));
+        self.errors.push(FieldError {
+            kind: problem.kind,
+            loc,
+            msg: problem.msg,
+            input: value.clone(),
+            ctx: problem.ctx,
+        });
+        for (index, problem, input) in list_problems {
+            let mut loc = base.clone();
+            loc.push("list[float]".into());
+            if let Some(index) = index {
+                loc.push(LocItem::Index(index));
+            }
+            self.errors.push(FieldError {
+                kind: problem.kind,
+                loc,
+                msg: problem.msg,
+                input,
+                ctx: problem.ctx,
+            });
+        }
+        None
+    }
+}
+
+/// Pydantic lax `bool`.
+fn boolean(value: &Value) -> Result<bool, Problem> {
+    let parsing = || {
+        Problem::new(
+            "bool_parsing",
+            "Input should be a valid boolean, unable to interpret input",
+        )
+    };
+    match value {
+        Value::Bool(b) => Ok(*b),
+        Value::Number(n) => {
+            let v = n.as_f64().unwrap_or(f64::NAN);
+            if v == 0.0 {
+                Ok(false)
+            } else if v == 1.0 {
+                Ok(true)
+            } else {
+                Err(parsing())
+            }
+        }
+        Value::String(s) => match s.to_ascii_lowercase().as_str() {
+            "0" | "off" | "f" | "false" | "n" | "no" => Ok(false),
+            "1" | "on" | "t" | "true" | "y" | "yes" => Ok(true),
+            _ => Err(parsing()),
+        },
+        _ => Err(Problem::new("bool_type", "Input should be a valid boolean")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

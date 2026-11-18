@@ -9,9 +9,10 @@
 //! return [`CalcError::ReferenceNotImplemented`] rather than a wrong answer.
 
 use crate::data::{DataError, ReferenceData, TableId};
-use crate::lms::{Lms, sds_from_lms};
+use crate::lms::{Lms, measurement_from_lms, sds_from_lms};
 use crate::normal;
-use crate::table::{Interpolation, LmsTable, TableError};
+use crate::round::PyFloat;
+use crate::table::{Interpolation, LmsTable, Lookup, TableError};
 use crate::uk_who::{self, UkWhoAbsence};
 use crate::vocabulary::{GrowthReference, MeasurementMethod, Sex};
 
@@ -77,6 +78,60 @@ pub fn sds_for_measurement(
         table,
         lms,
     })
+}
+
+/// The measurement at an SDS for an age (the upstream `measurement_from_sds`),
+/// rounded to four decimal places as upstream does, with the table it came
+/// from. The measurement is `None` where the LMS transform has no real
+/// answer, which upstream also returns as `None`.
+///
+/// The rounding depends on whether the upstream result is a NumPy `float64`
+/// ([`PyFloat`]). It is if the LMS values were linearly interpolated, or if
+/// `requested_sds` is one and `L` is not 0; when `L` is 0, `math.exp`
+/// returns a Python float. Pass `PyFloat::Builtin` for an SDS that is a
+/// plain number.
+///
+/// `youngest_at_boundary` selects the younger table at a join between two
+/// segments, so a chart line runs right up to the join.
+///
+/// # Errors
+///
+/// As for [`sds_for_measurement`], when there is no reference data at this age.
+pub fn measurement_from_sds(
+    data: &dyn ReferenceData,
+    reference: GrowthReference,
+    requested_sds: PyFloat,
+    method: MeasurementMethod,
+    sex: Sex,
+    age: f64,
+    youngest_at_boundary: bool,
+) -> Result<(Option<f64>, TableId), CalcError> {
+    let (lms, lookup, table_id) = match reference {
+        GrowthReference::UkWho => {
+            let table_id = uk_who::table_for_age(age, youngest_at_boundary)?;
+            if let Some(absence) = uk_who::data_absent(age, method, sex) {
+                return Err(absence.into());
+            }
+            let table = data.table(table_id, method, sex)?;
+            let (lms, lookup) = table.lookup(
+                age_for_lms_lookup(reference, age, table),
+                Interpolation::CubicWherePossible,
+            )?;
+            (lms, lookup, table_id)
+        }
+        other => return Err(CalcError::ReferenceNotImplemented(other)),
+    };
+    let numpy =
+        lookup == Lookup::Linear || (matches!(requested_sds, PyFloat::NumPy(_)) && lms.l != 0.0);
+    let measurement = measurement_from_lms(requested_sds.value(), &lms).map(|value| {
+        let value = if numpy {
+            PyFloat::NumPy(value)
+        } else {
+            PyFloat::Builtin(value)
+        };
+        value.round(4).value()
+    });
+    Ok((measurement, table_id))
 }
 
 /// A child's BMI as a percentage of the median BMI for age and sex (the

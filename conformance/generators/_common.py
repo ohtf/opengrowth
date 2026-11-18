@@ -46,3 +46,27 @@ def write(name: str, generator: str, description: str, cases: list) -> None:
     path.write_text(json.dumps(document, indent=1, allow_nan=False) + "\n")
     count = sum(len(v) for v in cases.values()) if isinstance(cases, dict) else len(cases)
     print(f"wrote {path.relative_to(ROOT)} ({count} cases)", file=sys.stderr)
+
+
+RECORDED_HEADERS = ("content-type", "allow", "location", "x-git-revision")
+
+
+def mask_provenance(body: str) -> str:
+    """Remove every `"provenance": <value>` member, and its separating comma."""
+    decoder = json.JSONDecoder()
+    key = '"provenance":'
+    out = body
+    start = 0
+    while (i := out.find(key, start)) != -1:
+        if i == 0 or out[i - 1] not in "{,":
+            start = i + len(key)
+            continue
+        _, end = decoder.raw_decode(out, i + len(key))
+        if end < len(out) and out[end] == ",":
+            out = out[:i] + out[end + 1 :]
+        elif out[i - 1] == ",":
+            out = out[: i - 1] + out[end:]
+        else:
+            out = out[:i] + out[end:]
+        start = max(i - 1, 0)
+    return out

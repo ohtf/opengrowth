@@ -23,10 +23,10 @@ async fn send(
     body: &str,
     auth: Option<&str>,
 ) -> (StatusCode, String, String) {
-    let app = router(Arc::new(AppState {
-        store: ReferenceStore::empty(),
-        authorization_key: key.map(str::to_owned),
-    }));
+    let app = router(Arc::new(AppState::new(
+        ReferenceStore::empty(),
+        key.map(str::to_owned),
+    )));
     let mut request = Request::builder()
         .method(method)
         .uri(path)
@@ -121,6 +121,8 @@ async fn routing_matches_starlette() {
             r#"{"detail":"Method Not Allowed"}"#
         )
     );
+    let (status, _, _) = send(None, "GET", "/uk-who/chart-coordinates", "", None).await;
+    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
     let (status, body, location) = send(None, "POST", "/uk-who/calculation/", VALID, None).await;
     assert_eq!(status, StatusCode::TEMPORARY_REDIRECT);
     assert_eq!(
@@ -154,6 +156,10 @@ async fn missing_tables_are_reported_never_substituted() {
     let (status, body, _) = send(None, "POST", "/uk-who/calculation", VALID, None).await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
     assert!(body.contains("uk90-child"), "{body}");
+    let chart = r#"{"sex": "male", "measurement_method": "height"}"#;
+    let (status, body, _) = send(None, "POST", "/uk-who/chart-coordinates", chart, None).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert!(body.contains("uk90-preterm"), "{body}");
 }
 
 #[tokio::test]
