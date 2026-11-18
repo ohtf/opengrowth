@@ -56,7 +56,8 @@ pub(crate) fn tables(id: TableId, bytes: &[u8]) -> Result<Vec<Keyed>, String> {
             let Some(rows) = by_sex.get(sex.as_str()) else {
                 continue;
             };
-            if is_placeholder(rows) {
+            // WHO 2007 has empty lists for head circumference, which it does not cover.
+            if is_placeholder(rows) || rows.as_array().is_some_and(Vec::is_empty) {
                 continue;
             }
             let rows: Vec<RawPoint> =

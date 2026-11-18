@@ -163,6 +163,9 @@ pub fn embedded_bytes(id: TableId) -> Option<&'static [u8]> {
             TableId::Who2006Infant => include_bytes!("../../data/who/who_infants.json").as_slice(),
             TableId::Who2006Child => include_bytes!("../../data/who/who_children.json").as_slice(),
             TableId::Uk90Child => include_bytes!("../../data/uk90_child.json").as_slice(),
+            TableId::Who2007Child => {
+                include_bytes!("../../data/who/who_2007_children.json").as_slice()
+            }
         })
     }
     #[cfg(not(feature = "embedded-data"))]

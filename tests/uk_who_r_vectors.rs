@@ -86,7 +86,17 @@ fn sds_with_libm_pow(observation: f64, lms: &Lms) -> f64 {
 fn uk_who_sds_matches_r_vectors_and_python() {
     let dir = std::env::var_os(DATA_DIR_ENV).map(std::path::PathBuf::from);
     let store = ReferenceStore::standard(dir.as_deref()).expect("reference tables load");
-    assert_eq!(store.loaded().len(), 4, "all four UK-WHO tables are needed");
+    for table in [
+        opengrowth::TableId::Uk90Preterm,
+        opengrowth::TableId::Who2006Infant,
+        opengrowth::TableId::Who2006Child,
+        opengrowth::TableId::Uk90Child,
+    ] {
+        assert!(
+            store.loaded().iter().any(|f| f.source.id == table),
+            "the UK-WHO table {table} is needed"
+        );
+    }
 
     let vectors: Vec<RVector> = read_json("independent/uk-who-cole-r-vectors.json");
     let golden: Golden<Vec<PythonCase>> = read_json("expected/uk-who-r-vector-inputs.json");

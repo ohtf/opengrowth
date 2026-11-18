@@ -40,7 +40,13 @@ SPDX-FileCopyrightText = ["Medical Research Council, now UK Research and Innovat
 SPDX-License-Identifier = "LicenseRef-UK90"
 
 [[annotations]]
-path = "data/who/**"
+path = "data/who/who_2007_children.json"
+precedence = "override"
+SPDX-FileCopyrightText = ["World Health Organization", "Royal College of Paediatrics and Child Health"]
+SPDX-License-Identifier = "LicenseRef-WHO-Growth-Reference-2007"
+
+[[annotations]]
+path = ["data/who/who_infants.json", "data/who/who_children.json"]
 precedence = "override"
 SPDX-FileCopyrightText = ["World Health Organization", "Royal College of Paediatrics and Child Health"]
 SPDX-License-Identifier = "LicenseRef-WHO-Child-Growth-Standards"

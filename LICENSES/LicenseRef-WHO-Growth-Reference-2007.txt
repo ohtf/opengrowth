@@ -1,0 +1,16 @@
+WHO Growth Reference data for 5 to 19 years (2007)
+
+The WHO Growth Reference for school-aged children and adolescents (de Onis
+M, Onyango AW, Borghi E, Siyam A, Nishida C, Siekmann J. Development of a
+WHO growth reference for school-aged children and adolescents. Bulletin of
+the World Health Organization 2007;85:660-667) is published by the World
+Health Organization, which holds copyright in it.
+
+This file is copied unmodified from the rcpchgrowth Python package (version
+4.6.5, published on PyPI by the Royal College of Paediatrics and Child
+Health), which transcribed it from the WHO's published tables.
+
+WHO publishes these tables for public use. The specific terms that apply to
+their redistribution in software have not yet been recorded by opengrowth
+(roadmap item R2). The opengrowth software licence (AGPL-3.0-or-later) does
+not apply to this file and grants no rights in it.

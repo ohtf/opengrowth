@@ -107,6 +107,14 @@ pub const MANIFEST: &[TableSource] = &[
         origin: ORIGIN,
         terms: UK90_TERMS,
     },
+    TableSource {
+        id: TableId::Who2007Child,
+        file: "who/who_2007_children.json",
+        sha256: "0d1de5f761aa47020bfa9d194fa38dffd20eaa79e882a9436a75f322b49f6139",
+        title: "WHO 2007 growth reference, 5 to 19 years, monthly",
+        origin: ORIGIN,
+        terms: WHO_TERMS,
+    },
 ];
 
 /// The manifest entry for a table.

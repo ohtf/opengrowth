@@ -22,6 +22,8 @@ pub enum TableId {
     Who2006Child,
     /// UK90, 4 to 20 years.
     Uk90Child,
+    /// WHO 2007 growth reference, 5 to 19 years (monthly).
+    Who2007Child,
 }
 
 impl TableId {
@@ -33,6 +35,7 @@ impl TableId {
             Self::Who2006Infant => "who-2006-infant",
             Self::Who2006Child => "who-2006-child",
             Self::Uk90Child => "uk90-child",
+            Self::Who2007Child => "who-2007-child",
         }
     }
 }
