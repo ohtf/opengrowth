@@ -24,6 +24,7 @@ All are produced by `s/goldens` from `rcpchgrowth==4.6.5` installed from PyPI by
 | File | Generator | Contents |
 | --- | --- | --- |
 | `uk-who-r-vector-inputs.json` | `uk_who_r_vectors.py` | Python `Measurement` output for every R-vector input: ages, SDS, centiles, and error strings. |
+| `engine-<reference>.json`, `engine-centile-bands.json` | `engine_cases.py` | The engine conformance cases: `rcpchgrowth`'s own values at every boundary each reference's rules define, called directly rather than through the API, with every value in full. See [Engine conformance cases](#engine-conformance-cases). |
 | `normal-grid.json` | `normal_grid.py` | `scipy.stats.norm.cdf` over z in [-40, 40] and `norm.ppf` over p from 1e-307 to 1 - 1e-15. |
 | `python-round.json` | `python_round.py` | CPython `round(x, n)` for ties, near-ties, and a seeded random sample. |
 | `python-timedelta.json` | `python_timedelta.py` | CPython `date + timedelta(days=x)` for float x, which fictional children use: steps of every interval unit, values either side of whole days and half-microsecond ties, and the overflow limits. |
@@ -48,6 +49,7 @@ Measured on Linux x86_64 against rcpchgrowth 4.6.5, SciPy 1.18.1, NumPy 2.5.5, C
 | --- | --- |
 | UK-WHO SDS vs R vectors | All 7,721 computed SDS within 1e-3 (max 9.65e-4); all 247 absent values absent in both |
 | UK-WHO SDS vs Python | 7,721 of 7,721 **bit-identical** |
+| Engine conformance cases vs Python | 7,743 cases (5,053 SDS, 1,394 measurements, 1,296 centile bands) identical to the last bit, apart from one field in 6 cases enumerated as a known difference |
 | Decimal ages vs Python | 7,968 of 7,968 bit-identical |
 | Error strings vs Python | All match |
 | UK-WHO centiles vs Python | 7,721 of 7,721 **bit-identical**, unrounded |
@@ -67,6 +69,23 @@ Measured on Linux x86_64 against rcpchgrowth 4.6.5, SciPy 1.18.1, NumPy 2.5.5, C
 | UK-WHO chart coordinates vs FastAPI | 60 of 60 byte-identical outside provenance, with the named-format files regenerated; all 32 named-format responses differ from the server's stale stored files |
 
 Bit-identity on Linux depends on using the platform `pow`, `exp`, and `log` (glibc), as CPython and SciPy do. The portable `libm` crate's `pow` is 98% bit-exact for SDS. Other platforms are not yet measured (`R34`).
+
+## Engine conformance cases
+
+The `engine-*.json` files are meant for any implementation of the engine, in any language: opengrowth's Rust engine (`tests/engine_cases.rs`), and later its Python bindings (`R18`) and WebAssembly build (`R38`). They need no server. `engine_cases.py` generates them from `rcpchgrowth` 4.6.5, so they record what `rcpchgrowth` does, not what is clinically right; the R vectors above are the clinical-accuracy gate.
+
+Cases sit at every boundary each reference's rules define, at the boundary and one day either side, for every measurement and sex: each join between tables, each age or gestation where data stop, and each gestation rule. Sweeps cross the SDS ranges where a reference changes method (WHO beyond 3 SD, CDC BMI above the 95th centile) and the observation check at 8 SD (15 for BMI). The generator takes the boundaries from `rcpchgrowth`'s own constants where it has them.
+
+Each `engine-<reference>.json` has two sections:
+
+- **`sds`**: `sds_for_measurement` then `centile`, at a decimal age that a whole number of days gives (`days / 365.25`, negative before term), as real dates do. `input` is `reference`, `measurement_method`, `sex`, `age`, and `observation_value`. `expected` is either `sds`, `centile`, and `table`, the file in `rcpchgrowth`'s `data_tables` the SDS came from; or `error`, upstream's message where the reference has no data.
+- **`measurement`**: the `Measurement` class, from `birth_date`, `observation_date`, `gestation_weeks`, `gestation_days`, `sex`, `measurement_method`, and `observation_value`. `expected` holds four of upstream's sections as it returns them, unrounded: `birth_data`, `measurement_dates`, `child_observation_value`, and `measurement_calculated_values`, plus `tables`, the file each SDS came from. The plotting and bone-age sections, which repeat these values, are left out. The API rounds four centile fields after this; the engine does not.
+
+`engine-centile-bands.json` holds `centile_band_for_centile` either side of every band edge and advisory limit (`math.nextafter`), for every centile format and measurement method.
+
+Floats are written as CPython's `repr`, so they parse back to the same value. opengrowth matches them exactly on Linux, where it uses the same maths library as CPython. Where an implementation cannot be exact, `spec/standard.md` section 5.2 sets the tolerances: 1e-9 for SDS and ages, and exact centiles after rounding to four places. How close opengrowth comes on other platforms is not yet measured (`R34`). Every case has a unique `name` and a `purpose` saying which boundary or sweep it is for.
+
+One difference is deliberate and enumerated in `tests/engine_cases.rs`: for an observation dated before birth, upstream records a Python `TypeError` text as `observation_value_error`, and opengrowth records none (`spec/standard.md` section 6.3).
 
 ## Running
 

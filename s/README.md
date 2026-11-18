@@ -7,7 +7,7 @@
 | `s/lint` | `cargo fmt --check`, and `cargo clippy -D warnings` for the default build and the engine alone, as CI runs them. |
 | `s/soup` | Regenerates `qms/soup.md`, the IEC 62304 SOUP register, from `Cargo.lock`. `--check` verifies it is current, as CI does. |
 | `s/deny` | `cargo deny check`: dependency licences, advisories, bans, and sources (`deny.toml`). |
-| `s/conformance` | The conformance suites with their agreement reports: R vectors, Python goldens, SciPy, NumPy, CPython, and the FastAPI HTTP replays (every operation of every reference). |
+| `s/conformance` | The conformance suites with their agreement reports: R vectors, Python goldens, SciPy, NumPy, CPython, the engine conformance cases, and the FastAPI HTTP replays (every operation of every reference). |
 | `s/reference-python` | Creates the pinned Python reference environment (`rcpchgrowth==4.6.5` from PyPI) with `uv`, in `~/.cache/opengrowth/reference-python` or `$OPENGROWTH_REFERENCE_VENV`. |
 | `s/reference-tables` | Prints a directory of `rcpchgrowth` 4.6.5's own reference tables, downloading the wheel from PyPI on first use. CI checks every file in `data/` against them. |
 | `s/goldens` | Regenerates `conformance/expected/` from the reference environments. Pass generator names to run only some. |
