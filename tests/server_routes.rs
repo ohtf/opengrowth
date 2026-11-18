@@ -177,7 +177,9 @@ async fn missing_tables_are_reported_never_substituted() {
 }
 
 #[tokio::test]
-async fn unported_operations_say_so() {
-    let (status, _, _) = send(None, "POST", "/turners-syndrome/calculation", VALID, None).await;
-    assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
+async fn references_without_their_tables_say_so() {
+    // The Turner table is not embedded (R2); without an import it is missing.
+    let (status, body, _) = send(None, "POST", "/turner/calculation", VALID, None).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert!(body.contains("turner"), "{body}");
 }

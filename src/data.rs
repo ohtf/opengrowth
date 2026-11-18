@@ -31,6 +31,14 @@ pub enum TableId {
     CdcInfant,
     /// CDC 2000, 2 to 20 years, with the extended-BMI sigma.
     CdcChild,
+    /// UK Turner syndrome reference: girls' height, 1 to 20 years. Not embedded.
+    Turner,
+    /// UK Down syndrome (Trisomy 21) reference, birth to 20 years. Not embedded.
+    Trisomy21,
+    /// AAP Down syndrome charts, infants to 3 years. Not embedded.
+    Trisomy21AapInfant,
+    /// AAP Down syndrome charts, 2 to 20 years. Not embedded.
+    Trisomy21AapChild,
 }
 
 impl TableId {
@@ -46,6 +54,10 @@ impl TableId {
             Self::Who2006InfantPre2025 => "who-2006-infant-pre-2025",
             Self::CdcInfant => "cdc-infant",
             Self::CdcChild => "cdc-child",
+            Self::Turner => "turner",
+            Self::Trisomy21 => "trisomy-21",
+            Self::Trisomy21AapInfant => "trisomy-21-aap-infant",
+            Self::Trisomy21AapChild => "trisomy-21-aap-child",
         }
     }
 }

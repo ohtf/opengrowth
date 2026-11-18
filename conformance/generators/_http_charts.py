@@ -73,9 +73,10 @@ def call(client, name, body=None, raw=None, full=True, path="/uk-who/chart-coord
     return case
 
 
-def generate(reference, label, output, generator):
-    """Write the chart golden for `reference` (also its route prefix), called `label`."""
-    path = f"/{reference}/chart-coordinates"
+def generate(reference, label, output, generator, prefix=None):
+    """Write the chart golden for `reference`, called `label`, whose routes are under
+    `prefix` (default: the reference's name)."""
+    path = f"{prefix or '/' + reference}/chart-coordinates"
 
     def route(client, name, body=None, raw=None, full=True):
         return call(client, name, body, raw, full, path)

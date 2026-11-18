@@ -42,9 +42,10 @@ from _common import INDEPENDENT, RECORDED_HEADERS, mask_provenance, write  # noq
 client = TestClient(main.app, raise_server_exceptions=False)
 
 
-def generate(reference, label, output, generator, extra=lambda call, request, plausible_value: []):
-    """Write the golden for `reference` (also its route prefix), called `label` in descriptions."""
-    prefix = f"/{reference}"
+def generate(reference, label, output, generator, extra=lambda call, request, plausible_value: [], prefix=None):
+    """Write the golden for `reference`, called `label` in descriptions. Its routes are under
+    `prefix`, which defaults to the reference's name."""
+    prefix = prefix or f"/{reference}"
 
 
     def call(name, path=None, body=None, raw=None, method="POST", headers=None, full=True):

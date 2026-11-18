@@ -16,5 +16,5 @@ mod common;
 
 #[tokio::test]
 async fn uk_who_chart_coordinates_match_fastapi_byte_for_byte() {
-    common::http::check_chart_golden("expected/http-uk-who-charts.json").await;
+    common::http::check_chart_golden("expected/http-uk-who-charts.json", &[], true).await;
 }

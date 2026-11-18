@@ -133,11 +133,12 @@ CASES = [
     ("validation not an object", [], True),
 ]
 
-def generate(reference, label, output, generator):
-    """Write the fictional-child golden for `reference` (also its route prefix), called `label`."""
-    path = f"/{reference}/fictional-child-data"
+def generate(reference, label, output, generator, extra=(), prefix=None):
+    """Write the fictional-child golden for `reference`, called `label`, whose routes are
+    under `prefix` (default: the reference's name). `extra` adds (name, body, full) cases."""
+    path = f"{prefix or '/' + reference}/fictional-child-data"
     c = client()
-    cases = [call(c, path, name, body, full) for name, body, full in CASES]
+    cases = [call(c, path, name, body, full) for name, body, full in [*CASES, *extra]]
     write(
         output,
         generator,

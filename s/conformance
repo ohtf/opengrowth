@@ -2,12 +2,19 @@
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Run the conformance suites with their reports: R vectors, Python goldens, SciPy,
-# NumPy, CPython, and the FastAPI HTTP replays. Uses the embedded tables; set
-# OPENGROWTH_REFERENCE_DATA_DIR to layer imported files over them.
+# NumPy, CPython, and the FastAPI HTTP replays, for every reference. Uses the
+# embedded tables, with OPENGROWTH_REFERENCE_DATA_DIR (default: s/reference-tables)
+# layered over them.
 set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# The Turner and Trisomy 21 tables are not embedded (R2); read rcpchgrowth's own.
+export OPENGROWTH_REFERENCE_DATA_DIR="${OPENGROWTH_REFERENCE_DATA_DIR:-$("$root/s/reference-tables")}"
 exec cargo test --release --test uk_who_r_vectors --test http_uk_who --test normal_vs_scipy \
   --test python_round --test python_repr --test python_timedelta \
   --test http_uk_who_charts --test http_uk_who_fictional_child \
   --test http_who --test http_who_charts --test http_who_fictional_child \
   --test http_cdc --test http_cdc_charts --test http_cdc_fictional_child \
+  --test http_turner --test http_turner_charts --test http_turner_fictional_child \
+  --test http_trisomy_21 --test http_trisomy_21_charts --test http_trisomy_21_fictional_child \
+  --test http_trisomy_21_aap --test http_trisomy_21_aap_charts --test http_trisomy_21_aap_fictional_child \
   --test http_utilities_mid_parental_height "$@" -- --nocapture

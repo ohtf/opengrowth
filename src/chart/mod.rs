@@ -186,6 +186,32 @@ const CDC_SEGMENTS: [Segment; 3] = [
     },
 ];
 
+const TURNER_SEGMENTS: [Segment; 1] = [Segment {
+    name: "turners-syndrome",
+    ages: |_| &ages::TURNER_AGES,
+    youngest_at: |_| false,
+}];
+
+const TRISOMY_21_SEGMENTS: [Segment; 1] = [Segment {
+    name: "trisomy-21",
+    ages: |_| &ages::TRISOMY_21_AGES,
+    youngest_at: |_| false,
+}];
+
+#[allow(clippy::float_cmp, reason = "upstream compares these ages exactly")]
+const TRISOMY_21_AAP_SEGMENTS: [Segment; 2] = [
+    Segment {
+        name: "trisomy_21_aap_infant",
+        ages: |_| &ages::TRISOMY_21_AAP_INFANT_AGES,
+        youngest_at: |age| age == 3.0,
+    },
+    Segment {
+        name: "trisomy_21_aap_child",
+        ages: |_| &ages::TRISOMY_21_AAP_CHILD_AGES,
+        youngest_at: |_| false,
+    },
+];
+
 /// The centile lines for one reference, measurement, and sex (the upstream `create_chart`).
 ///
 /// # Errors
@@ -202,7 +228,9 @@ pub fn chart(
         GrowthReference::UkWho => &UK_WHO_SEGMENTS,
         GrowthReference::Who => &WHO_SEGMENTS,
         GrowthReference::Cdc => &CDC_SEGMENTS,
-        other => return Err(ChartError::ReferenceNotImplemented(other)),
+        GrowthReference::TurnersSyndrome => &TURNER_SEGMENTS,
+        GrowthReference::Trisomy21 => &TRISOMY_21_SEGMENTS,
+        GrowthReference::Trisomy21Aap => &TRISOMY_21_AAP_SEGMENTS,
     };
     let (values, is_sds, cole) = match spec {
         CentileSpec::Named(format) => (
@@ -218,7 +246,7 @@ pub fn chart(
     for segment in segments {
         let mut lines = Vec::with_capacity(values.len());
         for &value in values {
-            lines.push(line(
+            match line(
                 data,
                 reference,
                 method,
@@ -228,7 +256,12 @@ pub fn chart(
                 is_sds,
                 cole,
                 &mut tables_read,
-            )?);
+            ) {
+                Ok(line) => lines.push(line),
+                // Upstream's Turner builder catches the overflow and leaves the line out.
+                Err(ChartError::NonFinite(_)) if reference == GrowthReference::TurnersSyndrome => {}
+                Err(error) => return Err(error),
+            }
         }
         out.push(ChartSegment {
             name: segment.name,
@@ -276,7 +309,14 @@ fn line(
     } else {
         (PyFloat::NumPy(normal::ppf(value / 100.0)), value)
     };
-    if !(z.value() * 100.0).is_finite() {
+    // Upstream fails where it rounds 100 times the SDS to an integer; the
+    // Trisomy 21 builder rounds the SDS itself, which fails only at infinity.
+    let overflows = if reference == GrowthReference::Trisomy21 {
+        !z.value().is_finite()
+    } else {
+        !(z.value() * 100.0).is_finite()
+    };
+    if overflows {
         return Err(ChartError::NonFinite(value));
     }
     let label = if is_sds { z.round(3).value() } else { centile };
@@ -307,8 +347,15 @@ fn line(
             Err(_) => {}
         }
     }
+    // Upstream's Trisomy 21 builder rounds the SDS itself, as its kind rounds;
+    // the others round 100 times it to an integer.
+    let sds = if reference == GrowthReference::Trisomy21 {
+        z.round(2).value()
+    } else {
+        python_round_int(z.value() * 100.0) / 100.0
+    };
     Ok(ChartLine {
-        sds: python_round_int(z.value() * 100.0) / 100.0,
+        sds,
         centile,
         data: points,
     })

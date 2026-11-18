@@ -156,12 +156,6 @@ pub fn measure(
     data: &dyn ReferenceData,
     input: &MeasurementInput,
 ) -> Result<Measurement, MeasureError> {
-    if !matches!(
-        input.reference,
-        GrowthReference::UkWho | GrowthReference::Who | GrowthReference::Cdc
-    ) {
-        return Err(MeasureError::ReferenceNotImplemented(input.reference));
-    }
     let mut tables_read = Vec::new();
     let measurement_dates = ages(input);
     let birth_data = BirthData {
@@ -379,7 +373,12 @@ fn calculated_values(
         }
         Err(CalcError::Data(error)) => return Err(error.into()),
         Err(
-            error @ (CalcError::UkWhoAbsent(_) | CalcError::WhoAbsent(_) | CalcError::CdcAbsent(_)),
+            error @ (CalcError::UkWhoAbsent(_)
+            | CalcError::WhoAbsent(_)
+            | CalcError::CdcAbsent(_)
+            | CalcError::TurnerAbsent(_)
+            | CalcError::Trisomy21Absent(_)
+            | CalcError::Trisomy21AapAbsent(_)),
         ) => Err(error.to_string()),
         Err(error) => return Err(MeasureError::Raised(error.to_string())),
     };

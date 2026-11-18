@@ -5,10 +5,10 @@
 //! API (`digital-growth-charts-server`).
 //!
 //! The goal is byte-identical response bodies outside `provenance`
-//! (`spec/standard.md` section 4.2). Implemented so far: the UK-WHO, WHO,
-//! and CDC operations and mid-parental height ([`IMPLEMENTED`]), bearer-token
-//! authorisation, 404, 405, and trailing-slash redirects. Other operations
-//! return 501.
+//! (`spec/standard.md` section 4.2). Every upstream operation is implemented
+//! ([`IMPLEMENTED`]), with bearer-token authorisation, 404, 405, and
+//! trailing-slash redirects. The Turner and Trisomy 21 operations need their
+//! tables imported, since they are not embedded (`R2`).
 //!
 //! The `/growth/v1` prefix belongs to the gateway, not this router.
 
@@ -130,14 +130,34 @@ impl NoiseSource {
 }
 
 /// The references whose four operations opengrowth serves.
-const PORTED: [GrowthReference; 3] = [
+const PORTED: [GrowthReference; 6] = [
     GrowthReference::UkWho,
     GrowthReference::Who,
     GrowthReference::Cdc,
+    GrowthReference::TurnersSyndrome,
+    GrowthReference::Trisomy21,
+    GrowthReference::Trisomy21Aap,
 ];
 
-/// What upstream calls a reference in its route messages.
-fn route_name(reference: GrowthReference) -> &'static str {
+/// The route prefix upstream gives a reference: its name, except Turner,
+/// whose routes are under `/turner`.
+fn route_prefix(reference: GrowthReference) -> &'static str {
+    match reference {
+        GrowthReference::TurnersSyndrome => "turner",
+        other => other.as_str(),
+    }
+}
+
+/// What upstream calls a reference in its chart messages.
+fn chart_name(reference: GrowthReference) -> &'static str {
+    match reference {
+        GrowthReference::TurnersSyndrome => "Turner's syndrome",
+        other => fictional_child_name(other),
+    }
+}
+
+/// What upstream calls a reference in its fictional-child messages.
+fn fictional_child_name(reference: GrowthReference) -> &'static str {
     match reference {
         GrowthReference::UkWho => "UK-WHO",
         GrowthReference::Who => "WHO",
@@ -152,7 +172,7 @@ fn route_name(reference: GrowthReference) -> &'static str {
 pub fn router(state: Arc<AppState>) -> Router {
     let mut app = Router::new().route("/", get(root));
     for reference in PORTED {
-        let path = |operation: &str| format!("/{}/{operation}", reference.as_str());
+        let path = |operation: &str| format!("/{}/{operation}", route_prefix(reference));
         app = app
             .route(
                 &path("calculation"),
@@ -223,15 +243,10 @@ pub const IMPLEMENTED: &[&str] = &[
     "/cdc/bulk-calculation",
     "/cdc/chart-coordinates",
     "/cdc/fictional-child-data",
-    "/utilities/mid-parental-height",
-];
-
-/// The other upstream operations, routed so they report 501 rather than 404.
-const NOT_YET_IMPLEMENTED: &[&str] = &[
-    "/turners-syndrome/calculation",
-    "/turners-syndrome/bulk-calculation",
-    "/turners-syndrome/chart-coordinates",
-    "/turners-syndrome/fictional-child-data",
+    "/turner/calculation",
+    "/turner/bulk-calculation",
+    "/turner/chart-coordinates",
+    "/turner/fictional-child-data",
     "/trisomy-21/calculation",
     "/trisomy-21/bulk-calculation",
     "/trisomy-21/chart-coordinates",
@@ -240,7 +255,11 @@ const NOT_YET_IMPLEMENTED: &[&str] = &[
     "/trisomy-21-aap/bulk-calculation",
     "/trisomy-21-aap/chart-coordinates",
     "/trisomy-21-aap/fictional-child-data",
+    "/utilities/mid-parental-height",
 ];
+
+/// Upstream operations opengrowth does not serve yet: none at present.
+const NOT_YET_IMPLEMENTED: &[&str] = &[];
 
 fn json_response<T: Serialize + ?Sized>(status: StatusCode, body: &T) -> Response {
     let mut response = Response::new(Body::from(pyjson::to_vec(body)));
@@ -432,6 +451,9 @@ fn validate_observation_value(
         Err(CalcError::UkWhoAbsent(absence)) => return Err(report(absence.to_string())),
         Err(CalcError::WhoAbsent(absence)) => return Err(report(absence.to_string())),
         Err(CalcError::CdcAbsent(absence)) => return Err(report(absence.to_string())),
+        Err(CalcError::TurnerAbsent(absence)) => return Err(report(absence.to_string())),
+        Err(CalcError::Trisomy21Absent(absence)) => return Err(report(absence.to_string())),
+        Err(CalcError::Trisomy21AapAbsent(absence)) => return Err(report(absence.to_string())),
         Err(CalcError::Data(error)) => {
             return Err(Rejection::Respond(Box::new(data_unavailable(&error))));
         }
@@ -489,6 +511,38 @@ fn calculate_one(
     birth: &BirthFields,
     observation: &ObservationFields,
 ) -> Result<Vec<u8>, Rejection> {
+    // Upstream's Turner routes check these before anything else.
+    if reference == GrowthReference::TurnersSyndrome {
+        let turner_only = |msg: &str, field| {
+            Err(Rejection::Report(Box::new(RouteError::value_error(
+                msg, field,
+            ))))
+        };
+        if birth.sex != "female" {
+            return turner_only("Turner reference data only exists in girls.", "sex");
+        }
+        if birth.measurement_method != "height" {
+            return turner_only(
+                "Turner reference data only exists for height",
+                "measurement_method",
+            );
+        }
+    }
+    // Upstream's AAP Trisomy 21 routes pass no bone age to the calculation.
+    let without_bone_age;
+    let observation = if reference == GrowthReference::Trisomy21Aap {
+        without_bone_age = ObservationFields {
+            bone_age: None,
+            bone_age_type: None,
+            bone_age_sds: None,
+            bone_age_centile: None,
+            bone_age_text: None,
+            ..observation.clone()
+        };
+        &without_bone_age
+    } else {
+        observation
+    };
     let (gestation, sex, method) =
         validate_observation_value(&state.store, reference, birth, observation)?;
     let input = MeasurementInput {
@@ -654,7 +708,7 @@ async fn fictional_child_data(
         Ok(r) => r,
         Err(errors) => return validation_failed(errors),
     };
-    match fictional_child_response(&state, reference, route_name(reference), &request) {
+    match fictional_child_response(&state, reference, fictional_child_name(reference), &request) {
         Ok(bytes) => raw_json(StatusCode::OK, bytes),
         Err(Rejection::Report(error)) => route_failed(*error),
         Err(Rejection::Respond(response)) => *response,
@@ -670,6 +724,19 @@ fn fictional_child_response(
     label: &str,
     request: &validate::FictionalChildRequest,
 ) -> Result<Vec<u8>, Rejection> {
+    if reference == GrowthReference::TurnersSyndrome {
+        let turner_only = |msg: &str| {
+            Err(Rejection::Report(Box::new(RouteError::request(
+                msg.to_owned(),
+            ))))
+        };
+        if request.sex != "female" {
+            return turner_only("Turner's Syndrome data only exists for girls.");
+        }
+        if request.measurement_method != "height" {
+            return turner_only("Turner's Syndrome data only exists for height.");
+        }
+    }
     let failed = || {
         Rejection::Report(Box::new(RouteError::request(format!(
             "Not possible to create {label} fictional child data."
@@ -961,6 +1028,12 @@ async fn chart_coordinates(
         Ok(r) => r,
         Err(errors) => return validation_failed(errors),
     };
+    let turner_request = request.sex == "male" || request.measurement_method != "height";
+    if reference == GrowthReference::TurnersSyndrome && turner_request {
+        return route_failed(RouteError::request(
+            "Turner data only exists for height in girls.",
+        ));
+    }
     let sex: Sex = request.sex.parse().expect("validated literal");
     let method: MeasurementMethod = request
         .measurement_method
@@ -992,7 +1065,7 @@ async fn chart_coordinates(
             Err(ChartError::NonFinite(_)) => {
                 return route_failed(RouteError::request(format!(
                     "Error creating {sex} {method} {} chart on the server, using {} centile format.",
-                    route_name(reference),
+                    chart_name(reference),
                     python_list(values)
                 )));
             }

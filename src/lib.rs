@@ -38,6 +38,7 @@ pub mod normal;
 pub mod pyfmt;
 pub mod round;
 pub mod sds;
+pub mod syndromes;
 pub mod table;
 pub mod uk_who;
 pub mod vocabulary;

@@ -22,6 +22,7 @@ use crate::data::{DataError, ReferenceData, TableId};
 use crate::lms::{Lms, measurement_from_lms, sds_from_lms};
 use crate::normal;
 use crate::round::PyFloat;
+use crate::syndromes::{self, Trisomy21AapAbsence, Trisomy21Absence, TurnerAbsence};
 use crate::table::{Interpolation, LmsTable, Lookup, TableError};
 use crate::uk_who::{self, UkWhoAbsence};
 use crate::vocabulary::{GrowthReference, MeasurementMethod, Sex};
@@ -40,6 +41,15 @@ pub enum CalcError {
     /// As for UK-WHO, for the CDC reference.
     #[error(transparent)]
     CdcAbsent(#[from] CdcAbsence),
+    /// As for UK-WHO, for the Turner syndrome reference.
+    #[error(transparent)]
+    TurnerAbsent(#[from] TurnerAbsence),
+    /// As for UK-WHO, for the UK Trisomy 21 reference.
+    #[error(transparent)]
+    Trisomy21Absent(#[from] Trisomy21Absence),
+    /// As for UK-WHO, for the AAP Trisomy 21 reference.
+    #[error(transparent)]
+    Trisomy21AapAbsent(#[from] Trisomy21AapAbsence),
     /// The LMS transform has no real value here. Upstream computes a complex
     /// number and fails when it rounds it.
     #[error("the LMS transform has no real value at this SDS")]
@@ -280,7 +290,11 @@ fn lms_for_age(
             who::table_for_age(age, youngest_at_boundary)?
         }
         GrowthReference::Cdc => cdc::lookup(age, method, youngest_at_boundary)?,
-        other => return Err(CalcError::ReferenceNotImplemented(other)),
+        GrowthReference::TurnersSyndrome => syndromes::turner(age, method, sex)?,
+        GrowthReference::Trisomy21 => syndromes::trisomy_21(age, method)?,
+        GrowthReference::Trisomy21Aap => {
+            syndromes::trisomy_21_aap(age, method, youngest_at_boundary)?
+        }
     };
     before_lookup()?;
     let table = data.table(table_id, method, sex)?;
@@ -414,7 +428,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_observations_and_unported_references_are_errors() {
+    fn invalid_observations_and_absent_data_are_errors() {
         let data = flat_table(2.002, 5.0);
         assert!(matches!(
             sds_for_measurement(
@@ -436,8 +450,8 @@ mod tests {
                 90.0,
                 Sex::Male
             ),
-            Err(CalcError::ReferenceNotImplemented(
-                GrowthReference::TurnersSyndrome
+            Err(CalcError::TurnerAbsent(
+                crate::syndromes::TurnerAbsence::Male
             ))
         ));
     }

@@ -9,7 +9,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 venv="${OPENGROWTH_REFERENCE_VENV:-$HOME/.cache/opengrowth/reference-python}"
 server="${OPENGROWTH_REFERENCE_SERVER:-$HOME/.cache/opengrowth/reference-server}"
 generators=("$@")
-[[ ${#generators[@]} -gt 0 ]] || generators=(uk_who_r_vectors normal_grid python_round numpy_round python_repr python_timedelta http_uk_who http_who http_cdc http_uk_who_charts http_who_charts http_cdc_charts http_uk_who_fictional_child http_who_fictional_child http_cdc_fictional_child http_utilities_mid_parental_height)
+[[ ${#generators[@]} -gt 0 ]] || generators=(uk_who_r_vectors normal_grid python_round numpy_round python_repr python_timedelta http_uk_who http_who http_cdc http_turner http_trisomy_21 http_trisomy_21_aap http_uk_who_charts http_who_charts http_cdc_charts http_turner_charts http_trisomy_21_charts http_trisomy_21_aap_charts http_uk_who_fictional_child http_who_fictional_child http_cdc_fictional_child http_turner_fictional_child http_trisomy_21_fictional_child http_trisomy_21_aap_fictional_child http_utilities_mid_parental_height)
 cd "$root/conformance/generators"
 for name in "${generators[@]}"; do
   if [[ "$name" == http_* ]]; then

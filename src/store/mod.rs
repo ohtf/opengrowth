@@ -158,6 +158,16 @@ pub struct LoadedFile {
 pub fn embedded_bytes(id: TableId) -> Option<&'static [u8]> {
     #[cfg(feature = "embedded-data")]
     {
+        // Not embedded while R2 has not recorded their terms: import them.
+        if matches!(
+            id,
+            TableId::Turner
+                | TableId::Trisomy21
+                | TableId::Trisomy21AapInfant
+                | TableId::Trisomy21AapChild
+        ) {
+            return None;
+        }
         Some(match id {
             TableId::Uk90Preterm => include_bytes!("../../data/uk90_preterm.json").as_slice(),
             TableId::Who2006Infant => include_bytes!("../../data/who/who_infants.json").as_slice(),
@@ -171,6 +181,10 @@ pub fn embedded_bytes(id: TableId) -> Option<&'static [u8]> {
             }
             TableId::CdcInfant => include_bytes!("../../data/cdc_infants.json").as_slice(),
             TableId::CdcChild => include_bytes!("../../data/cdc2-20.json").as_slice(),
+            TableId::Turner
+            | TableId::Trisomy21
+            | TableId::Trisomy21AapInfant
+            | TableId::Trisomy21AapChild => unreachable!("returned above"),
         })
     }
     #[cfg(not(feature = "embedded-data"))]
@@ -480,7 +494,12 @@ mod tests {
     #[test]
     fn embedded_tables_verify_and_cover_every_manifest_entry() {
         let store = ReferenceStore::embedded().unwrap();
-        assert_eq!(store.loaded().len(), MANIFEST.len());
+        let embedded = MANIFEST
+            .iter()
+            .filter(|s| embedded_bytes(s.id).is_some())
+            .count();
+        assert_eq!(embedded, 8, "the tables whose terms allow it are embedded");
+        assert_eq!(store.loaded().len(), embedded);
         assert!(store.loaded().iter().all(|f| f.origin == Origin::Embedded));
         assert!(
             store

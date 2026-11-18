@@ -11,5 +11,5 @@ mod common;
 
 #[tokio::test]
 async fn cdc_chart_coordinates_match_fastapi_byte_for_byte() {
-    common::http::check_chart_golden("expected/http-cdc-charts.json").await;
+    common::http::check_chart_golden("expected/http-cdc-charts.json", &[], true).await;
 }

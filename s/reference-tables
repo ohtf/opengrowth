@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Print a directory holding rcpchgrowth 4.6.5's own reference tables, downloading
+# the package from PyPI on first use. opengrowth does not embed the Turner and
+# Trisomy 21 tables while their terms are unrecorded (spec/roadmap.md R2):
+# point OPENGROWTH_REFERENCE_DATA_DIR at this, or `opengrowth data import` it.
+# Every file is verified against the manifest when it is loaded.
+set -euo pipefail
+version=4.6.5
+cache="${OPENGROWTH_REFERENCE_TABLES:-$HOME/.cache/opengrowth/reference-tables/rcpchgrowth-$version}"
+if [[ ! -d "$cache/rcpchgrowth/data_tables" ]]; then
+  download="$(mktemp -d)"
+  python3 -m pip download --quiet --disable-pip-version-check --no-deps --only-binary=:all: "rcpchgrowth==$version" -d "$download" >&2
+  mkdir -p "$cache"
+  python3 -m zipfile -e "$download"/rcpchgrowth-"$version"-*.whl "$cache"
+  rm -rf "$download"
+fi
+echo "$cache/rcpchgrowth/data_tables"

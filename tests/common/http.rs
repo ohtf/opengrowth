@@ -123,6 +123,9 @@ fn expected_reference(case: &Case) -> String {
         .split('/')
         .next()
         .unwrap_or("");
+    if first == "turner" {
+        return "turners-syndrome".to_owned();
+    }
     if first != "utilities" {
         return first.to_owned();
     }
@@ -265,9 +268,10 @@ pub const STALE_CHART_FILES: (&str, &str) = (
 );
 
 /// Replays a reference's chart golden and fails on any difference outside
-/// provenance. Also checks that the known difference still holds: every
-/// named-format response from the unmodified server differs from 4.6.5's.
-pub async fn check_chart_golden(golden_file: &str) {
+/// provenance. With `stale_files`, also checks that that known difference
+/// still holds: every named-format response from the unmodified server
+/// differs from 4.6.5's. Without it, none may: the stored files are current.
+pub async fn check_chart_golden(golden_file: &str, known: &[(&str, &str)], stale_files: bool) {
     use std::sync::Arc;
 
     use opengrowth::server::{AppState, router};
@@ -282,14 +286,31 @@ pub async fn check_chart_golden(golden_file: &str) {
     let mut failures = Vec::new();
     let mut stale_differs = 0;
     let mut named = 0;
+    let mut seen = 0;
     for chart_case in &golden.cases {
         let case = &chart_case.case;
         let outcome = replay(app.clone(), case).await;
+        if let Some((_, reason)) = known.iter().find(|(name, _)| *name == case.name) {
+            seen += 1;
+            if !(case.status == 500 && outcome.status == 422) {
+                failures.push(format!(
+                    "{}: listed as a known difference ({reason}) but returned {}",
+                    case.name, outcome.status
+                ));
+            }
+            continue;
+        }
         let found = problems(case, &outcome);
         if !found.is_empty() {
             failures.push(format!("{}: {}", case.name, found.join("; ")));
         }
-        if let Some(stale) = &chart_case.stale_masked_sha256 {
+        // Only responses the route serves from its files can be stale; the
+        // others are errors, identical either way.
+        if let Some(stale) = chart_case
+            .stale_masked_sha256
+            .as_ref()
+            .filter(|_| case.status == 200)
+        {
             named += 1;
             if *stale != case.masked_sha256 {
                 stale_differs += 1;
@@ -301,10 +322,16 @@ pub async fn check_chart_golden(golden_file: &str) {
         golden.cases.len(),
         failures.len()
     );
+    assert_eq!(seen, known.len(), "a known difference has no case");
     let (name, reason) = STALE_CHART_FILES;
-    if stale_differs != named {
+    if stale_files && stale_differs != named {
         failures.push(format!(
             "{name} is listed as a known difference ({reason}), but only {stale_differs} of {named} differ"
+        ));
+    }
+    if !stale_files && stale_differs != 0 {
+        failures.push(format!(
+            "{stale_differs} of {named} stored chart files differ from 4.6.5, which is not a listed difference"
         ));
     }
     assert_no_failures(&failures, golden.cases.len());

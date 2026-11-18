@@ -75,6 +75,15 @@ const CDC_TERMS: Terms = Terms::Unrecorded {
     note: "CDC 2000 growth charts, a US federal government work (CDC National Center for Health Statistics); terms to be recorded in R2",
 };
 
+/// Tables opengrowth does not embed while `R2` has not recorded their terms.
+/// They are verified and imported like any other: `opengrowth data import`
+/// with a copy of `rcpchgrowth`'s `data_tables` (see `s/reference-tables`).
+const IMPORT_ONLY: &str = "owner and terms not yet recorded (R2); not embedded, so import it";
+
+const TURNER_TERMS: Terms = Terms::Unrecorded { note: IMPORT_ONLY };
+const TRISOMY_21_TERMS: Terms = Terms::Unrecorded { note: IMPORT_ONLY };
+const TRISOMY_21_AAP_TERMS: Terms = Terms::Unrecorded { note: IMPORT_ONLY };
+
 const ORIGIN: &str = "rcpchgrowth 4.6.5 (PyPI), rcpchgrowth/data_tables";
 
 /// Every table opengrowth can load.
@@ -142,6 +151,38 @@ pub const MANIFEST: &[TableSource] = &[
         title: "CDC 2000, 2 to 20 years, with the extended-BMI sigma",
         origin: ORIGIN,
         terms: CDC_TERMS,
+    },
+    TableSource {
+        id: TableId::Turner,
+        file: "turner.json",
+        sha256: "d6f6951c24864cbcec4a07e5b64066cf5f74469dacf8390e8cba75a91aa78348",
+        title: "UK Turner syndrome reference, girls' height, 1 to 20 years (Lyon, Preece and Grant, 1985)",
+        origin: ORIGIN,
+        terms: TURNER_TERMS,
+    },
+    TableSource {
+        id: TableId::Trisomy21,
+        file: "trisomy_21.json",
+        sha256: "a04d1657c72a987baf4e222336092f1697b5160ada39ce069d424a15a7325b14",
+        title: "UK Down syndrome reference, birth to 20 years (Styles, Cole, Dennis and Preece, 2002; BMI 2013)",
+        origin: ORIGIN,
+        terms: TRISOMY_21_TERMS,
+    },
+    TableSource {
+        id: TableId::Trisomy21AapInfant,
+        file: "trisomy_21_aap_infants.json",
+        sha256: "ea90535df4c4aa8badbb58c6f39f5f957f8f1f202663aaa5c09af08034690781",
+        title: "AAP Down syndrome growth charts, birth to 3 years (Zemel and others)",
+        origin: ORIGIN,
+        terms: TRISOMY_21_AAP_TERMS,
+    },
+    TableSource {
+        id: TableId::Trisomy21AapChild,
+        file: "trisomy_21_aap_children.json",
+        sha256: "a388c04f0031812ad1078daca13acb5138185cf817e3a63400472950fd05c0cb",
+        title: "AAP Down syndrome growth charts, 2 to 20 years (Zemel and others)",
+        origin: ORIGIN,
+        terms: TRISOMY_21_AAP_TERMS,
     },
 ];
 
