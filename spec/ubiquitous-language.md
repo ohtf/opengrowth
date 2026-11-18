@@ -8,7 +8,7 @@ This file picks one vocabulary. Use these terms in Rust identifiers, CLI command
 
 ## Growth reference
 
-**Canonical:** *growth reference* - the published statistical reference against which a measurement is assessed, identified by one of exactly six values:
+**Canonical:** *growth reference* - the published statistical reference against which a measurement is assessed, identified by one of these values:
 
 ```text
 uk-who
@@ -19,7 +19,7 @@ trisomy-21-aap
 turners-syndrome
 ```
 
-These strings are the public contract. They appear in API requests, in calculation provenance, and in the chart component.
+These strings are the public contract. They appear in API requests, in calculation provenance, and in the chart component. There are six today; a reference added under `standard.md` section 7.8 adds a value, and existing values do not change.
 
 **Rust type:** `GrowthReference`.
 

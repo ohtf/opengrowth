@@ -27,7 +27,7 @@ opengrowth is an independent derivative of [`rcpchgrowth`](https://github.com/rc
 
 ## What this is not
 
-- **Not a new clinical method.** No new references and no reinterpretation of existing ones.
+- **Not a new clinical method.** opengrowth devises no references and reinterprets none. References others publish can be added ([spec/standard.md](spec/standard.md) section 7.8).
 - **Not a substitute for clinical judgement.** See [SAFETY.md](SAFETY.md).
 - **Not the home of reference data provenance.** The upstream record of source datasets is [growth-references](https://github.com/rcpch/growth-references).
 - **Not usable yet.**

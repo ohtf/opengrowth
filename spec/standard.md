@@ -11,12 +11,13 @@ The motivations are:
 - **Consolidation.** The equivalent functionality is spread across six repositories: the Python package, the API server, a CLI wrapper, the React component library, a demo client, and the documentation site. A change touching the engine can need coordinated releases in five of them. The target is two: this repository (engine, CLI, MCP, API, Python bindings, docs) and one React repository (chart component and demo client). Fewer places for a calculation to drift, and a workload one maintainer can carry with help from other OHTF contributors.
 - **Agent access.** A self-contained binary with a CLI and MCP server gives AI agents and scripts the calculations directly, without a Python environment or a network call.
 - **Cost and throughput.** A compiled server should serve more requests per core at lower latency than the Python service. This is an expectation to be measured (`R29`), not a premise.
+- **New references.** Growth references that `rcpchgrowth` does not include can be added as they are academically published, without changing the engine's methods (section 7.8). Few appear, and with agentic coding the code for one is quick to write; the licence and the evidence are the work. The achondroplasia references are the first candidates (`R47`).
 
 This is a reimplementation, not a rewrite of intent. The clinical behaviour is already defined by the published methods, the independent R vectors, the Python engine, its reference data, and its test fixtures. Those are the specification of record for *what the numbers are*; this document specifies *how faithfully Rust must reproduce them* and *where it is permitted to differ*.
 
 ## 2. Non-goals
 
-- **Not a new clinical method.** No new references, no new statistical approach, no reinterpretation of existing references. Changes to clinical behaviour go through this project's clinical safety process (section 9), and are raised with the upstream Python project where they also apply there.
+- **Not a new clinical method.** opengrowth devises no references and no statistical methods of its own, and does not reinterpret existing references. It can add references that others have published, implementing the method each publication specifies (section 7.8). Changes to clinical behaviour go through this project's clinical safety process (section 9), and are raised with the upstream Python project where they also apply there.
 - **Not an RCPCH project.** opengrowth is not affiliated with or endorsed by RCPCH, does not use RCPCH branding, and is not part of the RCPCH Digital Growth Charts medical device. See section 3.1.
 - **Not a `clincalc` module.** opengrowth is a separate OHTF project. `clincalc` or any other project may consume it as a library under the terms in section 3, which cannot relicense the reference data.
 - **Not a replacement for `growth-references`.** That repository remains the provenance record for source datasets. This project consumes reference data; it does not become its home.
@@ -322,6 +323,29 @@ An MCP server exposing calculation, chart-coordinate, and mid-parental-height op
 ### 7.7 Documentation
 
 User documentation lives in `docs/` and is published as a Zensical site per house-style [`docs.md`](https://github.com/pacharanero/house-style/blob/main/docs.md) (`R30`). CLI reference, OpenAPI reference, and MCP tool reference are generated from the code so they cannot drift. Clinical background on the references and methods may draw on the RCPCH documentation with attribution, subject to its licence.
+
+### 7.8 Adding a growth reference
+
+A published growth reference is added from its publication's own tables, by the steps below, without changing the engine's methods (section 1).
+
+Reference tables have no standard format. Each publication tabulates its parameters at its own age spacing and in its own layout. Among the tables already in the store, WHO 2006 is daily; UK90 is weekly from 23 to 42 weeks, counted in weeks of gestation, and monthly in childhood; AAP Trisomy 21 has a monthly table to 3 years and a six-monthly one from 2 years; UK Trisomy 21 rounds its ages to two decimal places, so its steps are 29 or 33 days; and Turner is yearly. New sources arrive as PDF tables, spreadsheets, or CSV supplements, and some give a mean and SD rather than LMS parameters.
+
+The engine assumes no spacing. A lookup finds the rows around an age by their tabulated ages, uses a row as it is when the age matches it to four decimal places, and otherwise interpolates over the actual ages: the four-point Lagrange cubic where there are two rows on each side, and linear interpolation at a table's edges or where the reference requires it (`src/table.rs`).
+
+A reference can be added from:
+
+- **LMS parameters** by age, used as published.
+- **A mean and SD** by age, which is the LMS model with L = 1, M = the mean, and S = SD / M. The conversion is recorded as a transformation (section 3.3).
+
+A publication using another model, such as GAMLSS with a distribution other than Box-Cox Cole and Green (which is LMS), is a larger change: that model's SDS is ported from its published description first, with its own evidence. A reference published only as centile curves would need a model fitted to it, which is a re-derivation (section 2), so it is not added unless its authors publish the parameters.
+
+Adding one takes:
+
+1. **A transcription script**, kept in the repository, that reads the publication's own file and writes the store's JSON layout, recording each transformation, such as months to decimal years. Where the only source is a PDF, a second person checks the extracted values against it, because a silent transcription error is the highest-consequence failure (section 7.2).
+2. **Manifest entries** for its tables, with source, terms, and checksum (section 3.3). A table whose terms are unrecorded is import-only, as the Turner and Trisomy 21 tables are now.
+3. **The reference's definition**: its `growth_reference` value, how it selects a table for an age, where it has no data and the message it gives there, its gestation-correction rule, its chart age grid, and its route prefix. Today these are spread over about ten places, among them `src/vocabulary.rs`, `src/store/`, a selection module such as `src/who.rs`, `src/sds.rs`, `src/chart/`, and `src/server/mod.rs`; `R46` gathers them into one definition per reference.
+4. **Evidence from the publication.** There is no upstream implementation to compare with, so Profile B does not apply. Every transcribed row must equal the source, checked by script, and calculated SDS and centiles must reproduce whatever the publication tabulates, such as centile values by age or worked examples, to its stated precision. Where its centile curves were fitted separately from the parameters it tabulates, the difference is measured and recorded. The provenance drift guard ([provenance.md](provenance.md), invariant 7, `R22`) must fail until the reference has its own provenance cases.
+5. **Change control.** A new reference widens the population in [qms/intended-purpose.md](../qms/intended-purpose.md), so it needs a regulatory impact assessment first (`R44`). It is a clinical change, with a hazard log entry and clinical review, and an addition to the contract ([versioning.md](versioning.md) sections 2 and 3). The chart component, outside this repository (`R28`), has to draw it.
 
 ## 8. Conformance
 
