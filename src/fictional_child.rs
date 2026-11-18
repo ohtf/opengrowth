@@ -288,6 +288,12 @@ pub fn raw_measurement(
         Err(CalcError::ReferenceNotImplemented(reference)) => {
             Err(FictionalChildError::ReferenceNotImplemented(reference))
         }
+        // Upstream gets an infinite measurement here (CDC BMI at a centile
+        // that rounds to 100) and its response then fails with a 500; this
+        // fails the series instead (`spec/standard.md` section 6.3).
+        Err(CalcError::NotReal) => Err(FictionalChildError::Invalid(
+            "the measurement at this SDS is not finite".to_owned(),
+        )),
         // Upstream prints the exception and moves on to the next step.
         Err(_) => Ok(None),
     }

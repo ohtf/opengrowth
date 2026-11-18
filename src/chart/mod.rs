@@ -13,9 +13,9 @@
 //! Upstream behaviour kept exactly, because it changes the coordinates:
 //!
 //! - For UK-WHO, the Cole nine-centile collection uses SDS rounded to the
-//!   nearest two-thirds; every other collection, and every WHO collection
-//!   (upstream's WHO builder never uses Cole's rounding), uses the exact
-//!   inverse normal.
+//!   nearest two-thirds; every other collection, and every WHO and CDC
+//!   collection (upstream's builders for those never use Cole's rounding),
+//!   uses the exact inverse normal.
 //! - At a join between segments, the line for the younger segment is
 //!   calculated from the younger table, so it reaches the join. The test for
 //!   the 42-week join compares against the literal `0.038329911`, which is
@@ -109,11 +109,11 @@ pub enum ChartError {
     ReferenceNotImplemented(GrowthReference),
 }
 
-/// A segment of a reference, its age grid, and the ages at which it uses
-/// the younger table.
+/// A segment of a reference, its age grid for a measurement, and the ages
+/// at which it uses the younger table.
 struct Segment {
     name: &'static str,
-    ages: &'static [f64],
+    ages: fn(MeasurementMethod) -> &'static [f64],
     youngest_at: fn(f64) -> bool,
 }
 
@@ -121,22 +121,22 @@ struct Segment {
 const UK_WHO_SEGMENTS: [Segment; 4] = [
     Segment {
         name: "uk90_preterm",
-        ages: &ages::UK_90_PRETERM_AGES,
+        ages: |_| &ages::UK_90_PRETERM_AGES,
         youngest_at: |age| age == 0.038_329_911,
     },
     Segment {
         name: "uk_who_infant",
-        ages: &ages::WHO_2006_UNDER_TWOS_AGES,
+        ages: |_| &ages::WHO_2006_UNDER_TWOS_AGES,
         youngest_at: |age| age == 2.0,
     },
     Segment {
         name: "uk_who_child",
-        ages: &ages::UK_WHO_2006_OVER_TWOS_AGES,
+        ages: |_| &ages::UK_WHO_2006_OVER_TWOS_AGES,
         youngest_at: |age| age == 4.0,
     },
     Segment {
         name: "uk90_child",
-        ages: &ages::UK90_AGES,
+        ages: |_| &ages::UK90_AGES,
         youngest_at: |_| false,
     },
 ];
@@ -145,17 +145,43 @@ const UK_WHO_SEGMENTS: [Segment; 4] = [
 const WHO_SEGMENTS: [Segment; 3] = [
     Segment {
         name: "who_2006_infant",
-        ages: &ages::WHO_2006_UNDER_TWOS_AGES,
+        ages: |_| &ages::WHO_2006_UNDER_TWOS_AGES,
         youngest_at: |age| age == 0.038_329_911 || age == 2.0,
     },
     Segment {
         name: "who_2006_child",
-        ages: &ages::WHO_2006_OVER_TWOS_AGES,
+        ages: |_| &ages::WHO_2006_OVER_TWOS_AGES,
         youngest_at: |age| age == 5.0,
     },
     Segment {
         name: "who_2007_child",
-        ages: &ages::WHO_2007_AGES,
+        ages: |_| &ages::WHO_2007_AGES,
+        youngest_at: |_| false,
+    },
+];
+
+#[allow(clippy::float_cmp, reason = "upstream compares these ages exactly")]
+const CDC_SEGMENTS: [Segment; 3] = [
+    // Upstream's Fenton preterm segment has no ages, so its lines are empty.
+    Segment {
+        name: "fenton",
+        ages: |_| &[],
+        youngest_at: |_| false,
+    },
+    Segment {
+        name: "cdc_infant",
+        ages: |method| match method {
+            MeasurementMethod::Ofc => &ages::CDC_TO_THREE_AGE,
+            MeasurementMethod::Height | MeasurementMethod::Weight => {
+                &ages::WHO_2006_UNDER_TWOS_AGES
+            }
+            MeasurementMethod::Bmi => &ages::CDC_TO_TWO_AGE,
+        },
+        youngest_at: |age| age == 0.038_329_911 || age == 2.0,
+    },
+    Segment {
+        name: "cdc_child",
+        ages: |_| &ages::CDC_TWO_TWENTY,
         youngest_at: |_| false,
     },
 ];
@@ -175,6 +201,7 @@ pub fn chart(
     let segments: &[Segment] = match reference {
         GrowthReference::UkWho => &UK_WHO_SEGMENTS,
         GrowthReference::Who => &WHO_SEGMENTS,
+        GrowthReference::Cdc => &CDC_SEGMENTS,
         other => return Err(ChartError::ReferenceNotImplemented(other)),
     };
     let (values, is_sds, cole) = match spec {
@@ -255,8 +282,9 @@ fn line(
     let label = if is_sds { z.round(3).value() } else { centile };
     let requested = z.round(4);
 
-    let mut points = Vec::with_capacity(segment.ages.len());
-    for &age in segment.ages {
+    let grid = (segment.ages)(method);
+    let mut points = Vec::with_capacity(grid.len());
+    for &age in grid {
         match measurement_from_sds(
             data,
             reference,

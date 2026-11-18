@@ -158,7 +158,7 @@ pub fn measure(
 ) -> Result<Measurement, MeasureError> {
     if !matches!(
         input.reference,
-        GrowthReference::UkWho | GrowthReference::Who
+        GrowthReference::UkWho | GrowthReference::Who | GrowthReference::Cdc
     ) {
         return Err(MeasureError::ReferenceNotImplemented(input.reference));
     }
@@ -357,13 +357,20 @@ fn calculated_values(
 
     // Upstream catches every exception at corrected age, but only LookupError
     // (no reference data at this age) at chronological age.
-    let corrected = match at(corrected_age) {
-        Ok(result) => {
-            tables_read.push(result.table);
-            Ok(result.sds)
+    let corrected = if input.reference == GrowthReference::Cdc && corrected_age < 0.0 {
+        Err(
+            "This baby is born premature. CDC data is not available for preterm infants."
+                .to_owned(),
+        )
+    } else {
+        match at(corrected_age) {
+            Ok(result) => {
+                tables_read.push(result.table);
+                Ok(result.sds)
+            }
+            Err(CalcError::Data(error)) => return Err(error.into()),
+            Err(error) => Err(error.to_string()),
         }
-        Err(CalcError::Data(error)) => return Err(error.into()),
-        Err(error) => Err(error.to_string()),
     };
     let chronological = match at(chronological_age) {
         Ok(result) => {
@@ -371,9 +378,9 @@ fn calculated_values(
             Ok(result.sds)
         }
         Err(CalcError::Data(error)) => return Err(error.into()),
-        Err(error @ (CalcError::UkWhoAbsent(_) | CalcError::WhoAbsent(_))) => {
-            Err(error.to_string())
-        }
+        Err(
+            error @ (CalcError::UkWhoAbsent(_) | CalcError::WhoAbsent(_) | CalcError::CdcAbsent(_)),
+        ) => Err(error.to_string()),
         Err(error) => return Err(MeasureError::Raised(error.to_string())),
     };
 

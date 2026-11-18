@@ -12,7 +12,12 @@
 //! linearly between rows, and beyond 3 SD (for weight and BMI at any age,
 //! and for everything under 5 years) it uses WHO's restricted extension of
 //! the LMS method, which spaces SDS beyond 3 by the 2-to-3 SD distance.
+//!
+//! CDC BMI above the 95th centile uses the CDC extended BMI-for-age method:
+//! the centile is `90 + 10 * Phi((BMI - p95) / sigma)`, with `sigma` from the
+//! table. Its tables carry sigma, so their lookups are always linear.
 
+use crate::cdc::{self, CdcAbsence};
 use crate::data::{DataError, ReferenceData, TableId};
 use crate::lms::{Lms, measurement_from_lms, sds_from_lms};
 use crate::normal;
@@ -32,6 +37,18 @@ pub enum CalcError {
     /// As for UK-WHO, for the WHO reference.
     #[error(transparent)]
     WhoAbsent(#[from] WhoAbsence),
+    /// As for UK-WHO, for the CDC reference.
+    #[error(transparent)]
+    CdcAbsent(#[from] CdcAbsence),
+    /// The LMS transform has no real value here. Upstream computes a complex
+    /// number and fails when it rounds it.
+    #[error("the LMS transform has no real value at this SDS")]
+    NotReal,
+    /// CDC BMI needs the extended-BMI sigma, and this table has none: the
+    /// earlier WHO infant table, which a chart reaches at exactly 2 years.
+    /// The message is Python's `KeyError` text.
+    #[error("'sigma'")]
+    MissingSigma,
     /// A table needed for this calculation is not loaded.
     #[error(transparent)]
     Data(#[from] DataError),
@@ -96,6 +113,15 @@ pub fn sds_for_measurement(
             }
         },
     )?;
+    if reference == GrowthReference::Cdc && method == MeasurementMethod::Bmi {
+        let sigma = lms.sigma.ok_or(CalcError::MissingSigma)?;
+        let p95 = cdc_p95(&lms);
+        if observation > p95 {
+            let centile = normal::cdf((observation - p95) / sigma) * 10.0 + 90.0;
+            let sds = normal::ppf(centile / 100.0);
+            return Ok(SdsResult { sds, table, lms });
+        }
+    }
     let bmi_or_weight = matches!(method, MeasurementMethod::Bmi | MeasurementMethod::Weight);
     let sds = if reference == GrowthReference::Who && ((bmi_or_weight && age >= 5.0) || age < 5.0) {
         who_sds(observation, &lms)
@@ -103,6 +129,11 @@ pub fn sds_for_measurement(
         sds_from_lms(observation, &lms)
     };
     Ok(SdsResult { sds, table, lms })
+}
+
+/// The BMI at the 95th centile, where the CDC extended method takes over.
+fn cdc_p95(lms: &Lms) -> f64 {
+    lms.m * (1.0 + lms.l * lms.s * 1.645).powf(1.0 / lms.l)
 }
 
 /// WHO's restricted extension of the LMS method beyond 3 SD: the distance
@@ -159,9 +190,30 @@ pub fn measurement_from_sds(
         Interpolation::CubicWherePossible,
         || Ok(()),
     )?;
+    let z = requested_sds.value();
+    if reference == GrowthReference::Cdc && method == MeasurementMethod::Bmi {
+        let sigma = lms.sigma.ok_or(CalcError::MissingSigma)?;
+        // Upstream's CDC BMI branch, which does not check for a negative base.
+        let value = if z <= 1.645 {
+            let numpy = lookup == Lookup::Linear || matches!(requested_sds, PyFloat::NumPy(_));
+            let value = lms.m * (1.0 + lms.l * lms.s * z).powf(1.0 / lms.l);
+            if numpy {
+                PyFloat::NumPy(value)
+            } else {
+                PyFloat::Builtin(value)
+            }
+        } else {
+            let centile = normal::cdf(z) * 100.0;
+            PyFloat::NumPy(normal::ppf((centile - 90.0) / 10.0) * sigma + cdc_p95(&lms))
+        };
+        if !value.value().is_finite() {
+            return Err(CalcError::NotReal);
+        }
+        return Ok((Some(value.round(4)), table_id));
+    }
     let numpy =
         lookup == Lookup::Linear || (matches!(requested_sds, PyFloat::NumPy(_)) && lms.l != 0.0);
-    let measurement = measurement_from_lms(requested_sds.value(), &lms).map(|value| {
+    let measurement = measurement_from_lms(z, &lms).map(|value| {
         let value = if numpy {
             PyFloat::NumPy(value)
         } else {
@@ -227,6 +279,7 @@ fn lms_for_age(
             }
             who::table_for_age(age, youngest_at_boundary)?
         }
+        GrowthReference::Cdc => cdc::lookup(age, method, youngest_at_boundary)?,
         other => return Err(CalcError::ReferenceNotImplemented(other)),
     };
     before_lookup()?;
@@ -377,13 +430,15 @@ mod tests {
         assert!(matches!(
             sds_for_measurement(
                 &data,
-                GrowthReference::Cdc,
+                GrowthReference::TurnersSyndrome,
                 3.0,
                 MeasurementMethod::Height,
                 90.0,
                 Sex::Male
             ),
-            Err(CalcError::ReferenceNotImplemented(GrowthReference::Cdc))
+            Err(CalcError::ReferenceNotImplemented(
+                GrowthReference::TurnersSyndrome
+            ))
         ));
     }
 }

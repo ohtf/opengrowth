@@ -5,8 +5,7 @@
 Captured from the pinned server with Starlette's TestClient: parents across
 the plausible range and at the +/-8 SD limits, every combination of limit
 errors (their order is part of the response), a seeded sample of parent
-pairs for rounding, and validation, for UK-WHO and WHO. The cdc reference is captured
-too; the opengrowth test lists cdc as pending until that reference exists.
+pairs for rounding, and validation, for each of the three references.
 """
 
 import contextlib
@@ -79,7 +78,12 @@ CASES = [
     ("error zero height", parents(0, 165), True),
     ("error negative heights", parents(-10, -10), True),
     ("lax numbers", parents("180.5", "165.2", "female"), False),
-    ("pending cdc", parents(180, 165, reference="cdc"), False),
+    ("cdc typical boy", parents(180, 165, reference="cdc"), True),
+    ("cdc typical girl", parents(176, 168, "female", reference="cdc"), False),
+    ("cdc tall parents", parents(200, 185, reference="cdc"), False),
+    ("cdc error maternal below -8", parents(180, 110, reference="cdc"), True),
+    ("cdc error zero height", parents(0, 165, reference="cdc"), True),
+    ("cdc error negative heights", parents(-10, -10, reference="cdc"), True),
     ("who typical girl", parents(180, 165, "female", reference="who"), False),
     ("who typical boy", parents(178, 162, reference="who"), True),
     ("who tall parents", parents(200, 185, reference="who"), False),
@@ -104,6 +108,10 @@ for i in range(20):
     paternal = round(rng.uniform(140, 215), rng.choice([0, 1, 2]))
     maternal = round(rng.uniform(130, 200), rng.choice([0, 1, 2]))
     CASES.append((f"who sample {i}", parents(paternal, maternal, rng.choice(["male", "female"]), reference="who"), False))
+for i in range(20):
+    paternal = round(rng.uniform(140, 215), rng.choice([0, 1, 2]))
+    maternal = round(rng.uniform(130, 200), rng.choice([0, 1, 2]))
+    CASES.append((f"cdc sample {i}", parents(paternal, maternal, rng.choice(["male", "female"]), reference="cdc"), False))
 
 c = client()
 cases = [call(c, name, body, full) for name, body, full in CASES]

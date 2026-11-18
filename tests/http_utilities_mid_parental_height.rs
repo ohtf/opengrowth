@@ -15,9 +15,12 @@ use common::{DATA_DIR_ENV, Golden, read_json};
 use opengrowth::server::{AppState, router};
 use opengrowth::store::ReferenceStore;
 
-/// Requests for references opengrowth has not ported yet, which must say so
-/// with a 501 until they are. Remove each as its reference lands.
-const PENDING: &[&str] = &["pending cdc"];
+/// Category 3 fixes (`spec/standard.md` section 6.3), each checked to still
+/// be upstream's 500 and opengrowth's 422.
+const KNOWN_DIFFERENCES: &[(&str, &str)] = &[(
+    "cdc error negative heights",
+    "CDC height L is not 1 at adult age, so a negative height gives upstream a complex SDS, and comparing it raises a TypeError, which escapes as a 500",
+)];
 
 #[tokio::test]
 async fn mid_parental_height_matches_fastapi_byte_for_byte() {
@@ -26,14 +29,17 @@ async fn mid_parental_height_matches_fastapi_byte_for_byte() {
     let app = router(Arc::new(AppState::new(store, None)));
     let golden: Golden<Vec<Case>> = read_json("expected/http-utilities-mid-parental-height.json");
     let mut failures = Vec::new();
-    let mut pending = 0;
+    let mut known = 0;
     for case in &golden.cases {
         let outcome = replay(app.clone(), case).await;
-        if PENDING.contains(&case.name.as_str()) {
-            pending += 1;
-            if outcome.status != 501 {
+        if let Some((_, reason)) = KNOWN_DIFFERENCES
+            .iter()
+            .find(|(name, _)| *name == case.name)
+        {
+            known += 1;
+            if !(case.status == 500 && outcome.status == 422) {
                 failures.push(format!(
-                    "{}: listed as pending but returned {}",
+                    "{}: listed as a known difference ({reason}) but returned {}",
                     case.name, outcome.status
                 ));
             }
@@ -45,10 +51,14 @@ async fn mid_parental_height_matches_fastapi_byte_for_byte() {
         }
     }
     eprintln!(
-        "{} cases: {} byte-identical outside provenance, {pending} pending references",
+        "{} cases: {} byte-identical outside provenance, {known} known differences",
         golden.cases.len(),
-        golden.cases.len() - pending - failures.len()
+        golden.cases.len() - known - failures.len()
     );
-    assert_eq!(pending, PENDING.len(), "a pending case is missing");
+    assert_eq!(
+        known,
+        KNOWN_DIFFERENCES.len(),
+        "a known difference has no case"
+    );
     assert_no_failures(&failures, golden.cases.len());
 }

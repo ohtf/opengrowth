@@ -178,6 +178,6 @@ async fn missing_tables_are_reported_never_substituted() {
 
 #[tokio::test]
 async fn unported_operations_say_so() {
-    let (status, _, _) = send(None, "POST", "/cdc/calculation", VALID, None).await;
+    let (status, _, _) = send(None, "POST", "/turners-syndrome/calculation", VALID, None).await;
     assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
 }

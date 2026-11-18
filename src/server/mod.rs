@@ -5,8 +5,8 @@
 //! API (`digital-growth-charts-server`).
 //!
 //! The goal is byte-identical response bodies outside `provenance`
-//! (`spec/standard.md` section 4.2). Implemented so far: the UK-WHO and WHO
-//! operations and mid-parental height ([`IMPLEMENTED`]), bearer-token
+//! (`spec/standard.md` section 4.2). Implemented so far: the UK-WHO, WHO,
+//! and CDC operations and mid-parental height ([`IMPLEMENTED`]), bearer-token
 //! authorisation, 404, 405, and trailing-slash redirects. Other operations
 //! return 501.
 //!
@@ -130,7 +130,11 @@ impl NoiseSource {
 }
 
 /// The references whose four operations opengrowth serves.
-const PORTED: [GrowthReference; 2] = [GrowthReference::UkWho, GrowthReference::Who];
+const PORTED: [GrowthReference; 3] = [
+    GrowthReference::UkWho,
+    GrowthReference::Who,
+    GrowthReference::Cdc,
+];
 
 /// What upstream calls a reference in its route messages.
 fn route_name(reference: GrowthReference) -> &'static str {
@@ -215,7 +219,10 @@ pub const IMPLEMENTED: &[&str] = &[
     "/who/bulk-calculation",
     "/who/chart-coordinates",
     "/who/fictional-child-data",
-    // UK-WHO and WHO so far: `cdc` requests report 501.
+    "/cdc/calculation",
+    "/cdc/bulk-calculation",
+    "/cdc/chart-coordinates",
+    "/cdc/fictional-child-data",
     "/utilities/mid-parental-height",
 ];
 
@@ -233,10 +240,6 @@ const NOT_YET_IMPLEMENTED: &[&str] = &[
     "/trisomy-21-aap/bulk-calculation",
     "/trisomy-21-aap/chart-coordinates",
     "/trisomy-21-aap/fictional-child-data",
-    "/cdc/calculation",
-    "/cdc/bulk-calculation",
-    "/cdc/chart-coordinates",
-    "/cdc/fictional-child-data",
 ];
 
 fn json_response<T: Serialize + ?Sized>(status: StatusCode, body: &T) -> Response {
@@ -428,6 +431,7 @@ fn validate_observation_value(
         Ok(result) => result.sds,
         Err(CalcError::UkWhoAbsent(absence)) => return Err(report(absence.to_string())),
         Err(CalcError::WhoAbsent(absence)) => return Err(report(absence.to_string())),
+        Err(CalcError::CdcAbsent(absence)) => return Err(report(absence.to_string())),
         Err(CalcError::Data(error)) => {
             return Err(Rejection::Respond(Box::new(data_unavailable(&error))));
         }
