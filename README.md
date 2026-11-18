@@ -34,7 +34,7 @@ opengrowth is an independent derivative of [`rcpchgrowth`](https://github.com/rc
 
 ## Reference data
 
-The reference tables are in [`data/`](data/) and compiled into the binary, copied unmodified from the `rcpchgrowth` 4.6.5 package, where they are already publicly distributed. They are not covered by this repository's code licence and carry their own terms ([`LICENSES/`](LICENSES/)). The exceptions are the Turner syndrome and Trisomy 21 tables, whose terms are not yet recorded: they are not in the repository, and those references need them imported. `opengrowth data import "$(s/reference-tables)"` imports `rcpchgrowth`'s own copies, downloaded from PyPI and checked against the manifest.
+The reference tables are in [`data/`](data/) and compiled into the binary, copied unmodified from the `rcpchgrowth` 4.6.5 package, where they are already publicly distributed. They are not covered by this repository's code licence and carry their own terms ([`LICENSES/`](LICENSES/)). Every table is embedded unless its owner asks for its removal, including those whose terms are not yet recorded (`R2` in [spec/roadmap.md](spec/roadmap.md)).
 
 The UK90 reference, which UK-WHO depends on, was produced under the Medical Research Council and is now owned by UK Research and Innovation (UKRI). **It is included for pre-alpha research and development only. A licence application to UKRI is pending, and no opengrowth release will be used for patient care until it is granted.** If UKRI refuses, the tables come out of the binary and users who hold their own licence import them with `opengrowth data import`, a path that already works and is tested.
 

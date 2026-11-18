@@ -7,8 +7,7 @@
 //!
 //! Ported from `rcpchgrowth.turner`, `trisomy_21`, and `trisomy_21_aap`.
 //! Each absence message is upstream's `LookupError` text, which reaches API
-//! responses unchanged. These tables are not embedded until `R2` records
-//! their terms; they are imported (`s/reference-tables`).
+//! responses unchanged.
 
 use crate::data::TableId;
 use crate::vocabulary::{MeasurementMethod, Sex};

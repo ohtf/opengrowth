@@ -136,33 +136,6 @@ pub fn mask_provenance(body: &str) -> String {
     out
 }
 
-/// Whether the tables a suite needs are loaded: embedded, or imported from
-/// `$OPENGROWTH_REFERENCE_DATA_DIR`. Tables whose terms are unrecorded are
-/// not embedded (`R2`), so without an import the suite is skipped; with
-/// `OPENGROWTH_REQUIRE_ALL_TABLES` set, as in CI, it fails instead.
-#[must_use]
-pub fn tables_available(tables: &[opengrowth::TableId]) -> bool {
-    let dir = std::env::var_os(DATA_DIR_ENV).map(PathBuf::from);
-    let store = opengrowth::store::ReferenceStore::standard(dir.as_deref()).expect("tables load");
-    let missing: Vec<&str> = tables
-        .iter()
-        .filter(|table| !store.loaded().iter().any(|f| f.source.id == **table))
-        .map(|table| table.as_str())
-        .collect();
-    if missing.is_empty() {
-        return true;
-    }
-    let message = format!(
-        "tables {missing:?} are not embedded and were not imported; set {DATA_DIR_ENV}=$(s/reference-tables)"
-    );
-    assert!(
-        std::env::var_os("OPENGROWTH_REQUIRE_ALL_TABLES").is_none(),
-        "{message}"
-    );
-    eprintln!("skipping: {message}");
-    false
-}
-
 /// Lowercase hex SHA-256.
 #[must_use]
 pub fn sha256_hex(bytes: &[u8]) -> String {

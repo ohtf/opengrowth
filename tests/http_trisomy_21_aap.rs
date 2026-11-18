@@ -5,12 +5,9 @@
 
 //! Profile B for AAP Trisomy 21: replays every calculation and bulk-calculation
 //! request captured from the FastAPI server and compares the body byte for
-//! byte outside `provenance`. Its tables are not embedded (`R2`), so the
-//! suite needs them imported: see `common::tables_available`.
+//! byte outside `provenance`.
 
 mod common;
-
-use opengrowth::TableId;
 
 /// Category 3 fixes (`spec/standard.md` section 6.3), each checked to still
 /// differ in exactly the stated way.
@@ -27,9 +24,6 @@ const KNOWN_DIFFERENCES: &[(&str, &str)] = &[
 
 #[tokio::test]
 async fn trisomy_21_aap_http_matches_fastapi_byte_for_byte() {
-    if !common::tables_available(&[TableId::Trisomy21AapInfant, TableId::Trisomy21AapChild]) {
-        return;
-    }
     common::http::check_reference_golden("expected/http-trisomy-21-aap.json", KNOWN_DIFFERENCES)
         .await;
 }

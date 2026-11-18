@@ -4,11 +4,9 @@
 #![cfg(all(feature = "server", feature = "embedded-data"))]
 
 //! Profile B for `POST /trisomy-21/chart-coordinates`, with the named-format
-//! files regenerated as for UK-WHO. Needs the reference's imported tables.
+//! files regenerated as for UK-WHO.
 
 mod common;
-
-use opengrowth::TableId;
 
 /// Category 3 fixes: the Trisomy 21 builder rounds an infinite SDS without
 /// failing, so the response holds an infinity and fails to serialise.
@@ -29,9 +27,6 @@ const KNOWN_DIFFERENCES: &[(&str, &str)] = &[
 
 #[tokio::test]
 async fn trisomy_21_chart_coordinates_match_fastapi_byte_for_byte() {
-    if !common::tables_available(&[TableId::Trisomy21]) {
-        return;
-    }
     common::http::check_chart_golden(
         "expected/http-trisomy-21-charts.json",
         KNOWN_DIFFERENCES,

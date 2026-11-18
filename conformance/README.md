@@ -60,7 +60,7 @@ Measured on Linux x86_64 against rcpchgrowth 4.6.5, SciPy 1.18.1, NumPy 2.5.5, C
 | UK-WHO fictional children vs FastAPI | 65 of 66 byte-identical outside provenance, with the random draw fixed; the other is an enumerated Category 3 fix (upstream 500, opengrowth 422) |
 | WHO HTTP responses vs FastAPI | 5,791 of 5,793 byte-identical outside provenance, the other 2 the enumerated `birth_date` fixes; charts 60 of 60; fictional children 66 of 66 |
 | CDC HTTP responses vs FastAPI | 5,731 of 5,734 byte-identical outside provenance, the other 3 enumerated Category 3 fixes; charts 60 of 60; fictional children 65 of 66, the other enumerated |
-| Turner, UK Trisomy 21, AAP Trisomy 21 vs FastAPI | Every captured response identical outside provenance apart from enumerated fixes: calculation and bulk 5,408 of 5,410, 5,528 of 5,530, 5,536 of 5,538; charts 60, 60 (3 enumerated), 60; fictional children 74, 66, 66. Needs the imported tables |
+| Turner, UK Trisomy 21, AAP Trisomy 21 vs FastAPI | Every captured response identical outside provenance apart from enumerated fixes: calculation and bulk 5,408 of 5,410, 5,528 of 5,530, 5,536 of 5,538; charts 60, 60 (3 enumerated), 60; fictional children 74, 66, 66 |
 | Mid-parental height vs FastAPI | 117 of 118 requests (UK-WHO, WHO, and CDC) byte-identical outside provenance; the other an enumerated Category 3 fix |
 | UK-WHO chart coordinates vs FastAPI | 60 of 60 byte-identical outside provenance, with the named-format files regenerated; all 32 named-format responses differ from the server's stale stored files |
 
@@ -74,4 +74,4 @@ s/goldens            # only when regenerating goldens
 s/conformance        # run the suites with their reports
 ```
 
-`cargo test` runs every suite against the embedded tables; set `$OPENGROWTH_REFERENCE_DATA_DIR` to layer imported files over them. The Turner and Trisomy 21 tables are not embedded (`R2`), so their suites skip, saying so, unless that directory holds them: `s/reference-tables` downloads `rcpchgrowth`'s own copies from PyPI and prints where. CI does this and sets `OPENGROWTH_REQUIRE_ALL_TABLES`, so there those suites fail rather than skip. `s/conformance` does it too, and runs every suite with its agreement report.
+`cargo test` runs every suite against the embedded tables, in CI too; set `$OPENGROWTH_REFERENCE_DATA_DIR` to layer imported files over them. `s/conformance` runs the same suites with their agreement reports.

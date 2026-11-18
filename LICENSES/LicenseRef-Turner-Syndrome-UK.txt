@@ -1,0 +1,17 @@
+UK Turner syndrome growth reference (1985)
+
+LMS values for the height of girls with Turner syndrome, from Lyon AJ,
+Preece MA, Grant DB. Growth curve for girls with Turner syndrome. Archives
+of Disease in Childhood 1985;60:932-935. The owner of these values has not
+yet been recorded.
+
+This file is copied unmodified from the rcpchgrowth Python package
+(version 4.6.5, published on PyPI by the Royal College of Paediatrics and
+Child Health), where it is publicly distributed.
+
+opengrowth embeds it under the maintainer decision of 2026-11-18 that every
+reference table is embedded unless its owner requires its removal
+(spec/standard.md section 3.3). The terms that apply to its redistribution
+have not yet been recorded (roadmap item R2). The opengrowth software
+licence (AGPL-3.0-or-later) does not apply to this file and grants no
+rights in it.

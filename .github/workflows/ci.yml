@@ -32,12 +32,15 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
       # The engine alone, with no features: the leaf-crate boundary.
       - run: cargo clippy --all-targets --no-default-features -- -D warnings
-      # Every conformance suite. The Turner and Trisomy 21 tables are not
-      # embedded (R2), so those suites read rcpchgrowth's own copies, fetched
-      # from PyPI and verified against the manifest; they may not skip here.
-      - name: Test, with the tables opengrowth does not embed
-        run: OPENGROWTH_REFERENCE_DATA_DIR="$(s/reference-tables)" OPENGROWTH_REQUIRE_ALL_TABLES=1 cargo test --release
+      # Every conformance suite, against the embedded tables.
+      - run: cargo test --release
       - run: cargo test --no-default-features
+      # Every file in data/ must be byte-identical to the same file in the
+      # rcpchgrowth 4.6.5 wheel on PyPI, as NOTICE.md says it is.
+      - name: Embedded tables are rcpchgrowth 4.6.5's own
+        run: |
+          upstream="$(s/reference-tables)"
+          cd data && find . -name '*.json' -print0 | xargs -0 -I{} cmp {} "$upstream/{}"
       - name: SOUP register is current
         run: s/soup --check
 

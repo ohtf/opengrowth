@@ -48,7 +48,7 @@ See [s/README.md](s/README.md). The main ones:
 - `s/deny` - dependency policy (licences, advisories, sources)
 - `s/conformance` - the differential suite against the R vectors, Python goldens, and SciPy grid
 - `s/reference-python` and `s/goldens` - the pinned Python reference environment, and regenerating goldens from it
-- `s/reference-tables` - `rcpchgrowth`'s own tables, from PyPI, for the Turner and Trisomy 21 references, which are not embedded (`R2`); `s/conformance` and CI use it
+- `s/reference-tables` - `rcpchgrowth` 4.6.5's own tables, from PyPI; CI checks that every file in `data/` is identical to them
 
 ## Before every commit
 

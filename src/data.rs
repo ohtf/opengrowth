@@ -31,17 +31,33 @@ pub enum TableId {
     CdcInfant,
     /// CDC 2000, 2 to 20 years, with the extended-BMI sigma.
     CdcChild,
-    /// UK Turner syndrome reference: girls' height, 1 to 20 years. Not embedded.
+    /// UK Turner syndrome reference: girls' height, 1 to 20 years.
     Turner,
-    /// UK Down syndrome (Trisomy 21) reference, birth to 20 years. Not embedded.
+    /// UK Down syndrome (Trisomy 21) reference, birth to 20 years.
     Trisomy21,
-    /// AAP Down syndrome charts, infants to 3 years. Not embedded.
+    /// AAP Down syndrome charts, infants to 3 years.
     Trisomy21AapInfant,
-    /// AAP Down syndrome charts, 2 to 20 years. Not embedded.
+    /// AAP Down syndrome charts, 2 to 20 years.
     Trisomy21AapChild,
 }
 
 impl TableId {
+    /// Every table, in manifest order.
+    pub const ALL: [Self; 12] = [
+        Self::Uk90Preterm,
+        Self::Who2006Infant,
+        Self::Who2006Child,
+        Self::Uk90Child,
+        Self::Who2007Child,
+        Self::Who2006InfantPre2025,
+        Self::CdcInfant,
+        Self::CdcChild,
+        Self::Turner,
+        Self::Trisomy21,
+        Self::Trisomy21AapInfant,
+        Self::Trisomy21AapChild,
+    ];
+
     /// Stable machine name, used in provenance and error messages.
     #[must_use]
     pub const fn as_str(self) -> &'static str {

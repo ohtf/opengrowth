@@ -1,0 +1,18 @@
+UK Down syndrome (Trisomy 21) growth reference (2002, BMI 2013)
+
+LMS values from Styles ME, Cole TJ, Dennis J, Preece MA. New cross
+sectional stature, weight, and head circumference references for Down's
+syndrome in the UK and Republic of Ireland. Archives of Disease in
+Childhood 2002;87:104-108, with BMI centiles added in 2013. The owner of
+these values has not yet been recorded.
+
+This file is copied unmodified from the rcpchgrowth Python package
+(version 4.6.5, published on PyPI by the Royal College of Paediatrics and
+Child Health), where it is publicly distributed.
+
+opengrowth embeds it under the maintainer decision of 2026-11-18 that every
+reference table is embedded unless its owner requires its removal
+(spec/standard.md section 3.3). The terms that apply to its redistribution
+have not yet been recorded (roadmap item R2). The opengrowth software
+licence (AGPL-3.0-or-later) does not apply to this file and grants no
+rights in it.

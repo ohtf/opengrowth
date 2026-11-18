@@ -156,6 +156,9 @@ async fn missing_tables_are_reported_never_substituted() {
     let (status, body, _) = send(None, "POST", "/uk-who/calculation", VALID, None).await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
     assert!(body.contains("uk90-child"), "{body}");
+    let (status, body, _) = send(None, "POST", "/turner/calculation", VALID, None).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert!(body.contains("turner"), "{body}");
     let chart = r#"{"sex": "male", "measurement_method": "height"}"#;
     let (status, body, _) = send(None, "POST", "/uk-who/chart-coordinates", chart, None).await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
@@ -174,12 +177,4 @@ async fn missing_tables_are_reported_never_substituted() {
     .await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
     assert!(body.contains("uk90-child"), "{body}");
-}
-
-#[tokio::test]
-async fn references_without_their_tables_say_so() {
-    // The Turner table is not embedded (R2); without an import it is missing.
-    let (status, body, _) = send(None, "POST", "/turner/calculation", VALID, None).await;
-    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
-    assert!(body.contains("turner"), "{body}");
 }

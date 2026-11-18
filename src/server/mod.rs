@@ -7,8 +7,7 @@
 //! The goal is byte-identical response bodies outside `provenance`
 //! (`spec/standard.md` section 4.2). Every upstream operation is implemented
 //! ([`IMPLEMENTED`]), with bearer-token authorisation, 404, 405, and
-//! trailing-slash redirects. The Turner and Trisomy 21 operations need their
-//! tables imported, since they are not embedded (`R2`).
+//! trailing-slash redirects.
 //!
 //! The `/growth/v1` prefix belongs to the gateway, not this router.
 

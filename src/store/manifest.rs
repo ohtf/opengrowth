@@ -75,14 +75,17 @@ const CDC_TERMS: Terms = Terms::Unrecorded {
     note: "CDC 2000 growth charts, a US federal government work (CDC National Center for Health Statistics); terms to be recorded in R2",
 };
 
-/// Tables opengrowth does not embed while `R2` has not recorded their terms.
-/// They are verified and imported like any other: `opengrowth data import`
-/// with a copy of `rcpchgrowth`'s `data_tables` (see `s/reference-tables`).
-const IMPORT_ONLY: &str = "owner and terms not yet recorded (R2); not embedded, so import it";
+const TURNER_TERMS: Terms = Terms::Unrecorded {
+    note: "Lyon, Preece and Grant 1985; owner and terms to be recorded in R2",
+};
 
-const TURNER_TERMS: Terms = Terms::Unrecorded { note: IMPORT_ONLY };
-const TRISOMY_21_TERMS: Terms = Terms::Unrecorded { note: IMPORT_ONLY };
-const TRISOMY_21_AAP_TERMS: Terms = Terms::Unrecorded { note: IMPORT_ONLY };
+const TRISOMY_21_TERMS: Terms = Terms::Unrecorded {
+    note: "Styles, Cole, Dennis and Preece 2002, BMI 2013; owner and terms to be recorded in R2",
+};
+
+const TRISOMY_21_AAP_TERMS: Terms = Terms::Unrecorded {
+    note: "Zemel and others 2015, American Academy of Pediatrics; owner and terms to be recorded in R2",
+};
 
 const ORIGIN: &str = "rcpchgrowth 4.6.5 (PyPI), rcpchgrowth/data_tables";
 
@@ -205,13 +208,20 @@ mod tests {
 
     #[test]
     fn registry_every_table_has_provenance_terms_and_a_digest() {
-        for id in [
-            TableId::Uk90Preterm,
-            TableId::Who2006Infant,
-            TableId::Who2006Child,
-            TableId::Uk90Child,
-        ] {
+        let listed: Vec<_> = MANIFEST.iter().map(|s| s.id).collect();
+        assert_eq!(
+            listed,
+            TableId::ALL,
+            "the manifest lists every table once, in order"
+        );
+        for id in TableId::ALL {
             let entry = source(id);
+            match entry.terms {
+                Terms::Restricted { owner, note } => {
+                    assert!(!owner.is_empty() && !note.is_empty(), "{id}");
+                }
+                Terms::Unrecorded { note } => assert!(!note.is_empty(), "{id}"),
+            }
             assert_eq!(entry.sha256.len(), 64, "{id}");
             assert!(
                 entry
@@ -226,9 +236,5 @@ mod tests {
                 "{id}"
             );
         }
-        let mut ids: Vec<_> = MANIFEST.iter().map(|s| s.id).collect();
-        ids.sort();
-        ids.dedup();
-        assert_eq!(ids.len(), MANIFEST.len(), "duplicate manifest entries");
     }
 }

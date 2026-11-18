@@ -1,0 +1,17 @@
+US Down syndrome (Trisomy 21) growth charts (2015)
+
+LMS values from Zemel BS, Pipan M, Stallings VA, et al. Growth charts for
+children with Down syndrome in the United States. Pediatrics
+2015;136(5):e1204-e1211, published by the American Academy of Pediatrics.
+The owner of these values has not yet been recorded.
+
+These files are copied unmodified from the rcpchgrowth Python package
+(version 4.6.5, published on PyPI by the Royal College of Paediatrics and
+Child Health), where they are publicly distributed.
+
+opengrowth embeds them under the maintainer decision of 2026-11-18 that every
+reference table is embedded unless its owner requires its removal
+(spec/standard.md section 3.3). The terms that apply to their redistribution
+have not yet been recorded (roadmap item R2). The opengrowth software
+licence (AGPL-3.0-or-later) does not apply to these files and grants no
+rights in them.

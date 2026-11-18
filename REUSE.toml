@@ -56,3 +56,21 @@ path = ["data/cdc_infants.json", "data/cdc2-20.json"]
 precedence = "override"
 SPDX-FileCopyrightText = ["Centers for Disease Control and Prevention, National Center for Health Statistics", "Royal College of Paediatrics and Child Health"]
 SPDX-License-Identifier = "LicenseRef-CDC-Growth-Charts"
+
+[[annotations]]
+path = "data/turner.json"
+precedence = "override"
+SPDX-FileCopyrightText = ["Lyon, Preece and Grant 1985 (owner not yet recorded, R2)", "Royal College of Paediatrics and Child Health"]
+SPDX-License-Identifier = "LicenseRef-Turner-Syndrome-UK"
+
+[[annotations]]
+path = "data/trisomy_21.json"
+precedence = "override"
+SPDX-FileCopyrightText = ["Styles, Cole, Dennis and Preece 2002 (owner not yet recorded, R2)", "Royal College of Paediatrics and Child Health"]
+SPDX-License-Identifier = "LicenseRef-Trisomy-21-UK"
+
+[[annotations]]
+path = ["data/trisomy_21_aap_infants.json", "data/trisomy_21_aap_children.json"]
+precedence = "override"
+SPDX-FileCopyrightText = ["Zemel and others 2015, American Academy of Pediatrics (owner not yet recorded, R2)", "Royal College of Paediatrics and Child Health"]
+SPDX-License-Identifier = "LicenseRef-Trisomy-21-AAP"
