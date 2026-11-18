@@ -61,7 +61,9 @@ pub(super) fn ndtr(a: f64) -> f64 {
 }
 
 /// `ndtri`: the inverse of [`ndtr`].
-#[expect(
+// `allow`, not `expect`: clippy 1.97 fires this lint here, and newer clippy
+// does not, since the suggested rewrite changes the NaN path.
+#[allow(
     clippy::manual_range_contains,
     reason = "the C++ condition as written: NaN falls through it to a NaN result, as in C++"
 )]
