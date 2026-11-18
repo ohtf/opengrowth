@@ -499,23 +499,18 @@ struct ChartSexes {
     female: Option<ChartMethods>,
 }
 
-/// `Centile_Data`, with `provenance` first as on upstream's newer servers.
-#[derive(Debug, Serialize)]
-pub struct ChartResponse {
-    provenance: Provenance,
-    centile_data: Vec<std::collections::BTreeMap<&'static str, ChartSexes>>,
-}
+/// A list of `ReferenceCreate`: one object per segment of the reference,
+/// keyed by its name, as `Centile_Data.centile_data` and the mid-parental
+/// height response carry them.
+#[derive(Debug, Default, Serialize)]
+#[serde(transparent)]
+pub struct CentileData(Vec<std::collections::BTreeMap<&'static str, ChartSexes>>);
 
-impl ChartResponse {
-    /// The response for a calculated chart.
+impl CentileData {
+    /// The segments of a calculated chart.
     #[must_use]
-    pub fn new(
-        chart: &crate::chart::Chart,
-        method: MeasurementMethod,
-        sex: Sex,
-        provenance: Provenance,
-    ) -> Self {
-        let centile_data = chart
+    pub fn new(chart: &crate::chart::Chart, method: MeasurementMethod, sex: Sex) -> Self {
+        let segments = chart
             .segments
             .iter()
             .map(|segment| {
@@ -551,9 +546,53 @@ impl ChartResponse {
                 std::iter::once((segment.name, sexes)).collect()
             })
             .collect();
+        Self(segments)
+    }
+}
+
+/// `Centile_Data`, with `provenance` first as on upstream's newer servers.
+#[derive(Debug, Serialize)]
+pub struct ChartResponse {
+    provenance: Provenance,
+    centile_data: CentileData,
+}
+
+impl ChartResponse {
+    /// The response for a calculated chart.
+    #[must_use]
+    pub fn new(
+        chart: &crate::chart::Chart,
+        method: MeasurementMethod,
+        sex: Sex,
+        provenance: Provenance,
+    ) -> Self {
         Self {
             provenance,
-            centile_data,
+            centile_data: CentileData::new(chart, method, sex),
         }
     }
+}
+
+/// `MidParentalHeightResponse`, with `provenance` first. Fields are in the
+/// model's order, which puts the upper value before the lower one.
+#[derive(Debug, Serialize)]
+pub struct MidParentalHeightResponse {
+    /// What was calculated, from which tables.
+    pub provenance: Provenance,
+    /// Height at the mid-parental SDS, in cm, to one decimal place.
+    pub mid_parental_height: f64,
+    /// The mid-parental SDS, to three decimal places.
+    pub mid_parental_height_sds: f64,
+    /// Its centile, to two decimal places.
+    pub mid_parental_height_centile: f64,
+    /// The chart line at the mid-parental SDS.
+    pub mid_parental_height_centile_data: CentileData,
+    /// The chart line 1.4 SDS below it.
+    pub mid_parental_height_lower_centile_data: CentileData,
+    /// The chart line 1.4 SDS above it.
+    pub mid_parental_height_upper_centile_data: CentileData,
+    /// Height 1.4 SDS above, in cm, to one decimal place.
+    pub mid_parental_height_upper_value: Option<f64>,
+    /// Height 1.4 SDS below, in cm, to one decimal place.
+    pub mid_parental_height_lower_value: Option<f64>,
 }

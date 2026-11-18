@@ -163,6 +163,17 @@ async fn missing_tables_are_reported_never_substituted() {
     let child = r#"{"measurement_method": "height", "sex": "male"}"#;
     let (status, body, _) = send(None, "POST", "/uk-who/fictional-child-data", child, None).await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    let parents = r#"{"height_paternal": 180, "height_maternal": 165, "sex": "male"}"#;
+    let (status, body, _) = send(
+        None,
+        "POST",
+        "/utilities/mid-parental-height",
+        parents,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    assert!(body.contains("uk90-child"), "{body}");
 }
 
 #[tokio::test]

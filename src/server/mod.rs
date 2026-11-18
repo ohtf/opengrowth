@@ -27,10 +27,13 @@ use crate::fictional_child::{
     schedule,
 };
 use crate::measurement::{MeasureError, Measurement, MeasurementInput, measure};
+use crate::mid_parental_height::{adult_age, expected_range, mid_parental_sds};
+use crate::round::{PyFloat, numpy_round, python_round};
+use crate::sds::measurement_from_sds;
 use crate::store::ReferenceStore;
 use crate::{
     CalcError, DataError, Gestation, GrowthReference, MeasurementMethod, ReferenceData, Sex,
-    sds_for_measurement,
+    normal, sds_for_measurement,
 };
 use axum::Router;
 use axum::body::{Body, Bytes};
@@ -43,8 +46,8 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use response::{
-    ChartResponse, Detail, EchoedGestation, InlineError, MeasurementObject, Provenance, RouteError,
-    TableUsed,
+    CentileData, ChartResponse, Detail, EchoedGestation, InlineError, MeasurementObject,
+    MidParentalHeightResponse, Provenance, RouteError, TableUsed,
 };
 use validate::{BirthFields, CentileFormatRequest, FieldError, LocItem, ObservationFields};
 
@@ -144,6 +147,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route(
             "/uk-who/fictional-child-data",
             post(uk_who_fictional_child_data).fallback(method_not_allowed),
+        )
+        .route(
+            "/utilities/mid-parental-height",
+            post(utilities_mid_parental_height).fallback(method_not_allowed),
         );
     for path in NOT_YET_IMPLEMENTED {
         app = app.route(path, post(not_implemented).fallback(method_not_allowed));
@@ -173,6 +180,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "/uk-who/bulk-calculation",
     "/uk-who/chart-coordinates",
     "/uk-who/fictional-child-data",
+    // UK-WHO only so far: `cdc` and `who` requests report 501.
+    "/utilities/mid-parental-height",
 ];
 
 /// The other upstream operations, routed so they report 501 rather than 404.
@@ -197,7 +206,6 @@ const NOT_YET_IMPLEMENTED: &[&str] = &[
     "/who/bulk-calculation",
     "/who/chart-coordinates",
     "/who/fictional-child-data",
-    "/utilities/mid-parental-height",
 ];
 
 fn json_response<T: Serialize + ?Sized>(status: StatusCode, body: &T) -> Response {
@@ -734,6 +742,162 @@ fn fictional_child_response(
     }
     out.push(b']');
     Ok(out)
+}
+
+async fn utilities_mid_parental_height(
+    State(state): State<Arc<AppState>>,
+    body: Bytes,
+) -> Response {
+    let value = match parse_body(&body) {
+        Ok(v) => v,
+        Err(response) => return *response,
+    };
+    let request = match validate::mid_parental_height_request(&value) {
+        Ok(r) => r,
+        Err(errors) => return validation_failed(errors),
+    };
+    match mid_parental_height_response(&state, &request) {
+        Ok(bytes) => raw_json(StatusCode::OK, bytes),
+        Err(Rejection::Report(error)) => route_failed(*error),
+        Err(Rejection::Respond(response)) => *response,
+    }
+}
+
+/// The upstream `mid_parental_height_endpoint`.
+fn mid_parental_height_response(
+    state: &AppState,
+    request: &validate::MidParentalHeightRequest,
+) -> Result<Vec<u8>, Rejection> {
+    let reference = match request.reference.as_str() {
+        "cdc" => GrowthReference::Cdc,
+        "who" => GrowthReference::Who,
+        _ => GrowthReference::UkWho,
+    };
+    let sex: Sex = request.sex.parse().expect("validated literal");
+    let method = MeasurementMethod::Height;
+    let age = adult_age(reference);
+    let unavailable = |error: &DataError| Rejection::Respond(Box::new(data_unavailable(error)));
+    let raised = |error: &dyn std::fmt::Display| {
+        Rejection::Report(Box::new(RouteError::request(format!("Error: {error}"))))
+    };
+    let mut tables = Vec::new();
+
+    let mut parent_sds = |height: f64, parent_sex: Sex| match sds_for_measurement(
+        &state.store,
+        reference,
+        age,
+        method,
+        height,
+        parent_sex,
+    ) {
+        Ok(result) => {
+            tables.push(result.table);
+            Ok(result.sds)
+        }
+        // At adult age L is 1, so upstream's SDS for a height of zero or
+        // less is real and very negative: below the limit.
+        Err(CalcError::InvalidObservation(v)) if v == f64::INFINITY => Ok(f64::INFINITY),
+        Err(CalcError::InvalidObservation(_)) => Ok(f64::NEG_INFINITY),
+        Err(CalcError::Data(error)) => Err(unavailable(&error)),
+        Err(error @ CalcError::ReferenceNotImplemented(_)) => Err(Rejection::Respond(Box::new(
+            detail(StatusCode::NOT_IMPLEMENTED, &error.to_string()),
+        ))),
+        Err(error) => Err(raised(&error)),
+    };
+    let maternal = parent_sds(request.height_maternal, Sex::Female)?;
+    let paternal = parent_sds(request.height_paternal, Sex::Male)?;
+
+    let parent_error = |parent: &str, side: &str, field: &'static str| {
+        RouteError::value_error(
+            format!(
+                "Error: The {parent} height is {side} SD. Please check the accuracy of the {parent} height and try again."
+            ),
+            field,
+        )
+    };
+    let mut errors = Vec::new();
+    if paternal < -8.0 {
+        errors.push(parent_error("paternal", "< -8", "height_paternal"));
+    }
+    if maternal < -8.0 {
+        errors.push(parent_error("maternal", "< -8", "height_maternal"));
+    }
+    if paternal > 8.0 {
+        errors.push(parent_error("paternal", "> 8", "height_paternal"));
+    }
+    if maternal > 8.0 {
+        errors.push(parent_error("maternal", "> 8", "height_maternal"));
+    }
+    if !errors.is_empty() {
+        return Err(Rejection::Respond(Box::new(json_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            &Detail { detail: errors },
+        ))));
+    }
+
+    let sds = mid_parental_sds(maternal, paternal);
+    // `round(centile(z), 3)`, then `round(..., 2)` in the response, both on
+    // SciPy's NumPy float.
+    let centile = numpy_round(numpy_round(normal::cdf(sds) * 100.0, 3), 2);
+    let (lower, upper) = expected_range(sds);
+
+    let mut line = |z: f64| -> Result<CentileData, Rejection> {
+        let values = [python_round(z, 3)];
+        let spec = CentileSpec::Custom {
+            values: &values,
+            is_sds: true,
+        };
+        match chart(&state.store, reference, method, sex, spec) {
+            Ok(chart) => {
+                tables.extend_from_slice(&chart.tables_read);
+                Ok(CentileData::new(&chart, method, sex))
+            }
+            Err(ChartError::Data(error)) => Err(unavailable(&error)),
+            // Upstream prints the exception and returns an empty line.
+            Err(_) => Ok(CentileData::default()),
+        }
+    };
+    let centile_data = line(sds)?;
+    let lower_centile_data = line(lower)?;
+    let upper_centile_data = line(upper)?;
+
+    let mut height_at = |z: f64| -> Result<f64, Rejection> {
+        match measurement_from_sds(
+            &state.store,
+            reference,
+            PyFloat::Builtin(z),
+            method,
+            sex,
+            age,
+            false,
+        ) {
+            Ok((Some(height), table)) => {
+                tables.push(table);
+                Ok(height.round(1).value())
+            }
+            Ok((None, _)) => Err(raised(&"no height at this SDS")),
+            Err(CalcError::Data(error)) => Err(unavailable(&error)),
+            Err(error) => Err(raised(&error)),
+        }
+    };
+    let upper_height = height_at(upper)?;
+    let lower_height = height_at(lower)?;
+    let height = height_at(sds)?;
+
+    tables.sort();
+    tables.dedup();
+    let response = MidParentalHeightResponse {
+        provenance: Provenance::new(reference.as_str(), tables_used(&state.store, &tables)),
+        mid_parental_height: height,
+        mid_parental_height_sds: python_round(sds, 3),
+        mid_parental_height_centile: centile,
+        mid_parental_height_centile_data: centile_data,
+        mid_parental_height_lower_centile_data: lower_centile_data,
+        mid_parental_height_upper_centile_data: upper_centile_data,
+        mid_parental_height_upper_value: Some(upper_height),
+        mid_parental_height_lower_value: Some(lower_height),
+    };
+    Ok(pyjson::to_vec(&response))
 }
 
 /// Python's `str()` of a list of floats, for messages that embed one.

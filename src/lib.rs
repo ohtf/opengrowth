@@ -32,6 +32,7 @@ pub mod fictional_child;
 pub mod interpolation;
 pub mod lms;
 pub mod measurement;
+pub mod mid_parental_height;
 pub mod normal;
 pub mod pyfmt;
 pub mod round;

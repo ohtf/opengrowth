@@ -973,6 +973,55 @@ pub fn fictional_child_request(body: &Value) -> Result<FictionalChildRequest, Ve
     }
 }
 
+/// `MidParentalHeightRequest`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MidParentalHeightRequest {
+    /// The father's height in cm.
+    pub height_paternal: f64,
+    /// The mother's height in cm.
+    pub height_maternal: f64,
+    /// The child's sex: `male` or `female`.
+    pub sex: String,
+    /// `uk-who` (the default), `cdc`, or `who`.
+    pub reference: String,
+}
+
+const MID_PARENTAL_HEIGHT_REFERENCES: &[&str] = &["uk-who", "cdc", "who"];
+
+/// Validates a mid-parental height body.
+///
+/// # Errors
+///
+/// Every field error, in Pydantic's order.
+pub fn mid_parental_height_request(
+    body: &Value,
+) -> Result<MidParentalHeightRequest, Vec<FieldError>> {
+    let mut errors = Vec::new();
+    let object = model_object(body, &["body".into()], &mut errors).ok_or(errors.clone())?;
+    let mut fields = Fields::new(object, vec!["body".into()], &mut errors);
+    let height_paternal = fields.required("height_paternal", float);
+    let height_maternal = fields.required("height_maternal", float);
+    let sex = fields.required("sex", |v| literal(v, SEXES));
+    let reference = match fields.get("reference") {
+        Field::Absent => Some("uk-who".to_owned()),
+        Field::Present(value) => fields.check("reference", value, |v| {
+            literal(v, MID_PARENTAL_HEIGHT_REFERENCES)
+        }),
+    };
+    let request = (|| {
+        Some(MidParentalHeightRequest {
+            height_paternal: height_paternal?,
+            height_maternal: height_maternal?,
+            sex: sex?,
+            reference: reference?,
+        })
+    })();
+    match request {
+        Some(request) if errors.is_empty() => Ok(request),
+        _ => Err(errors),
+    }
+}
+
 impl Fields<'_, '_> {
     /// A `bool` field defaulting to `False`, which may not be `null`.
     fn flag(&mut self, name: &str) -> Option<bool> {
