@@ -132,6 +132,59 @@ pub fn estimated_date_delivery(birth_date: Date, gestation: Gestation) -> Result
         .map_err(|_| DateError::OutOfRange)
 }
 
+/// `date + timedelta(days=days)` as CPython computes it, or `None` where
+/// CPython raises `OverflowError` or `ValueError`.
+///
+/// CPython converts the float to whole microseconds, rounding half to even
+/// (`accum` and `delta_new` in `_datetimemodule.c`), and adding a timedelta
+/// to a date then uses only its whole days. So a step of
+/// `7 / 365.25 * 365.25` days, which is `6.999999999999999`, still moves the
+/// date 7 days. Fails if `days` is not finite, if the timedelta would exceed
+/// 999,999,999 days, or if the result is outside years 1 to 9999.
+#[must_use]
+pub fn python_add_days(date: Date, days: f64) -> Option<Date> {
+    let whole_days = python_timedelta_days(days)?;
+    let span = jiff::Span::new().try_days(whole_days).ok()?;
+    let result = date.checked_add(span).ok()?;
+    (1..=9999).contains(&result.year()).then_some(result)
+}
+
+/// `timedelta(days=days).days`, or `None` where CPython raises.
+fn python_timedelta_days(days: f64) -> Option<i64> {
+    const US_PER_DAY: i128 = 86_400_000_000;
+    const MAX_DELTA_DAYS: i128 = 999_999_999;
+    // `PyLong_FromDouble` raises for infinity and NaN, and anything this large
+    // is far beyond the timedelta limit.
+    if !days.is_finite() || days.abs() >= 1e12 {
+        return None;
+    }
+    // `accum`: the integer part exactly, the fraction in floating point.
+    let int_part = days.trunc();
+    let fraction = days - int_part;
+    let mut microseconds = int_part as i128 * US_PER_DAY;
+    let mut leftover = 0.0;
+    if fraction != 0.0 {
+        let scaled = 86_400_000_000.0 * fraction;
+        let whole = scaled.trunc();
+        microseconds += whole as i128;
+        leftover += scaled - whole;
+    }
+    // `delta_new`: round the leftover microseconds, half to even.
+    if leftover != 0.0 {
+        let mut whole_us = leftover.round();
+        if (whole_us - leftover).abs() == 0.5 {
+            let odd = (microseconds & 1) as f64;
+            whole_us = 2.0 * ((leftover + odd) * 0.5).round() - odd;
+        }
+        microseconds += whole_us as i128;
+    }
+    let whole_days = microseconds.div_euclid(US_PER_DAY);
+    if whole_days.abs() > MAX_DELTA_DAYS {
+        return None;
+    }
+    i64::try_from(whole_days).ok()
+}
+
 /// Decimal age measured from the estimated date of delivery.
 ///
 /// # Errors

@@ -249,7 +249,7 @@ fn line(
                 points.push(ChartPoint {
                     label,
                     x: python_round(age, 4),
-                    y,
+                    y: y.map(PyFloat::value),
                 });
             }
             Err(CalcError::Data(error @ DataError::Unavailable { .. })) => return Err(error.into()),

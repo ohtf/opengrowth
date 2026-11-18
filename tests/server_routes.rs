@@ -160,6 +160,9 @@ async fn missing_tables_are_reported_never_substituted() {
     let (status, body, _) = send(None, "POST", "/uk-who/chart-coordinates", chart, None).await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
     assert!(body.contains("uk90-preterm"), "{body}");
+    let child = r#"{"measurement_method": "height", "sex": "male"}"#;
+    let (status, body, _) = send(None, "POST", "/uk-who/fictional-child-data", child, None).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
 }
 
 #[tokio::test]

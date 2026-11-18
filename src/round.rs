@@ -42,6 +42,16 @@ impl PyFloat {
         }
     }
 
+    /// Arithmetic with a Python float, which keeps the kind: a NumPy float
+    /// stays one.
+    #[must_use]
+    pub fn map(self, f: impl FnOnce(f64) -> f64) -> Self {
+        match self {
+            Self::Builtin(x) => Self::Builtin(f(x)),
+            Self::NumPy(x) => Self::NumPy(f(x)),
+        }
+    }
+
     /// Python's `round(self, ndigits)`, which keeps the kind.
     #[must_use]
     pub fn round(self, ndigits: usize) -> Self {

@@ -5,9 +5,9 @@
 //! API (`digital-growth-charts-server`).
 //!
 //! The goal is byte-identical response bodies outside `provenance`
-//! (`spec/standard.md` section 4.2). Implemented so far: UK-WHO
-//! `calculation` and `bulk-calculation`, bearer-token authorisation,
-//! 404, 405, and trailing-slash redirects. Other operations return 501.
+//! (`spec/standard.md` section 4.2). Implemented so far: the UK-WHO
+//! operations ([`IMPLEMENTED`]), bearer-token authorisation, 404, 405, and
+//! trailing-slash redirects. Other operations return 501.
 //!
 //! The `/growth/v1` prefix belongs to the gateway, not this router.
 
@@ -22,7 +22,11 @@ use std::sync::{Arc, Mutex};
 use crate::advice::CentileFormat;
 use crate::chart::{CentileSpec, ChartError, chart};
 use crate::dates::{calendar_age, corrected_decimal_age};
-use crate::measurement::{MeasureError, MeasurementInput, measure};
+use crate::fictional_child::{
+    FictionalChildError, FictionalChildParams, IntervalUnit, fictional_child, raw_measurement,
+    schedule,
+};
+use crate::measurement::{MeasureError, Measurement, MeasurementInput, measure};
 use crate::store::ReferenceStore;
 use crate::{
     CalcError, DataError, Gestation, GrowthReference, MeasurementMethod, ReferenceData, Sex,
@@ -58,6 +62,8 @@ pub struct AppState {
     /// request. Upstream serves these from files; opengrowth calculates them
     /// with the same engine and tables as its measurements.
     chart_cache: Mutex<HashMap<ChartKey, Arc<Vec<u8>>>>,
+    /// Where fictional children's measurement noise comes from.
+    noise: NoiseSource,
 }
 
 type ChartKey = (CentileFormat, MeasurementMethod, Sex);
@@ -70,6 +76,51 @@ impl AppState {
             store,
             authorization_key,
             chart_cache: Mutex::new(HashMap::new()),
+            noise: NoiseSource::Random,
+        }
+    }
+
+    /// Makes every noise draw for fictional children `fraction` of the way
+    /// across its range, so that noisy series are reproducible. For the
+    /// conformance tests, which capture upstream with the same fixed draw.
+    #[must_use]
+    pub fn with_fixed_noise(mut self, fraction: f64) -> Self {
+        self.noise = NoiseSource::Fixed(fraction);
+        self
+    }
+}
+
+/// Where fictional children's measurement noise comes from.
+#[derive(Debug, Clone, Copy)]
+enum NoiseSource {
+    /// A fresh pseudo-random stream for each request.
+    Random,
+    /// Every draw is this fraction of the way across its range.
+    Fixed(f64),
+}
+
+impl NoiseSource {
+    /// A uniform source on `[0, 1)`, standing in for Python's `random.random()`.
+    fn uniform(self) -> Box<dyn FnMut() -> f64> {
+        match self {
+            Self::Fixed(fraction) => Box::new(move || fraction),
+            Self::Random => {
+                // SplitMix64, seeded from the standard library's randomly
+                // keyed hasher: plenty for simulated measurement error, and
+                // no dependency. Not for anything that must be unpredictable.
+                let mut state = std::hash::BuildHasher::hash_one(
+                    &std::collections::hash_map::RandomState::new(),
+                    (),
+                );
+                Box::new(move || {
+                    state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+                    let mut z = state;
+                    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+                    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+                    z ^= z >> 31;
+                    (z >> 11) as f64 / (1_u64 << 53) as f64
+                })
+            }
         }
     }
 }
@@ -89,6 +140,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route(
             "/uk-who/chart-coordinates",
             post(uk_who_chart_coordinates).fallback(method_not_allowed),
+        )
+        .route(
+            "/uk-who/fictional-child-data",
+            post(uk_who_fictional_child_data).fallback(method_not_allowed),
         );
     for path in NOT_YET_IMPLEMENTED {
         app = app.route(path, post(not_implemented).fallback(method_not_allowed));
@@ -112,9 +167,16 @@ pub async fn serve(address: SocketAddr, state: Arc<AppState>) -> std::io::Result
         .await
 }
 
+/// The upstream operations opengrowth serves.
+pub const IMPLEMENTED: &[&str] = &[
+    "/uk-who/calculation",
+    "/uk-who/bulk-calculation",
+    "/uk-who/chart-coordinates",
+    "/uk-who/fictional-child-data",
+];
+
 /// The other upstream operations, routed so they report 501 rather than 404.
 const NOT_YET_IMPLEMENTED: &[&str] = &[
-    "/uk-who/fictional-child-data",
     "/turners-syndrome/calculation",
     "/turners-syndrome/bulk-calculation",
     "/turners-syndrome/chart-coordinates",
@@ -190,10 +252,7 @@ async fn not_found(request: Request) -> Response {
     let path = request.uri().path();
     if path != "/" && path.ends_with('/') {
         let trimmed = path.trim_end_matches('/');
-        let known = matches!(
-            trimmed,
-            "/uk-who/calculation" | "/uk-who/bulk-calculation" | "/uk-who/chart-coordinates"
-        ) || NOT_YET_IMPLEMENTED.contains(&trimmed);
+        let known = IMPLEMENTED.contains(&trimmed) || NOT_YET_IMPLEMENTED.contains(&trimmed);
         if known {
             let host = request
                 .headers()
@@ -415,9 +474,29 @@ fn calculate_one(
             ))));
         }
     };
+    Ok(render_measurement(
+        &state.store,
+        reference,
+        &measurement,
+        observation,
+        EchoedGestation {
+            weeks: birth.gestation_weeks,
+            days: birth.gestation_days,
+        },
+    ))
+}
+
+/// One `MeasurementObject`, with provenance naming the tables it read.
+fn render_measurement(
+    store: &ReferenceStore,
+    reference: GrowthReference,
+    measurement: &Measurement,
+    observation: &ObservationFields,
+    gestation: EchoedGestation,
+) -> Vec<u8> {
     let provenance = Provenance::new(
         reference.as_str(),
-        tables_used(&state.store, &measurement.tables_read),
+        tables_used(store, &measurement.tables_read),
     );
     let gestational_age_text = measurement
         .measurement_dates
@@ -425,16 +504,13 @@ fn calculate_one(
         .map(|(w, d)| format!("{w} + {d} weeks"))
         .unwrap_or_default();
     let object = MeasurementObject::new(
-        &measurement,
+        measurement,
         observation,
-        EchoedGestation {
-            weeks: birth.gestation_weeks,
-            days: birth.gestation_days,
-        },
+        gestation,
         provenance,
         &gestational_age_text,
     );
-    Ok(pyjson::to_vec(&object))
+    pyjson::to_vec(&object)
 }
 
 fn tables_used(store: &ReferenceStore, tables: &[crate::TableId]) -> Vec<TableUsed> {
@@ -520,6 +596,144 @@ async fn uk_who_bulk_calculation(State(state): State<Arc<AppState>>, body: Bytes
     }
     out.extend_from_slice(b"]}");
     raw_json(StatusCode::OK, out)
+}
+
+async fn uk_who_fictional_child_data(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
+    let value = match parse_body(&body) {
+        Ok(v) => v,
+        Err(response) => return *response,
+    };
+    let request = match validate::fictional_child_request(&value) {
+        Ok(r) => r,
+        Err(errors) => return validation_failed(errors),
+    };
+    match fictional_child_response(&state, GrowthReference::UkWho, "UK-WHO", &request) {
+        Ok(bytes) => raw_json(StatusCode::OK, bytes),
+        Err(Rejection::Report(error)) => route_failed(*error),
+        Err(Rejection::Respond(response)) => *response,
+    }
+}
+
+/// The upstream route, which turns any exception into one 422. Upstream
+/// accepts `null` for every optional field and then fails, or does not,
+/// wherever Python first uses the value; each case is reproduced here.
+fn fictional_child_response(
+    state: &AppState,
+    reference: GrowthReference,
+    label: &str,
+    request: &validate::FictionalChildRequest,
+) -> Result<Vec<u8>, Rejection> {
+    let failed = || {
+        Rejection::Report(Box::new(RouteError::request(format!(
+            "Not possible to create {label} fictional child data."
+        ))))
+    };
+    let rejected = |error: FictionalChildError| match error {
+        FictionalChildError::Invalid(_) => failed(),
+        FictionalChildError::Data(error) => Rejection::Respond(Box::new(data_unavailable(&error))),
+        error @ FictionalChildError::ReferenceNotImplemented(_) => Rejection::Respond(Box::new(
+            detail(StatusCode::NOT_IMPLEMENTED, &error.to_string()),
+        )),
+    };
+    // Each of these is always used, so a null is always a TypeError.
+    let (Some(start_age), Some(end_age), Some(weeks), Some(unit), Some(interval_number)) = (
+        request.start_chronological_age,
+        request.end_age,
+        request.gestation_weeks,
+        request.measurement_interval_type.as_deref(),
+        request.measurement_interval_number,
+    ) else {
+        return Err(failed());
+    };
+    // Below 40 weeks the gestation correction uses the days, and drift adds
+    // `drift_range / cycles` to the SDS.
+    let correction_needs_days = weeks < 40 && request.gestation_days.is_none();
+    let drift_needs_values =
+        request.drift && (request.drift_range.is_none() || request.start_sds.is_none());
+    if correction_needs_days || drift_needs_values {
+        return Err(failed());
+    }
+    let params = FictionalChildParams {
+        reference,
+        method: request
+            .measurement_method
+            .parse()
+            .expect("validated literal"),
+        sex: request.sex.parse().expect("validated literal"),
+        start_age,
+        end_age,
+        gestation: Gestation::new(
+            u8::try_from(weeks).expect("validated 22 to 44"),
+            u8::try_from(request.gestation_days.unwrap_or(0)).expect("validated 0 to 6"),
+        )
+        .expect("validated range"),
+        interval_unit: IntervalUnit::from_name(unit).expect("validated literal"),
+        interval_number,
+        start_sds: request.start_sds.unwrap_or(0.0),
+        drift_range: request.drift_range.filter(|_| request.drift),
+        noise_range: request.noise_range.filter(|_| request.noise),
+    };
+
+    // A null SDS makes every lookup fail quietly, so there is never a
+    // measurement; a null gestation_days or noise_range fails at the first
+    // measurement. Either way the schedule can still fail on its own.
+    let fails_at_first_measurement =
+        request.gestation_days.is_none() || (request.noise && request.noise_range.is_none());
+    if request.start_sds.is_none() || fails_at_first_measurement {
+        for step in schedule(&params).map_err(rejected)? {
+            let step = step.map_err(rejected)?;
+            if request.start_sds.is_some()
+                && raw_measurement(&state.store, &params, &step)
+                    .map_err(rejected)?
+                    .is_some()
+            {
+                return Err(failed());
+            }
+        }
+        return Ok(b"[]".to_vec());
+    }
+
+    let mut uniform = state.noise.uniform();
+    let measurements = fictional_child(&state.store, &params, &mut *uniform).map_err(rejected)?;
+    // A measurement dated before birth has no corrected age. Upstream's
+    // response model rejects it, which escapes as a 500; this returns the
+    // route's own 422 (`spec/standard.md` section 6.3).
+    if measurements
+        .iter()
+        .any(|m| m.measurement_dates.corrected_decimal_age.is_none())
+    {
+        return Err(failed());
+    }
+    let gestation = EchoedGestation {
+        weeks: request.gestation_weeks,
+        days: request.gestation_days,
+    };
+    let mut out = Vec::with_capacity(measurements.len() * 4700 + 2);
+    out.push(b'[');
+    for (i, measurement) in measurements.iter().enumerate() {
+        if i > 0 {
+            out.push(b',');
+        }
+        let observation = ObservationFields {
+            observation_date: measurement.measurement_dates.observation_date,
+            observation_value: measurement.observation_value,
+            bone_age: None,
+            bone_age_type: None,
+            bone_age_sds: None,
+            bone_age_centile: None,
+            bone_age_text: None,
+            events_text: None,
+        };
+        out.extend_from_slice(&render_measurement(
+            &state.store,
+            reference,
+            measurement,
+            &observation,
+            gestation,
+        ));
+    }
+    out.push(b']');
+    Ok(out)
 }
 
 /// Python's `str()` of a list of floats, for messages that embed one.

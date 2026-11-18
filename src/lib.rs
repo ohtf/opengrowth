@@ -28,6 +28,7 @@ pub mod advice;
 pub mod chart;
 pub mod data;
 pub mod dates;
+pub mod fictional_child;
 pub mod interpolation;
 pub mod lms;
 pub mod measurement;

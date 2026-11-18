@@ -840,10 +840,7 @@ pub fn chart_coordinate_request(body: &Value) -> Result<ChartCoordinateRequest, 
     let sex = fields.required("sex", |v| literal(v, SEXES));
     let measurement_method =
         fields.required("measurement_method", |v| literal(v, MEASUREMENT_METHODS));
-    let is_sds = match fields.get("is_sds") {
-        Field::Absent => Some(false),
-        Field::Present(value) => fields.check("is_sds", value, boolean),
-    };
+    let is_sds = fields.flag("is_sds");
     let centile_format = fields.centile_format();
     let (Some(sex), Some(measurement_method), Some(is_sds), Some(centile_format)) =
         (sex, measurement_method, is_sds, centile_format)
@@ -886,7 +883,105 @@ pub fn chart_coordinate_request(body: &Value) -> Result<ChartCoordinateRequest, 
     })
 }
 
+/// `FictionalChildRequest`. Every optional field may be an explicit `null`,
+/// which upstream accepts and then trips over, so each is kept as an `Option`
+/// for the route to reproduce what happens next.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FictionalChildRequest {
+    /// `height`, `weight`, `ofc`, or `bmi`.
+    pub measurement_method: String,
+    /// `male` or `female`.
+    pub sex: String,
+    /// Decimal years; default 0.
+    pub start_chronological_age: Option<f64>,
+    /// Decimal years; default 20.
+    pub end_age: Option<f64>,
+    /// Default 40.
+    pub gestation_weeks: Option<i64>,
+    /// Default 0.
+    pub gestation_days: Option<i64>,
+    /// One of upstream's unit names; default `months`.
+    pub measurement_interval_type: Option<String>,
+    /// Default 20.
+    pub measurement_interval_number: Option<i64>,
+    /// Default 0.
+    pub start_sds: Option<f64>,
+    /// Whether the SDS drifts.
+    pub drift: bool,
+    /// Default -0.05.
+    pub drift_range: Option<f64>,
+    /// Whether to add measurement noise.
+    pub noise: bool,
+    /// Default 0.005.
+    pub noise_range: Option<f64>,
+}
+
+const INTERVAL_TYPES: &[&str] = &[
+    "d", "day", "days", "w", "week", "weeks", "m", "month", "months", "y", "year", "years",
+];
+
+/// Validates a fictional-child body.
+///
+/// # Errors
+///
+/// Every field error, in Pydantic's order.
+pub fn fictional_child_request(body: &Value) -> Result<FictionalChildRequest, Vec<FieldError>> {
+    let mut errors = Vec::new();
+    let object = model_object(body, &["body".into()], &mut errors).ok_or(errors.clone())?;
+    let mut fields = Fields::new(object, vec!["body".into()], &mut errors);
+    let measurement_method =
+        fields.required("measurement_method", |v| literal(v, MEASUREMENT_METHODS));
+    let sex = fields.required("sex", |v| literal(v, SEXES));
+    let start_chronological_age = fields.optional("start_chronological_age", Some(0.0), float);
+    let end_age = fields.optional("end_age", Some(20.0), float);
+    let gestation_weeks = fields.optional("gestation_weeks", Some(40), |v| bounded_int(v, 22, 44));
+    let gestation_days = fields.optional("gestation_days", Some(0), |v| bounded_int(v, 0, 6));
+    let measurement_interval_type = fields.optional(
+        "measurement_interval_type",
+        Some("months".to_owned()),
+        |v| literal(v, INTERVAL_TYPES),
+    );
+    let measurement_interval_number =
+        fields.optional("measurement_interval_number", Some(20), |v| {
+            bounded_int(v, i64::MIN, i64::MAX)
+        });
+    let start_sds = fields.optional("start_sds", Some(0.0), float);
+    let drift = fields.flag("drift");
+    let drift_range = fields.optional("drift_range", Some(-0.05), float);
+    let noise = fields.flag("noise");
+    let noise_range = fields.optional("noise_range", Some(0.005), float);
+    let request = (|| {
+        Some(FictionalChildRequest {
+            measurement_method: measurement_method?,
+            sex: sex?,
+            start_chronological_age: start_chronological_age?,
+            end_age: end_age?,
+            gestation_weeks: gestation_weeks?,
+            gestation_days: gestation_days?,
+            measurement_interval_type: measurement_interval_type?,
+            measurement_interval_number: measurement_interval_number?,
+            start_sds: start_sds?,
+            drift: drift?,
+            drift_range: drift_range?,
+            noise: noise?,
+            noise_range: noise_range?,
+        })
+    })();
+    match request {
+        Some(request) if errors.is_empty() => Ok(request),
+        _ => Err(errors),
+    }
+}
+
 impl Fields<'_, '_> {
+    /// A `bool` field defaulting to `False`, which may not be `null`.
+    fn flag(&mut self, name: &str) -> Option<bool> {
+        match self.get(name) {
+            Field::Absent => Some(false),
+            Field::Present(value) => self.check(name, value, boolean),
+        }
+    }
+
     /// `Optional[Union[Literal[...], List[float]]]`, defaulting to the Cole
     /// nine centiles. When both union members fail, Pydantic reports each,
     /// tagged with the member's name in the location.

@@ -83,7 +83,8 @@ pub fn sds_for_measurement(
 /// The measurement at an SDS for an age (the upstream `measurement_from_sds`),
 /// rounded to four decimal places as upstream does, with the table it came
 /// from. The measurement is `None` where the LMS transform has no real
-/// answer, which upstream also returns as `None`.
+/// answer, which upstream also returns as `None`. It keeps its kind, because
+/// callers round it again.
 ///
 /// The rounding depends on whether the upstream result is a NumPy `float64`
 /// ([`PyFloat`]). It is if the LMS values were linearly interpolated, or if
@@ -105,7 +106,7 @@ pub fn measurement_from_sds(
     sex: Sex,
     age: f64,
     youngest_at_boundary: bool,
-) -> Result<(Option<f64>, TableId), CalcError> {
+) -> Result<(Option<PyFloat>, TableId), CalcError> {
     let (lms, lookup, table_id) = match reference {
         GrowthReference::UkWho => {
             let table_id = uk_who::table_for_age(age, youngest_at_boundary)?;
@@ -129,7 +130,7 @@ pub fn measurement_from_sds(
         } else {
             PyFloat::Builtin(value)
         };
-        value.round(4).value()
+        value.round(4)
     });
     Ok((measurement, table_id))
 }
