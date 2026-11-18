@@ -40,6 +40,7 @@ pub mod sds;
 pub mod table;
 pub mod uk_who;
 pub mod vocabulary;
+pub mod who;
 
 pub mod store;
 

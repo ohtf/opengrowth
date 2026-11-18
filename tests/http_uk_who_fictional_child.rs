@@ -7,20 +7,16 @@
 //! replayed and compared byte for byte outside `provenance`.
 //!
 //! Upstream adds noise with `random.uniform`, so the goldens were captured
-//! with every random draw fixed at [`FIXED_DRAW`], and the server here is
-//! given the same draw (`AppState::with_fixed_noise`).
+//! with every random draw fixed at `common::http::FIXED_DRAW`, and the server
+//! here is given the same draw (`AppState::with_fixed_noise`).
 
 mod common;
 
 use std::sync::Arc;
 
-use common::http::{Case, assert_no_failures, problems, replay};
-use common::{DATA_DIR_ENV, Golden, read_json};
+use common::http::{Case, replay};
 use opengrowth::server::{AppState, router};
 use opengrowth::store::ReferenceStore;
-
-/// The draw `conformance/generators/http_uk_who_fictional_child.py` fixes.
-const FIXED_DRAW: f64 = 0.8125;
 
 /// Intentional differences from the pinned server (`spec/standard.md`
 /// section 6.3), each checked to still hold.
@@ -33,45 +29,12 @@ const ROUTE_ERROR: &str = r#"{"detail":[{"loc":["request"],"msg":"Not possible t
 
 #[tokio::test]
 async fn uk_who_fictional_child_data_matches_fastapi_byte_for_byte() {
-    let dir = std::env::var_os(DATA_DIR_ENV).map(std::path::PathBuf::from);
-    let store = ReferenceStore::standard(dir.as_deref()).expect("tables load");
-    let app = router(Arc::new(
-        AppState::new(store, None).with_fixed_noise(FIXED_DRAW),
-    ));
-    let golden: Golden<Vec<Case>> = read_json("expected/http-uk-who-fictional-child.json");
-    let mut failures = Vec::new();
-    let mut known = 0;
-    for case in &golden.cases {
-        let outcome = replay(app.clone(), case).await;
-        if let Some((_, reason)) = KNOWN_DIFFERENCES
-            .iter()
-            .find(|(name, _)| *name == case.name)
-        {
-            known += 1;
-            if !(case.status == 500 && outcome.status == 422 && outcome.body == ROUTE_ERROR) {
-                failures.push(format!(
-                    "{}: listed as a known difference ({reason}) but behaved differently: {} {}",
-                    case.name, outcome.status, outcome.body
-                ));
-            }
-            continue;
-        }
-        let found = problems(case, &outcome);
-        if !found.is_empty() {
-            failures.push(format!("{}: {}", case.name, found.join("; ")));
-        }
-    }
-    eprintln!(
-        "{} cases: {} byte-identical outside provenance, {known} known differences",
-        golden.cases.len(),
-        golden.cases.len() - known - failures.len()
-    );
-    assert_eq!(
-        known,
-        KNOWN_DIFFERENCES.len(),
-        "a known difference has no case"
-    );
-    assert_no_failures(&failures, golden.cases.len());
+    common::http::check_fictional_child_golden(
+        "expected/http-uk-who-fictional-child.json",
+        KNOWN_DIFFERENCES,
+        ROUTE_ERROR,
+    )
+    .await;
 }
 
 /// With real randomness, each noisy value lies within its noise bound of the

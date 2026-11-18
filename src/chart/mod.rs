@@ -12,8 +12,10 @@
 //!
 //! Upstream behaviour kept exactly, because it changes the coordinates:
 //!
-//! - The Cole nine-centile collection uses SDS rounded to the nearest
-//!   two-thirds; every other collection uses the exact inverse normal.
+//! - For UK-WHO, the Cole nine-centile collection uses SDS rounded to the
+//!   nearest two-thirds; every other collection, and every WHO collection
+//!   (upstream's WHO builder never uses Cole's rounding), uses the exact
+//!   inverse normal.
 //! - At a join between segments, the line for the younger segment is
 //!   calculated from the younger table, so it reaches the join. The test for
 //!   the 42-week join compares against the literal `0.038329911`, which is
@@ -139,6 +141,25 @@ const UK_WHO_SEGMENTS: [Segment; 4] = [
     },
 ];
 
+#[allow(clippy::float_cmp, reason = "upstream compares these ages exactly")]
+const WHO_SEGMENTS: [Segment; 3] = [
+    Segment {
+        name: "who_2006_infant",
+        ages: &ages::WHO_2006_UNDER_TWOS_AGES,
+        youngest_at: |age| age == 0.038_329_911 || age == 2.0,
+    },
+    Segment {
+        name: "who_2006_child",
+        ages: &ages::WHO_2006_OVER_TWOS_AGES,
+        youngest_at: |age| age == 5.0,
+    },
+    Segment {
+        name: "who_2007_child",
+        ages: &ages::WHO_2007_AGES,
+        youngest_at: |_| false,
+    },
+];
+
 /// The centile lines for one reference, measurement, and sex (the upstream `create_chart`).
 ///
 /// # Errors
@@ -153,13 +174,14 @@ pub fn chart(
 ) -> Result<Chart, ChartError> {
     let segments: &[Segment] = match reference {
         GrowthReference::UkWho => &UK_WHO_SEGMENTS,
+        GrowthReference::Who => &WHO_SEGMENTS,
         other => return Err(ChartError::ReferenceNotImplemented(other)),
     };
     let (values, is_sds, cole) = match spec {
         CentileSpec::Named(format) => (
             format.centiles(),
             false,
-            format == CentileFormat::ColeNineCentiles,
+            reference == GrowthReference::UkWho && format == CentileFormat::ColeNineCentiles,
         ),
         CentileSpec::Custom { values, is_sds } => (values, is_sds, false),
     };

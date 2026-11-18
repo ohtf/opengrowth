@@ -74,7 +74,8 @@ pub async fn replay(app: axum::Router, case: &Case) -> Outcome {
 }
 
 /// Every way `outcome` differs from `case`, ignoring provenance; empty if it
-/// matches byte for byte. Also checks that any provenance names uk-who and opengrowth.
+/// matches byte for byte. Also checks that any provenance names the route's
+/// reference and opengrowth.
 pub fn problems(case: &Case, outcome: &Outcome) -> Vec<String> {
     let mut problems = Vec::new();
     if outcome.status != case.status {
@@ -97,15 +98,42 @@ pub fn problems(case: &Case, outcome: &Outcome) -> Vec<String> {
         }
     }
     if outcome.status == 200 && outcome.body.contains("\"provenance\"") {
-        let ok = outcome.body.contains("\"growth_reference\":\"uk-who\"")
+        let reference = expected_reference(case);
+        let ok = outcome
+            .body
+            .contains(&format!("\"growth_reference\":\"{reference}\""))
             && outcome
                 .body
                 .contains("\"calculation_engine\":{\"name\":\"opengrowth\"");
         if !ok {
-            problems.push("provenance does not identify uk-who and opengrowth".to_owned());
+            problems.push(format!(
+                "provenance does not identify {reference} and opengrowth"
+            ));
         }
     }
     problems
+}
+
+/// The reference a successful response must name in its provenance: the
+/// route's own, or for `/utilities` the request's `reference` (default `uk-who`).
+fn expected_reference(case: &Case) -> String {
+    let first = case
+        .path
+        .trim_start_matches('/')
+        .split('/')
+        .next()
+        .unwrap_or("");
+    if first != "utilities" {
+        return first.to_owned();
+    }
+    serde_json::from_str::<serde_json::Value>(&case.request_body)
+        .ok()
+        .and_then(|body| {
+            body.get("reference")
+                .and_then(|r| r.as_str())
+                .map(str::to_owned)
+        })
+        .unwrap_or_else(|| "uk-who".to_owned())
 }
 
 /// Whether the whole body, provenance included, is identical.
@@ -142,4 +170,196 @@ pub fn assert_no_failures(failures: &[String], total: usize) {
             .collect::<Vec<_>>()
             .join("\n")
     );
+}
+
+/// A reference's calculation golden: curated cases, then the R-vector children.
+#[derive(Debug, serde::Deserialize)]
+pub struct ReferenceCases {
+    pub curated: Vec<Case>,
+    pub r_vectors: Vec<Case>,
+}
+
+/// Replays a reference's calculation and bulk-calculation golden against the
+/// embedded tables (or `$OPENGROWTH_REFERENCE_DATA_DIR` layered over them)
+/// and fails on any difference outside provenance. Each entry of `known` is
+/// a Category 3 fix (`spec/standard.md` section 6.3) that must still differ
+/// in exactly the stated way, upstream 500 and opengrowth 422, so the list
+/// cannot go stale or hide a regression.
+pub async fn check_reference_golden(golden_file: &str, known: &[(&str, &str)]) {
+    use std::sync::Arc;
+
+    use opengrowth::server::{AppState, router};
+    use opengrowth::store::ReferenceStore;
+
+    let dir = std::env::var_os(super::DATA_DIR_ENV).map(std::path::PathBuf::from);
+    let store = || ReferenceStore::standard(dir.as_deref()).expect("tables load");
+    let open = router(Arc::new(AppState::new(store(), None)));
+    let locked = router(Arc::new(AppState::new(
+        store(),
+        Some("test-key".to_owned()),
+    )));
+
+    let golden: super::Golden<ReferenceCases> = super::read_json(golden_file);
+    eprintln!("reference server environment: {}", golden.environment);
+    let mut failures = Vec::new();
+    let mut identical = 0;
+    let mut masked_identical = 0;
+    let all: Vec<&Case> = golden
+        .cases
+        .curated
+        .iter()
+        .chain(&golden.cases.r_vectors)
+        .collect();
+    for case in &all {
+        let app = if case.name.starts_with("auth ") {
+            locked.clone()
+        } else {
+            open.clone()
+        };
+        let outcome = replay(app, case).await;
+        if known.iter().any(|(name, _)| *name == case.name) {
+            let as_expected = case.status == 500
+                && outcome.status == 422
+                && outcome.body.contains("\"value_error\"");
+            if !as_expected {
+                failures.push(format!(
+                    "{}: listed as a known difference but behaved differently",
+                    case.name
+                ));
+            }
+            continue;
+        }
+        if identical_including_provenance(case, &outcome) {
+            identical += 1;
+        }
+        let found = problems(case, &outcome);
+        if found.is_empty() {
+            masked_identical += 1;
+        } else {
+            failures.push(format!("{}: {}", case.name, found.join("; ")));
+        }
+    }
+    eprintln!(
+        "{} cases: {masked_identical} byte-identical outside provenance, {identical} identical including it, {} known differences",
+        all.len(),
+        known.len()
+    );
+    assert_no_failures(&failures, all.len());
+}
+
+/// One chart case, with the digest the unmodified server returns for a
+/// named format (from its stale stored files).
+#[derive(Debug, serde::Deserialize)]
+pub struct ChartCase {
+    #[serde(flatten)]
+    pub case: Case,
+    pub stale_masked_sha256: Option<String>,
+}
+
+/// The chart golden's one known difference: upstream serves stored files
+/// that differ from its own engine.
+pub const STALE_CHART_FILES: (&str, &str) = (
+    "every named-format chart",
+    "upstream serves chart files last regenerated on 2025-01-11, which differ from its own engine; \
+     opengrowth calculates them with rcpchgrowth 4.6.5",
+);
+
+/// Replays a reference's chart golden and fails on any difference outside
+/// provenance. Also checks that the known difference still holds: every
+/// named-format response from the unmodified server differs from 4.6.5's.
+pub async fn check_chart_golden(golden_file: &str) {
+    use std::sync::Arc;
+
+    use opengrowth::server::{AppState, router};
+    use opengrowth::store::ReferenceStore;
+
+    let dir = std::env::var_os(super::DATA_DIR_ENV).map(std::path::PathBuf::from);
+    let app = router(Arc::new(AppState::new(
+        ReferenceStore::standard(dir.as_deref()).expect("tables load"),
+        None,
+    )));
+    let golden: super::Golden<Vec<ChartCase>> = super::read_json(golden_file);
+    let mut failures = Vec::new();
+    let mut stale_differs = 0;
+    let mut named = 0;
+    for chart_case in &golden.cases {
+        let case = &chart_case.case;
+        let outcome = replay(app.clone(), case).await;
+        let found = problems(case, &outcome);
+        if !found.is_empty() {
+            failures.push(format!("{}: {}", case.name, found.join("; ")));
+        }
+        if let Some(stale) = &chart_case.stale_masked_sha256 {
+            named += 1;
+            if *stale != case.masked_sha256 {
+                stale_differs += 1;
+            }
+        }
+    }
+    eprintln!(
+        "{} cases; {} differ. Upstream's stored chart files differ from rcpchgrowth 4.6.5 for {stale_differs} of {named} named formats.",
+        golden.cases.len(),
+        failures.len()
+    );
+    let (name, reason) = STALE_CHART_FILES;
+    if stale_differs != named {
+        failures.push(format!(
+            "{name} is listed as a known difference ({reason}), but only {stale_differs} of {named} differ"
+        ));
+    }
+    assert_no_failures(&failures, golden.cases.len());
+}
+
+/// The draw `conformance/generators/_http_fictional_child.py` fixes.
+pub const FIXED_DRAW: f64 = 0.8125;
+
+/// Replays a reference's fictional-child golden with the same fixed random
+/// draw. Each entry of `known` (`spec/standard.md` section 6.3) must still be
+/// upstream's 500 and opengrowth's route 422 with message `route_error`.
+pub async fn check_fictional_child_golden(
+    golden_file: &str,
+    known: &[(&str, &str)],
+    route_error: &str,
+) {
+    use std::sync::Arc;
+
+    use opengrowth::server::{AppState, router};
+    use opengrowth::store::ReferenceStore;
+
+    let dir = std::env::var_os(super::DATA_DIR_ENV).map(std::path::PathBuf::from);
+    let store = ReferenceStore::standard(dir.as_deref()).expect("tables load");
+    let app = router(Arc::new(
+        AppState::new(store, None).with_fixed_noise(FIXED_DRAW),
+    ));
+    let golden: super::Golden<Vec<Case>> = super::read_json(golden_file);
+    assert!(
+        golden.environment.to_string().contains("rcpchgrowth"),
+        "unexpected golden environment"
+    );
+    let mut failures = Vec::new();
+    let mut seen = 0;
+    for case in &golden.cases {
+        let outcome = replay(app.clone(), case).await;
+        if let Some((_, reason)) = known.iter().find(|(name, _)| *name == case.name) {
+            seen += 1;
+            if !(case.status == 500 && outcome.status == 422 && outcome.body == route_error) {
+                failures.push(format!(
+                    "{}: listed as a known difference ({reason}) but behaved differently: {} {}",
+                    case.name, outcome.status, outcome.body
+                ));
+            }
+            continue;
+        }
+        let found = problems(case, &outcome);
+        if !found.is_empty() {
+            failures.push(format!("{}: {}", case.name, found.join("; ")));
+        }
+    }
+    eprintln!(
+        "{} cases: {} byte-identical outside provenance, {seen} known differences",
+        golden.cases.len(),
+        golden.cases.len() - seen - failures.len()
+    );
+    assert_eq!(seen, known.len(), "a known difference has no case");
+    assert_no_failures(&failures, golden.cases.len());
 }

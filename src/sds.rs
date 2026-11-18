@@ -5,8 +5,13 @@
 //! SDS and centile for a single measurement at a given decimal age.
 //!
 //! Ported from `rcpchgrowth.global_functions.sds_for_measurement` and
-//! `centile`. Only UK-WHO is implemented so far (`R9`); other references
+//! `centile`. UK-WHO and WHO are implemented so far (`R9`); other references
 //! return [`CalcError::ReferenceNotImplemented`] rather than a wrong answer.
+//!
+//! WHO differs in two ways, both upstream's: its SDS lookups interpolate
+//! linearly between rows, and beyond 3 SD (for weight and BMI at any age,
+//! and for everything under 5 years) it uses WHO's restricted extension of
+//! the LMS method, which spaces SDS beyond 3 by the 2-to-3 SD distance.
 
 use crate::data::{DataError, ReferenceData, TableId};
 use crate::lms::{Lms, measurement_from_lms, sds_from_lms};
@@ -15,6 +20,7 @@ use crate::round::PyFloat;
 use crate::table::{Interpolation, LmsTable, Lookup, TableError};
 use crate::uk_who::{self, UkWhoAbsence};
 use crate::vocabulary::{GrowthReference, MeasurementMethod, Sex};
+use crate::who::{self, WhoAbsence};
 
 /// Why an SDS could not be calculated.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -23,6 +29,9 @@ pub enum CalcError {
     /// is a `LookupError`, and its message reaches API responses verbatim.
     #[error(transparent)]
     UkWhoAbsent(#[from] UkWhoAbsence),
+    /// As for UK-WHO, for the WHO reference.
+    #[error(transparent)]
+    WhoAbsent(#[from] WhoAbsence),
     /// A table needed for this calculation is not loaded.
     #[error(transparent)]
     Data(#[from] DataError),
@@ -65,19 +74,52 @@ pub fn sds_for_measurement(
     observation: f64,
     sex: Sex,
 ) -> Result<SdsResult, CalcError> {
-    let (table, lms) = lms_for_age(data, reference, age, method, sex, || {
-        // Checked after the age rules so the reported error matches upstream.
-        if observation.is_finite() && observation > 0.0 {
-            Ok(())
-        } else {
-            Err(CalcError::InvalidObservation(observation))
+    let interpolation = if reference == GrowthReference::Who {
+        Interpolation::LinearOnly
+    } else {
+        Interpolation::CubicWherePossible
+    };
+    let (table, lms, _) = lms_for_age(
+        data,
+        reference,
+        age,
+        method,
+        sex,
+        false,
+        interpolation,
+        || {
+            // Checked after the age rules so the reported error matches upstream.
+            if observation.is_finite() && observation > 0.0 {
+                Ok(())
+            } else {
+                Err(CalcError::InvalidObservation(observation))
+            }
+        },
+    )?;
+    let bmi_or_weight = matches!(method, MeasurementMethod::Bmi | MeasurementMethod::Weight);
+    let sds = if reference == GrowthReference::Who && ((bmi_or_weight && age >= 5.0) || age < 5.0) {
+        who_sds(observation, &lms)
+    } else {
+        sds_from_lms(observation, &lms)
+    };
+    Ok(SdsResult { sds, table, lms })
+}
+
+/// WHO's restricted extension of the LMS method beyond 3 SD: the distance
+/// from 3 SD is measured in units of the distance between 2 and 3 SD.
+fn who_sds(observation: f64, lms: &Lms) -> f64 {
+    let z = sds_from_lms(observation, lms);
+    if z.abs() > 3.0 {
+        let at = |sds: f64| lms.m * (1.0 + lms.l * lms.s * sds).powf(1.0 / lms.l);
+        if z > 3.0 {
+            let (sd3, sd2) = (at(3.0), at(2.0));
+            return 3.0 + ((observation - sd3) / (sd3 - sd2));
+        } else if z < -3.0 {
+            let (sd3, sd2) = (at(-3.0), at(-2.0));
+            return -3.0 + ((observation - sd3) / (sd2 - sd3));
         }
-    })?;
-    Ok(SdsResult {
-        sds: sds_from_lms(observation, &lms),
-        table,
-        lms,
-    })
+    }
+    z
 }
 
 /// The measurement at an SDS for an age (the upstream `measurement_from_sds`),
@@ -107,21 +149,16 @@ pub fn measurement_from_sds(
     age: f64,
     youngest_at_boundary: bool,
 ) -> Result<(Option<PyFloat>, TableId), CalcError> {
-    let (lms, lookup, table_id) = match reference {
-        GrowthReference::UkWho => {
-            let table_id = uk_who::table_for_age(age, youngest_at_boundary)?;
-            if let Some(absence) = uk_who::data_absent(age, method, sex) {
-                return Err(absence.into());
-            }
-            let table = data.table(table_id, method, sex)?;
-            let (lms, lookup) = table.lookup(
-                age_for_lms_lookup(reference, age, table),
-                Interpolation::CubicWherePossible,
-            )?;
-            (lms, lookup, table_id)
-        }
-        other => return Err(CalcError::ReferenceNotImplemented(other)),
-    };
+    let (table_id, lms, lookup) = lms_for_age(
+        data,
+        reference,
+        age,
+        method,
+        sex,
+        youngest_at_boundary,
+        Interpolation::CubicWherePossible,
+        || Ok(()),
+    )?;
     let numpy =
         lookup == Lookup::Linear || (matches!(requested_sds, PyFloat::NumPy(_)) && lms.l != 0.0);
     let measurement = measurement_from_lms(requested_sds.value(), &lms).map(|value| {
@@ -148,7 +185,16 @@ pub fn percentage_median_bmi(
     bmi: f64,
     sex: Sex,
 ) -> Result<(f64, TableId), CalcError> {
-    let (table, lms) = lms_for_age(data, reference, age, MeasurementMethod::Bmi, sex, || Ok(()))?;
+    let (table, lms, _) = lms_for_age(
+        data,
+        reference,
+        age,
+        MeasurementMethod::Bmi,
+        sex,
+        false,
+        Interpolation::CubicWherePossible,
+        || Ok(()),
+    )?;
     Ok(((bmi / lms.m) * 100.0, table))
 }
 
@@ -156,30 +202,37 @@ pub fn percentage_median_bmi(
 /// `lms_value_array_for_measurement_for_reference` and `fetch_lms`).
 /// `before_lookup` runs after the reference's own age rules, so callers can
 /// add checks without changing which error upstream would report first.
+#[allow(clippy::too_many_arguments, reason = "the upstream lookup's inputs")]
 fn lms_for_age(
     data: &dyn ReferenceData,
     reference: GrowthReference,
     age: f64,
     method: MeasurementMethod,
     sex: Sex,
+    youngest_at_boundary: bool,
+    interpolation: Interpolation,
     before_lookup: impl FnOnce() -> Result<(), CalcError>,
-) -> Result<(TableId, Lms), CalcError> {
-    match reference {
+) -> Result<(TableId, Lms, Lookup), CalcError> {
+    let table_id = match reference {
         GrowthReference::UkWho => {
-            let table_id = uk_who::table_for_age(age, false)?;
+            let table_id = uk_who::table_for_age(age, youngest_at_boundary)?;
             if let Some(absence) = uk_who::data_absent(age, method, sex) {
                 return Err(absence.into());
             }
-            before_lookup()?;
-            let table = data.table(table_id, method, sex)?;
-            let lms = table.lms_at(
-                age_for_lms_lookup(reference, age, table),
-                Interpolation::CubicWherePossible,
-            )?;
-            Ok((table_id, lms))
+            table_id
         }
-        other => Err(CalcError::ReferenceNotImplemented(other)),
-    }
+        GrowthReference::Who => {
+            if let Some(absence) = who::data_absent(age, method) {
+                return Err(absence.into());
+            }
+            who::table_for_age(age, youngest_at_boundary)?
+        }
+        other => return Err(CalcError::ReferenceNotImplemented(other)),
+    };
+    before_lookup()?;
+    let table = data.table(table_id, method, sex)?;
+    let (lms, lookup) = table.lookup(age_for_lms_lookup(reference, age, table), interpolation)?;
+    Ok((table_id, lms, lookup))
 }
 
 /// Centile (0 to 100) for an SDS.

@@ -1,0 +1,948 @@
+{
+ "generator": "conformance/generators/http_who_fictional_child.py",
+ "command": "s/goldens",
+ "description": "FastAPI fictional-child-data responses for WHO, with every random draw fixed at 0.8125.",
+ "environment": {
+  "rcpchgrowth": "4.6.5",
+  "scipy": "1.18.1",
+  "numpy": "2.5.5",
+  "fastapi": "0.116.1",
+  "pydantic": "2.11.7",
+  "starlette": "0.47.3",
+  "python": "3.13.7",
+  "digital-growth-charts-server": "29bb4e9e9d93a850a63d5233b927472f808fb9a8",
+  "platform": "Linux x86_64"
+ },
+ "cases": [
+  {
+   "name": "defaults",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\"}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "b623e0d2880d04676defad7a5b56aae5d8a318704dd314f55dbe3525353b8342",
+   "masked_sha256": "9e1f65b2a04bc5131eaccac27280309a63207fd406456f1f73d7e283acfcb71a",
+   "count": 12
+  },
+  {
+   "name": "small full",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": 4, \"end_age\": 4.5, \"measurement_interval_number\": 2}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "64a91f264ed86f8c90fef9226bfdd14e60785a5e60430c4a5afe0d751ee969e0",
+   "masked_sha256": "f9d36b6c734076f2646f14f93d02f8ba2e53e7fd5c9a350e65cdeb05e33fa6eb",
+   "count": 3,
+   "body": "[{\"provenance\":{\"growth_reference\":\"who\",\"calculation_engine\":{\"name\":\"rcpch/rcpchgrowth-python\",\"version\":\"4.6.5\",\"commit\":\"842463e3c19104efdc7596a4ba8bc7792733f866\"},\"api_server\":{\"name\":\"rcpch/digital-growth-charts-server\",\"version\":\"5.1.0\",\"commit\":\"29bb4e9e9d93a850a63d5233b927472f808fb9a8\"}},\"birth_data\":{\"birth_date\":\"1759-04-11\",\"gestation_weeks\":40,\"gestation_days\":0,\"estimated_date_delivery\":\"1759-04-11\",\"estimated_date_delivery_string\":\"Wed 11 April, 1759\",\"sex\":\"male\"},\"measurement_dates\":{\"observation_date\":\"1763-04-11\",\"chronological_decimal_age\":4.0,\"corrected_decimal_age\":4.0,\"chronological_calendar_age\":\"4 years\",\"corrected_calendar_age\":\"4 years\",\"corrected_gestational_age\":{\"corrected_gestation_weeks\":null,\"corrected_gestation_days\":null},\"comments\":{\"clinician_corrected_decimal_age_comment\":\"Born at term. No correction for gestation has been made.\",\"lay_corrected_decimal_age_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_chronological_decimal_age_comment\":\"Born at term. No correction for gestation has been made.\",\"lay_chronological_decimal_age_comment\":\"Your child was born at term. No correction for gestation has been made.\"},\"corrected_decimal_age_error\":null,\"chronological_decimal_age_error\":null},\"child_observation_value\":{\"measurement_method\":\"height\",\"observation_value\":103.3,\"observation_value_error\":null},\"measurement_calculated_values\":{\"corrected_sds\":-0.006509213470856772,\"corrected_centile\":49.7403,\"corrected_centile_band\":\"This height measurement is on or near the 50th centile.\",\"chronological_sds\":-0.006509213470856772,\"chronological_centile\":49.7403,\"chronological_centile_band\":\"This height measurement is on or near the 50th centile.\",\"corrected_measurement_error\":null,\"chronological_measurement_error\":null,\"corrected_percentage_median_bmi\":null,\"chronological_percentage_median_bmi\":null},\"plottable_data\":{\"centile_data\":{\"chronological_decimal_age_data\":{\"x\":4.0,\"y\":103.3,\"b\":null,\"centile\":49.7403,\"sds\":-0.006509213470856772,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"chronological_age\",\"calendar_age\":\"4 years\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null},\"corrected_decimal_age_data\":{\"x\":4.0,\"y\":103.3,\"b\":null,\"centile\":49.7403,\"sds\":-0.006509213470856772,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"corrected_age\",\"calendar_age\":\"4 years\",\"corrected_gestational_age\":\"\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null}},\"sds_data\":{\"chronological_decimal_age_data\":{\"x\":4.0,\"y\":-0.006509213470856772,\"b\":null,\"centile\":49.7403,\"sds\":null,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"chronological_age\",\"calendar_age\":\"4 years\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null},\"corrected_decimal_age_data\":{\"x\":4.0,\"y\":-0.006509213470856772,\"b\":null,\"centile\":49.7403,\"sds\":null,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"corrected_age\",\"calendar_age\":\"4 years\",\"corrected_gestational_age\":\"\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null}}},\"bone_age\":{\"bone_age\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"bone_age_text\":null},\"events_data\":{\"events_text\":null}},{\"provenance\":{\"growth_reference\":\"who\",\"calculation_engine\":{\"name\":\"rcpch/rcpchgrowth-python\",\"version\":\"4.6.5\",\"commit\":\"842463e3c19104efdc7596a4ba8bc7792733f866\"},\"api_server\":{\"name\":\"rcpch/digital-growth-charts-server\",\"version\":\"5.1.0\",\"commit\":\"29bb4e9e9d93a850a63d5233b927472f808fb9a8\"}},\"birth_data\":{\"birth_date\":\"1759-04-11\",\"gestation_weeks\":40,\"gestation_days\":0,\"estimated_date_delivery\":\"1759-04-11\",\"estimated_date_delivery_string\":\"Wed 11 April, 1759\",\"sex\":\"male\"},\"measurement_dates\":{\"observation_date\":\"1763-06-10\",\"chronological_decimal_age\":4.164271047227926,\"corrected_decimal_age\":4.164271047227926,\"chronological_calendar_age\":\"4 years, 1 month, 4 weeks and 2 days\",\"corrected_calendar_age\":\"4 years, 1 month, 4 weeks and 2 days\",\"corrected_gestational_age\":{\"corrected_gestation_weeks\":null,\"corrected_gestation_days\":null},\"comments\":{\"clinician_corrected_decimal_age_comment\":\"Born at term. No correction for gestation has been made.\",\"lay_corrected_decimal_age_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_chronological_decimal_age_comment\":\"Born at term. No correction for gestation has been made.\",\"lay_chronological_decimal_age_comment\":\"Your child was born at term. No correction for gestation has been made.\"},\"corrected_decimal_age_error\":null,\"chronological_decimal_age_error\":null},\"child_observation_value\":{\"measurement_method\":\"height\",\"observation_value\":104.4,\"observation_value_error\":null},\"measurement_calculated_values\":{\"corrected_sds\":-0.007335256264431444,\"corrected_centile\":49.7074,\"corrected_centile_band\":\"This height measurement is on or near the 50th centile.\",\"chronological_sds\":-0.007335256264431444,\"chronological_centile\":49.7074,\"chronological_centile_band\":\"This height measurement is on or near the 50th centile.\",\"corrected_measurement_error\":null,\"chronological_measurement_error\":null,\"corrected_percentage_median_bmi\":null,\"chronological_percentage_median_bmi\":null},\"plottable_data\":{\"centile_data\":{\"chronological_decimal_age_data\":{\"x\":4.164271047227926,\"y\":104.4,\"b\":null,\"centile\":49.7074,\"sds\":-0.007335256264431444,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"chronological_age\",\"calendar_age\":\"4 years, 1 month, 4 weeks and 2 days\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null},\"corrected_decimal_age_data\":{\"x\":4.164271047227926,\"y\":104.4,\"b\":null,\"centile\":49.7074,\"sds\":-0.007335256264431444,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"corrected_age\",\"calendar_age\":\"4 years, 1 month, 4 weeks and 2 days\",\"corrected_gestational_age\":\"\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null}},\"sds_data\":{\"chronological_decimal_age_data\":{\"x\":4.164271047227926,\"y\":-0.007335256264431444,\"b\":null,\"centile\":49.7074,\"sds\":null,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"chronological_age\",\"calendar_age\":\"4 years, 1 month, 4 weeks and 2 days\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null},\"corrected_decimal_age_data\":{\"x\":4.164271047227926,\"y\":-0.007335256264431444,\"b\":null,\"centile\":49.7074,\"sds\":null,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"corrected_age\",\"calendar_age\":\"4 years, 1 month, 4 weeks and 2 days\",\"corrected_gestational_age\":\"\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null}}},\"bone_age\":{\"bone_age\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"bone_age_text\":null},\"events_data\":{\"events_text\":null}},{\"provenance\":{\"growth_reference\":\"who\",\"calculation_engine\":{\"name\":\"rcpch/rcpchgrowth-python\",\"version\":\"4.6.5\",\"commit\":\"842463e3c19104efdc7596a4ba8bc7792733f866\"},\"api_server\":{\"name\":\"rcpch/digital-growth-charts-server\",\"version\":\"5.1.0\",\"commit\":\"29bb4e9e9d93a850a63d5233b927472f808fb9a8\"}},\"birth_data\":{\"birth_date\":\"1759-04-11\",\"gestation_weeks\":40,\"gestation_days\":0,\"estimated_date_delivery\":\"1759-04-11\",\"estimated_date_delivery_string\":\"Wed 11 April, 1759\",\"sex\":\"male\"},\"measurement_dates\":{\"observation_date\":\"1763-08-09\",\"chronological_decimal_age\":4.328542094455853,\"corrected_decimal_age\":4.328542094455853,\"chronological_calendar_age\":\"4 years, 3 months, 4 weeks and 1 day\",\"corrected_calendar_age\":\"4 years, 3 months, 4 weeks and 1 day\",\"corrected_gestational_age\":{\"corrected_gestation_weeks\":null,\"corrected_gestation_days\":null},\"comments\":{\"clinician_corrected_decimal_age_comment\":\"Born at term. No correction for gestation has been made.\",\"lay_corrected_decimal_age_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_chronological_decimal_age_comment\":\"Born at term. No correction for gestation has been made.\",\"lay_chronological_decimal_age_comment\":\"Your child was born at term. No correction for gestation has been made.\"},\"corrected_decimal_age_error\":null,\"chronological_decimal_age_error\":null},\"child_observation_value\":{\"measurement_method\":\"height\",\"observation_value\":105.6,\"observation_value_error\":null},\"measurement_calculated_values\":{\"corrected_sds\":0.016661677289377806,\"corrected_centile\":50.6647,\"corrected_centile_band\":\"This height measurement is on or near the 50th centile.\",\"chronological_sds\":0.016661677289377806,\"chronological_centile\":50.6647,\"chronological_centile_band\":\"This height measurement is on or near the 50th centile.\",\"corrected_measurement_error\":null,\"chronological_measurement_error\":null,\"corrected_percentage_median_bmi\":null,\"chronological_percentage_median_bmi\":null},\"plottable_data\":{\"centile_data\":{\"chronological_decimal_age_data\":{\"x\":4.328542094455853,\"y\":105.6,\"b\":null,\"centile\":50.6647,\"sds\":0.016661677289377806,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"chronological_age\",\"calendar_age\":\"4 years, 3 months, 4 weeks and 1 day\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null},\"corrected_decimal_age_data\":{\"x\":4.328542094455853,\"y\":105.6,\"b\":null,\"centile\":50.6647,\"sds\":0.016661677289377806,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"corrected_age\",\"calendar_age\":\"4 years, 3 months, 4 weeks and 1 day\",\"corrected_gestational_age\":\"\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null}},\"sds_data\":{\"chronological_decimal_age_data\":{\"x\":4.328542094455853,\"y\":0.016661677289377806,\"b\":null,\"centile\":50.6647,\"sds\":null,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"chronological_age\",\"calendar_age\":\"4 years, 3 months, 4 weeks and 1 day\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null},\"corrected_decimal_age_data\":{\"x\":4.328542094455853,\"y\":0.016661677289377806,\"b\":null,\"centile\":50.6647,\"sds\":null,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"corrected_age\",\"calendar_age\":\"4 years, 3 months, 4 weeks and 1 day\",\"corrected_gestational_age\":\"\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null}}},\"bone_age\":{\"bone_age\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"bone_age_text\":null},\"events_data\":{\"events_text\":null}}]"
+  },
+  {
+   "name": "weight infant monthly",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"female\", \"end_age\": 2, \"measurement_interval_number\": 1}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "28fcbb31050aa30b33c384112cf740c651ea5537be16ab38d399af02a4a10b46",
+   "masked_sha256": "1cfe49850c69e83805c6c080955ac6a40ba36a6c6fcc385daf7ba10a7bc40d82",
+   "count": 24
+  },
+  {
+   "name": "ofc days",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"ofc\", \"sex\": \"male\", \"end_age\": 0.25, \"measurement_interval_type\": \"d\", \"measurement_interval_number\": 10}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "993622fff7d119ac1cbb99b7ebf135a1340c2db9c0c5c3d1921f2b3fab92e134",
+   "masked_sha256": "dd12889f5577ff70c21d977476a05b3229317d759886f8e69efc1ba25c38b240",
+   "count": 10
+  },
+  {
+   "name": "bmi weeks",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"bmi\", \"sex\": \"female\", \"end_age\": 1, \"measurement_interval_type\": \"w\", \"measurement_interval_number\": 4}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "f3c5c253b24eb0f15aee7803c9c817552551afb129e59d378a01cbf7874f8522",
+   "masked_sha256": "2b399547e295c3f0acc4d342378c538b9da2c8c978542cd4116b975df691b816",
+   "count": 14
+  },
+  {
+   "name": "height preterm 28+3",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"female\", \"gestation_weeks\": 28, \"gestation_days\": 3, \"end_age\": 1, \"measurement_interval_number\": 1}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "c163133d521aeb2444176538ca8bb96c65cd6e20700508d09fb01a34f13e52d3",
+   "masked_sha256": "4a59e36684d04c7f0d182b89097ca585c0fa5b822e66f6ead73b10b6c857c991",
+   "count": 9
+  },
+  {
+   "name": "weight preterm 24+0 weekly",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"male\", \"gestation_weeks\": 24, \"end_age\": 0.6, \"measurement_interval_type\": \"weeks\", \"measurement_interval_number\": 1}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "092ec19953001509319358daf7268f659a6a489853b058e7a8be45b8d2f9e314",
+   "masked_sha256": "794c6765a45eda61bc573b7f08210cf1cee85d2dfeb4f6782829e920b2d0808c",
+   "count": 16
+  },
+  {
+   "name": "ofc post-term 42+5",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"ofc\", \"sex\": \"female\", \"gestation_weeks\": 42, \"gestation_days\": 5, \"end_age\": 3, \"measurement_interval_number\": 3}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "22b24062ab4b9936422d809c9a96ee39324d907003ad802000446febb846c1bb",
+   "masked_sha256": "b1660b6d453028a2c72e99986b1da7efa4f333392b70a80a026a80c1448d7551",
+   "count": 12
+  },
+  {
+   "name": "start before birth",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"male\", \"start_chronological_age\": -0.1, \"end_age\": 0.1, \"measurement_interval_type\": \"w\", \"measurement_interval_number\": 2}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "80cff844114784654cd53ca3d21274d2762d6aee77c46b9c519e2f8dc0a77dc2",
+   "masked_sha256": "4ccd94c8eee8c4342bcf438153fabae854518796c94192c5609233707e831cbb",
+   "count": 3
+  },
+  {
+   "name": "drift negative",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"bmi\", \"sex\": \"female\", \"start_chronological_age\": 2, \"end_age\": 18, \"measurement_interval_type\": \"y\", \"measurement_interval_number\": 1, \"start_sds\": 1, \"drift\": true, \"drift_range\": -1.5}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "644f77c4fbd7e23daf27ff0a2ac8a9d2a6d6e8931759f19b9c658322ff7cb565",
+   "masked_sha256": "e5790682770968d5e858cefd98561dc8d3248b677939d1dc0757f17b6b1a14a1",
+   "count": 16
+  },
+  {
+   "name": "drift positive",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"drift\": true, \"drift_range\": 0.7}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "6dd2d8f231a38d40eee0ff5cf3de84e5d622edbe4e42e91845a92afab021d2e7",
+   "masked_sha256": "3e1bdf70c4701c669cc38828df7bfdf86f6fbbd4b74fec1fc3c6d57667ab5014",
+   "count": 12
+  },
+  {
+   "name": "drift default range",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"female\", \"drift\": true}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "4684aa2d64f44f16917623737978ed98006228d08c7024f27c8245cdf58f0c19",
+   "masked_sha256": "c83e30fea49a8f0166a4dc96759dd38d1b8933861fda05eea221aff6d3dbc9c8",
+   "count": 7
+  },
+  {
+   "name": "noise",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"male\", \"noise\": true, \"noise_range\": 0.05}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "7ceb6f11d9de5bda97ba490bf8440aa5fafe347f730faf79430df12e9dce4cfb",
+   "masked_sha256": "4967c6cd447daa70bdce953e0eb59a3a98072b9373ce11b4849b36d7ab6783a5",
+   "count": 7
+  },
+  {
+   "name": "noise default range preterm",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"female\", \"gestation_weeks\": 30, \"end_age\": 1, \"measurement_interval_number\": 1, \"noise\": true}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "7bcc8f33db542cc2af264ea09ac562098d1ab114cad2062c04607692ab4a911b",
+   "masked_sha256": "84f4c54da92b623ba4a4076b72f8db2e3315c9b85fb5863c93d73de978702f53",
+   "count": 9
+  },
+  {
+   "name": "noise range zero",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"ofc\", \"sex\": \"male\", \"end_age\": 2, \"measurement_interval_number\": 3, \"noise\": true, \"noise_range\": 0}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "01bdb90b9e10d95886321619b9aa6720b81d61b2b0083e99f65f740be87fd4a1",
+   "masked_sha256": "0eee713ad2b78d4cf38a29d1a67ddbc79eee30192853e359377df8e1603b4ec6",
+   "count": 8
+  },
+  {
+   "name": "noise and drift",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"female\", \"start_sds\": -1, \"drift\": true, \"drift_range\": 2, \"noise\": true, \"noise_range\": 0.02}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "560dc3e1f71b7b68d2ec2a3b2ed3af8f99790908d15532e74baadf93dcb5ca66",
+   "masked_sha256": "f79f2192875e0f162c65c59cdb75043d85e51b2bbf2c04168b31c4623c0ed8ac",
+   "count": 12
+  },
+  {
+   "name": "sds 7.95",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_sds\": 7.95}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "d358332070386215c1cce6d7be087f94dfa37d222be1f18e85f016b69d5511de",
+   "masked_sha256": "5a47e4ac032403aa27d40cb70d777342350fc0d36eb3ed36754a1d2b88313eb7",
+   "count": 12
+  },
+  {
+   "name": "sds 9",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_sds\": 9}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "1941662c6c57f6ba3895845d5ec1ec279ab9ee9bbe21bf557a189032b2cbba14",
+   "masked_sha256": "d7278b00907bd215fca5e5df55f06de77d02f9e65411abe093b75357c2cddfe0",
+   "count": 12
+  },
+  {
+   "name": "sds -9 weight",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"male\", \"start_sds\": -9}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "bbf4487f48fa78fa50542c8556f3d5fd33c9d4f736f9e00c4ad37dec376e5152",
+   "masked_sha256": "29b824365cd90276ee3c85138f00f8aa45e9801fca6053ae12d2e57396d66924",
+   "count": 7
+  },
+  {
+   "name": "sds -9 weight preterm",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"male\", \"gestation_weeks\": 24, \"start_sds\": -9, \"end_age\": 0.5, \"measurement_interval_type\": \"w\", \"measurement_interval_number\": 2}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "96a10e2cf817722e4727c07c59edbc41bfdfed11a46280f0b3f3d0c268f6c926",
+   "masked_sha256": "2a991516aea1da284a731484771ffec7195cbab73b2ccd59f71f1aecae26d93b",
+   "count": 5
+  },
+  {
+   "name": "sds 16 bmi",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"bmi\", \"sex\": \"female\", \"start_chronological_age\": 2, \"start_sds\": 16}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "5488ad24f114c341181938565087a7b7b677f5f41fa50ac372097253131827fd",
+   "masked_sha256": "0e267ad1aee7d9f05f30da91f060f33c4b29d768c210558a018ef83e48200727",
+   "count": 2
+  },
+  {
+   "name": "ages past 20",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": 18, \"end_age\": 25}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "abaa63d88c02c1e192a089eed2f783ef5834d82dfdeeeb0a3816b06c0a1720bc",
+   "masked_sha256": "994b86fac3c8601214dd3410b5a8d7aa985f65663756af514be601255660ff79",
+   "count": 1,
+   "body": "[{\"provenance\":{\"growth_reference\":\"who\",\"calculation_engine\":{\"name\":\"rcpch/rcpchgrowth-python\",\"version\":\"4.6.5\",\"commit\":\"842463e3c19104efdc7596a4ba8bc7792733f866\"},\"api_server\":{\"name\":\"rcpch/digital-growth-charts-server\",\"version\":\"5.1.0\",\"commit\":\"29bb4e9e9d93a850a63d5233b927472f808fb9a8\"}},\"birth_data\":{\"birth_date\":\"1759-04-11\",\"gestation_weeks\":40,\"gestation_days\":0,\"estimated_date_delivery\":\"1759-04-11\",\"estimated_date_delivery_string\":\"Wed 11 April, 1759\",\"sex\":\"male\"},\"measurement_dates\":{\"observation_date\":\"1777-04-10\",\"chronological_decimal_age\":17.998631074606433,\"corrected_decimal_age\":17.998631074606433,\"chronological_calendar_age\":\"17 years, 11 months, 4 weeks and 2 days\",\"corrected_calendar_age\":\"17 years, 11 months, 4 weeks and 2 days\",\"corrected_gestational_age\":{\"corrected_gestation_weeks\":null,\"corrected_gestation_days\":null},\"comments\":{\"clinician_corrected_decimal_age_comment\":\"Born at term. No correction for gestation has been made.\",\"lay_corrected_decimal_age_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_chronological_decimal_age_comment\":\"Born at term. No correction for gestation has been made.\",\"lay_chronological_decimal_age_comment\":\"Your child was born at term. No correction for gestation has been made.\"},\"corrected_decimal_age_error\":null,\"chronological_decimal_age_error\":null},\"child_observation_value\":{\"measurement_method\":\"height\",\"observation_value\":176.1,\"observation_value_error\":null},\"measurement_calculated_values\":{\"corrected_sds\":-0.005897235838658864,\"corrected_centile\":49.7647,\"corrected_centile_band\":\"This height measurement is on or near the 50th centile.\",\"chronological_sds\":-0.005897235838658864,\"chronological_centile\":49.7647,\"chronological_centile_band\":\"This height measurement is on or near the 50th centile.\",\"corrected_measurement_error\":null,\"chronological_measurement_error\":null,\"corrected_percentage_median_bmi\":null,\"chronological_percentage_median_bmi\":null},\"plottable_data\":{\"centile_data\":{\"chronological_decimal_age_data\":{\"x\":17.998631074606433,\"y\":176.1,\"b\":null,\"centile\":49.7647,\"sds\":-0.005897235838658864,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"chronological_age\",\"calendar_age\":\"17 years, 11 months, 4 weeks and 2 days\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null},\"corrected_decimal_age_data\":{\"x\":17.998631074606433,\"y\":176.1,\"b\":null,\"centile\":49.7647,\"sds\":-0.005897235838658864,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"corrected_age\",\"calendar_age\":\"17 years, 11 months, 4 weeks and 2 days\",\"corrected_gestational_age\":\"\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null}},\"sds_data\":{\"chronological_decimal_age_data\":{\"x\":17.998631074606433,\"y\":-0.005897235838658864,\"b\":null,\"centile\":49.7647,\"sds\":null,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"chronological_age\",\"calendar_age\":\"17 years, 11 months, 4 weeks and 2 days\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null},\"corrected_decimal_age_data\":{\"x\":17.998631074606433,\"y\":-0.005897235838658864,\"b\":null,\"centile\":49.7647,\"sds\":null,\"bone_age_label\":null,\"events_text\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"observation_error\":null,\"age_type\":\"corrected_age\",\"calendar_age\":\"17 years, 11 months, 4 weeks and 2 days\",\"corrected_gestational_age\":\"\",\"lay_comment\":\"Your child was born at term. No correction for gestation has been made.\",\"clinician_comment\":\"Born at term. No correction for gestation has been made.\",\"age_error\":null,\"centile_band\":\"This height measurement is on or near the 50th centile.\",\"observation_value_error\":null}}},\"bone_age\":{\"bone_age\":null,\"bone_age_type\":null,\"bone_age_sds\":null,\"bone_age_centile\":null,\"bone_age_text\":null},\"events_data\":{\"events_text\":null}}]"
+  },
+  {
+   "name": "unit day",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"male\", \"start_chronological_age\": 1, \"end_age\": 1.2, \"measurement_interval_type\": \"day\", \"measurement_interval_number\": 30}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "3dfcf7a90fb63cbc2a39e6d13c5923fc42d729ae29eb9771a4d805dbe3b4a657",
+   "masked_sha256": "e9d8cd6bb3fe7dc65f059848c3ec8ff487ec1044158f8eb3e08ba3faccc6fba4",
+   "count": 3
+  },
+  {
+   "name": "unit days",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"weight\", \"sex\": \"male\", \"start_chronological_age\": 1, \"end_age\": 1.1, \"measurement_interval_type\": \"days\", \"measurement_interval_number\": 7}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "cc246a90f4bb6e8b4b42af4ee52348fb98edd36923ea74bdef21838933808214",
+   "masked_sha256": "f8abef5316d350db85ce441a990b879e282b52ba976f088e9228ad71937341d9",
+   "count": 6
+  },
+  {
+   "name": "unit w",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"female\", \"start_chronological_age\": 0.5, \"end_age\": 0.9, \"measurement_interval_type\": \"w\", \"measurement_interval_number\": 5}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "1ec6104952bd4027fe1665c88e8bf62544a3fde2f6cf78e2fd4d2893a9a22808",
+   "masked_sha256": "551dad60d91ad3ae0a6b99c67f829f74dff1c79ee91d8efb1aa0bbcbdd3a003b",
+   "count": 5
+  },
+  {
+   "name": "unit week",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"female\", \"start_chronological_age\": 0.5, \"end_age\": 0.9, \"measurement_interval_type\": \"week\", \"measurement_interval_number\": 3}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "10f8da88d89a762bd9320c531316e69bfdf79c1c1e02431793d68fbb84949067",
+   "masked_sha256": "e295595e7467a062f0e941ebbb89843b4cf025574a56fc844cf8ef8ddce8d93d",
+   "count": 7
+  },
+  {
+   "name": "unit m",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"ofc\", \"sex\": \"male\", \"start_chronological_age\": 1, \"end_age\": 2, \"measurement_interval_type\": \"m\", \"measurement_interval_number\": 4}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "57ce609e38f3b27b16d1628e4db8e633f9cfc29671832cbdb65d0861aa691aaf",
+   "masked_sha256": "6c8ba17b8936d897a52a869c3ef62497d0df107413fd6c6b75f86961b8bc85b1",
+   "count": 3
+  },
+  {
+   "name": "unit month",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"ofc\", \"sex\": \"male\", \"start_chronological_age\": 1, \"end_age\": 2, \"measurement_interval_type\": \"month\", \"measurement_interval_number\": 5}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "2db51c45478c25f03ba25080620ae02a7c9dd314db9292063636534ad8503823",
+   "masked_sha256": "1a533a6de64f86a4189248f96a742938eef433371f583b37a6a21008e978606d",
+   "count": 3
+  },
+  {
+   "name": "unit y",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"bmi\", \"sex\": \"male\", \"start_chronological_age\": 4, \"end_age\": 10, \"measurement_interval_type\": \"y\", \"measurement_interval_number\": 2}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "c9b87cf83a11ee86a5ed6f36ee8498a0b738dcc40f91b93a1961a80325269fe1",
+   "masked_sha256": "c223d40732f03183a3d6264d076889722bb425ab347aa6d7293b0deaec927461",
+   "count": 3
+  },
+  {
+   "name": "unit year",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"bmi\", \"sex\": \"male\", \"start_chronological_age\": 4, \"end_age\": 7, \"measurement_interval_type\": \"year\", \"measurement_interval_number\": 1}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "06b4a521b8e9e133e3083a9cd497d0f18d1b3c6e3fc60245815badd1926622c3",
+   "masked_sha256": "b62d5b18b0ddd9777aa7f76bab0c5a0ca5f29425b67371b0c63dcce3066f341c",
+   "count": 3
+  },
+  {
+   "name": "unit years",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": 0, \"end_age\": 20, \"measurement_interval_type\": \"years\", \"measurement_interval_number\": 4}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "c1206899cb47bdb0706984cfe8d593e9d699d29d9ff1fc8e506df5ef18a59106",
+   "masked_sha256": "3b7a170ea926e00e017d7a0489db77eeeeb6b86e8aa428a08130040dd65ff7e1",
+   "count": 5
+  },
+  {
+   "name": "lax numbers",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": \"1.5\", \"end_age\": 3, \"measurement_interval_number\": \"6\", \"gestation_weeks\": \"38\", \"drift\": \"true\", \"drift_range\": \"0.5\"}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "277fbe4e8c71c3d3911fa0d6aa5144c754000350e3fd8325ba303fe7d6b07d45",
+   "masked_sha256": "c1c8f1483163760526018b5895facdaa552d0031a981ceb70d59fbe191e26622",
+   "count": 3
+  },
+  {
+   "name": "interval number float",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"end_age\": 2, \"measurement_interval_number\": 6.0}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "71d9051a4d2fdda4cf9f7a9070565a89c0757c55a1cacfccbdeecc2bd838bc2c",
+   "masked_sha256": "ab80ceb54d42112955652bba9763488850e2c7d222219364f4fdf828e241f9a0",
+   "count": 4
+  },
+  {
+   "name": "start_sds null",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_sds\": null}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "masked_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "count": 0,
+   "body": "[]"
+  },
+  {
+   "name": "start_sds null, gestation_days null",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_sds\": null, \"gestation_days\": null}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "masked_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "count": 0,
+   "body": "[]"
+  },
+  {
+   "name": "gestation_days null, ages past 20",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": 21, \"end_age\": 25, \"gestation_days\": null}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "masked_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "count": 0,
+   "body": "[]"
+  },
+  {
+   "name": "noise_range null, ages past 20",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": 21, \"end_age\": 25, \"noise\": true, \"noise_range\": null}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "masked_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "count": 0,
+   "body": "[]"
+  },
+  {
+   "name": "drift_range null without drift",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": 4, \"end_age\": 4.5, \"measurement_interval_number\": 2, \"drift_range\": null}",
+   "status": 200,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "64a91f264ed86f8c90fef9226bfdd14e60785a5e60430c4a5afe0d751ee969e0",
+   "masked_sha256": "f9d36b6c734076f2646f14f93d02f8ba2e53e7fd5c9a350e65cdeb05e33fa6eb",
+   "count": 3
+  },
+  {
+   "name": "error end before start",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": 2, \"end_age\": 1}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error end equals start",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": 1, \"end_age\": 1}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error interval zero",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"measurement_interval_number\": 0}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error interval negative",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"measurement_interval_number\": -3}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error span shorter than interval",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"end_age\": 1, \"measurement_interval_type\": \"y\", \"measurement_interval_number\": 2}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error span shorter after correction",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"gestation_weeks\": 23, \"end_age\": 1.2, \"measurement_interval_type\": \"y\", \"measurement_interval_number\": 1}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error dates beyond 9999",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": 19, \"end_age\": 10000000.0, \"measurement_interval_type\": \"y\", \"measurement_interval_number\": 1000}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error dates before year 1",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": -2000, \"end_age\": 1}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error gestation_weeks null",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"gestation_weeks\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error gestation_days null",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"gestation_days\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error gestation_days null preterm",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"gestation_weeks\": 30, \"gestation_days\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error start null",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error end null",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"end_age\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error interval type null",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"measurement_interval_type\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error interval number null",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"measurement_interval_number\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error drift without range",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"drift\": true, \"drift_range\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error drift without sds",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"drift\": true, \"start_sds\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "error noise without range",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"noise\": true, \"noise_range\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "masked_sha256": "15279a39be026ba83f7bb8f2d270d065886699bea398c7699a9697010ca6c0b4",
+   "body": "{\"detail\":[{\"loc\":[\"request\"],\"msg\":\"Not possible to create WHO fictional child data.\",\"type\":\"value_error\",\"input\":null}]}"
+  },
+  {
+   "name": "validation gestation 21",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"gestation_weeks\": 21}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "d6be51a8168355d95307da6448c086b6ea4c42c1c9eb59cf35d23ac49b650810",
+   "masked_sha256": "d6be51a8168355d95307da6448c086b6ea4c42c1c9eb59cf35d23ac49b650810",
+   "body": "{\"detail\":[{\"type\":\"greater_than_equal\",\"loc\":[\"body\",\"gestation_weeks\"],\"msg\":\"Input should be greater than or equal to 22\",\"input\":21,\"ctx\":{\"ge\":22}}]}"
+  },
+  {
+   "name": "validation gestation days 7",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"gestation_days\": 7}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "2b03435303c4ffaf60e7af01d32ef747a70ca9f56a3c85c4d5a5414ab831a652",
+   "masked_sha256": "2b03435303c4ffaf60e7af01d32ef747a70ca9f56a3c85c4d5a5414ab831a652",
+   "body": "{\"detail\":[{\"type\":\"less_than_equal\",\"loc\":[\"body\",\"gestation_days\"],\"msg\":\"Input should be less than or equal to 6\",\"input\":7,\"ctx\":{\"le\":6}}]}"
+  },
+  {
+   "name": "validation interval type",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"measurement_interval_type\": \"fortnight\"}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "f8d4d6c6168c5aab03b22feea1b39e3b4094cca90bc46476fcbc9766e84e1c8a",
+   "masked_sha256": "f8d4d6c6168c5aab03b22feea1b39e3b4094cca90bc46476fcbc9766e84e1c8a",
+   "body": "{\"detail\":[{\"type\":\"literal_error\",\"loc\":[\"body\",\"measurement_interval_type\"],\"msg\":\"Input should be 'd', 'day', 'days', 'w', 'week', 'weeks', 'm', 'month', 'months', 'y', 'year' or 'years'\",\"input\":\"fortnight\",\"ctx\":{\"expected\":\"'d', 'day', 'days', 'w', 'week', 'weeks', 'm', 'month', 'months', 'y', 'year' or 'years'\"}}]}"
+  },
+  {
+   "name": "validation interval number 6.5",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"measurement_interval_number\": 6.5}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "f4c48f5a9e83527e109e827d1081bb94222252a423235e3bd097cbd9cfe5419a",
+   "masked_sha256": "f4c48f5a9e83527e109e827d1081bb94222252a423235e3bd097cbd9cfe5419a",
+   "body": "{\"detail\":[{\"type\":\"int_from_float\",\"loc\":[\"body\",\"measurement_interval_number\"],\"msg\":\"Input should be a valid integer, got a number with a fractional part\",\"input\":6.5}]}"
+  },
+  {
+   "name": "validation drift null",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"drift\": null}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "a96a190ac3576a86bde0f602b68cd907870d7255865aa0ab624f28d64a0015ec",
+   "masked_sha256": "a96a190ac3576a86bde0f602b68cd907870d7255865aa0ab624f28d64a0015ec",
+   "body": "{\"detail\":[{\"type\":\"bool_type\",\"loc\":[\"body\",\"drift\"],\"msg\":\"Input should be a valid boolean\",\"input\":null}]}"
+  },
+  {
+   "name": "validation noise maybe",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"noise\": \"maybe\"}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "082b894fcd8641b7e6a783b4e5df0e48fa759bb1213cee8871d32db0a50356d3",
+   "masked_sha256": "082b894fcd8641b7e6a783b4e5df0e48fa759bb1213cee8871d32db0a50356d3",
+   "body": "{\"detail\":[{\"type\":\"bool_parsing\",\"loc\":[\"body\",\"noise\"],\"msg\":\"Input should be a valid boolean, unable to interpret input\",\"input\":\"maybe\"}]}"
+  },
+  {
+   "name": "validation start not a number",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"height\", \"sex\": \"male\", \"start_chronological_age\": \"abc\"}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "10a665a8ba5f60ca1c5f4e1bbe59d093e28bf96e8a857520a1654af224fc5c54",
+   "masked_sha256": "10a665a8ba5f60ca1c5f4e1bbe59d093e28bf96e8a857520a1654af224fc5c54",
+   "body": "{\"detail\":[{\"type\":\"float_parsing\",\"loc\":[\"body\",\"start_chronological_age\"],\"msg\":\"Input should be a valid number, unable to parse string as a number\",\"input\":\"abc\"}]}"
+  },
+  {
+   "name": "validation missing fields",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "44c6d05aae125a212089c0ddde469d38be0099de46a6594e956674df94940fbd",
+   "masked_sha256": "44c6d05aae125a212089c0ddde469d38be0099de46a6594e956674df94940fbd",
+   "body": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"measurement_method\"],\"msg\":\"Field required\",\"input\":{}},{\"type\":\"missing\",\"loc\":[\"body\",\"sex\"],\"msg\":\"Field required\",\"input\":{}}]}"
+  },
+  {
+   "name": "validation method and sex",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "{\"measurement_method\": \"length\", \"sex\": \"Male\", \"end_age\": \"x\"}",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "e44fcfda0f865ae4aa0d0144bcec4bc1d1429fd2e295d50e4becdc6434ca0f14",
+   "masked_sha256": "e44fcfda0f865ae4aa0d0144bcec4bc1d1429fd2e295d50e4becdc6434ca0f14",
+   "body": "{\"detail\":[{\"type\":\"literal_error\",\"loc\":[\"body\",\"measurement_method\"],\"msg\":\"Input should be 'height', 'weight', 'ofc' or 'bmi'\",\"input\":\"length\",\"ctx\":{\"expected\":\"'height', 'weight', 'ofc' or 'bmi'\"}},{\"type\":\"literal_error\",\"loc\":[\"body\",\"sex\"],\"msg\":\"Input should be 'male' or 'female'\",\"input\":\"Male\",\"ctx\":{\"expected\":\"'male' or 'female'\"}},{\"type\":\"float_parsing\",\"loc\":[\"body\",\"end_age\"],\"msg\":\"Input should be a valid number, unable to parse string as a number\",\"input\":\"x\"}]}"
+  },
+  {
+   "name": "validation not an object",
+   "method": "POST",
+   "path": "/who/fictional-child-data",
+   "request_headers": {},
+   "request_body": "[]",
+   "status": 422,
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body_sha256": "79fcf2f0dcf84ae5cbe5a5dccd84adc52b2891f048c6ca10968af2c9d7749820",
+   "masked_sha256": "79fcf2f0dcf84ae5cbe5a5dccd84adc52b2891f048c6ca10968af2c9d7749820",
+   "body": "{\"detail\":[{\"type\":\"model_attributes_type\",\"loc\":[\"body\"],\"msg\":\"Input should be a valid dictionary or object to extract fields from\",\"input\":[]}]}"
+  }
+ ]
+}

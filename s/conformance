@@ -8,4 +8,5 @@ set -euo pipefail
 exec cargo test --release --test uk_who_r_vectors --test http_uk_who --test normal_vs_scipy \
   --test python_round --test python_repr --test python_timedelta \
   --test http_uk_who_charts --test http_uk_who_fictional_child \
+  --test http_who --test http_who_charts --test http_who_fictional_child \
   --test http_utilities_mid_parental_height "$@" -- --nocapture

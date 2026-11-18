@@ -5,9 +5,10 @@
 //! API (`digital-growth-charts-server`).
 //!
 //! The goal is byte-identical response bodies outside `provenance`
-//! (`spec/standard.md` section 4.2). Implemented so far: the UK-WHO
-//! operations ([`IMPLEMENTED`]), bearer-token authorisation, 404, 405, and
-//! trailing-slash redirects. Other operations return 501.
+//! (`spec/standard.md` section 4.2). Implemented so far: the UK-WHO and WHO
+//! operations and mid-parental height ([`IMPLEMENTED`]), bearer-token
+//! authorisation, 404, 405, and trailing-slash redirects. Other operations
+//! return 501.
 //!
 //! The `/growth/v1` prefix belongs to the gateway, not this router.
 
@@ -69,7 +70,7 @@ pub struct AppState {
     noise: NoiseSource,
 }
 
-type ChartKey = (CentileFormat, MeasurementMethod, Sex);
+type ChartKey = (GrowthReference, CentileFormat, MeasurementMethod, Sex);
 
 impl AppState {
     /// State serving `store`, optionally requiring a bearer token.
@@ -128,30 +129,60 @@ impl NoiseSource {
     }
 }
 
+/// The references whose four operations opengrowth serves.
+const PORTED: [GrowthReference; 2] = [GrowthReference::UkWho, GrowthReference::Who];
+
+/// What upstream calls a reference in its route messages.
+fn route_name(reference: GrowthReference) -> &'static str {
+    match reference {
+        GrowthReference::UkWho => "UK-WHO",
+        GrowthReference::Who => "WHO",
+        GrowthReference::Cdc => "CDC",
+        GrowthReference::TurnersSyndrome => "Turner",
+        GrowthReference::Trisomy21 => "Trisomy 21",
+        GrowthReference::Trisomy21Aap => "trisomy-21-aap",
+    }
+}
+
 /// The application router.
 pub fn router(state: Arc<AppState>) -> Router {
-    let mut app = Router::new()
-        .route("/", get(root))
-        .route(
-            "/uk-who/calculation",
-            post(uk_who_calculation).fallback(method_not_allowed),
-        )
-        .route(
-            "/uk-who/bulk-calculation",
-            post(uk_who_bulk_calculation).fallback(method_not_allowed),
-        )
-        .route(
-            "/uk-who/chart-coordinates",
-            post(uk_who_chart_coordinates).fallback(method_not_allowed),
-        )
-        .route(
-            "/uk-who/fictional-child-data",
-            post(uk_who_fictional_child_data).fallback(method_not_allowed),
-        )
-        .route(
-            "/utilities/mid-parental-height",
-            post(utilities_mid_parental_height).fallback(method_not_allowed),
-        );
+    let mut app = Router::new().route("/", get(root));
+    for reference in PORTED {
+        let path = |operation: &str| format!("/{}/{operation}", reference.as_str());
+        app = app
+            .route(
+                &path("calculation"),
+                post(move |State(state): State<Arc<AppState>>, body: Bytes| {
+                    calculation(state, body, reference)
+                })
+                .fallback(method_not_allowed),
+            )
+            .route(
+                &path("bulk-calculation"),
+                post(move |State(state): State<Arc<AppState>>, body: Bytes| {
+                    bulk_calculation(state, body, reference)
+                })
+                .fallback(method_not_allowed),
+            )
+            .route(
+                &path("chart-coordinates"),
+                post(move |State(state): State<Arc<AppState>>, body: Bytes| {
+                    chart_coordinates(state, body, reference)
+                })
+                .fallback(method_not_allowed),
+            )
+            .route(
+                &path("fictional-child-data"),
+                post(move |State(state): State<Arc<AppState>>, body: Bytes| {
+                    fictional_child_data(state, body, reference)
+                })
+                .fallback(method_not_allowed),
+            );
+    }
+    app = app.route(
+        "/utilities/mid-parental-height",
+        post(utilities_mid_parental_height).fallback(method_not_allowed),
+    );
     for path in NOT_YET_IMPLEMENTED {
         app = app.route(path, post(not_implemented).fallback(method_not_allowed));
     }
@@ -180,7 +211,11 @@ pub const IMPLEMENTED: &[&str] = &[
     "/uk-who/bulk-calculation",
     "/uk-who/chart-coordinates",
     "/uk-who/fictional-child-data",
-    // UK-WHO only so far: `cdc` and `who` requests report 501.
+    "/who/calculation",
+    "/who/bulk-calculation",
+    "/who/chart-coordinates",
+    "/who/fictional-child-data",
+    // UK-WHO and WHO so far: `cdc` requests report 501.
     "/utilities/mid-parental-height",
 ];
 
@@ -202,10 +237,6 @@ const NOT_YET_IMPLEMENTED: &[&str] = &[
     "/cdc/bulk-calculation",
     "/cdc/chart-coordinates",
     "/cdc/fictional-child-data",
-    "/who/calculation",
-    "/who/bulk-calculation",
-    "/who/chart-coordinates",
-    "/who/fictional-child-data",
 ];
 
 fn json_response<T: Serialize + ?Sized>(status: StatusCode, body: &T) -> Response {
@@ -396,6 +427,7 @@ fn validate_observation_value(
     let sds = match sds_for_measurement(store, reference, age, method, value, sex) {
         Ok(result) => result.sds,
         Err(CalcError::UkWhoAbsent(absence)) => return Err(report(absence.to_string())),
+        Err(CalcError::WhoAbsent(absence)) => return Err(report(absence.to_string())),
         Err(CalcError::Data(error)) => {
             return Err(Rejection::Respond(Box::new(data_unavailable(&error))));
         }
@@ -544,7 +576,7 @@ fn raw_json(status: StatusCode, bytes: Vec<u8>) -> Response {
     response
 }
 
-async fn uk_who_calculation(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
+async fn calculation(state: Arc<AppState>, body: Bytes, reference: GrowthReference) -> Response {
     let value = match parse_body(&body) {
         Ok(v) => v,
         Err(response) => return *response,
@@ -553,19 +585,18 @@ async fn uk_who_calculation(State(state): State<Arc<AppState>>, body: Bytes) -> 
         Ok(r) => r,
         Err(errors) => return validation_failed(errors),
     };
-    match calculate_one(
-        &state,
-        GrowthReference::UkWho,
-        &request.birth,
-        &request.observation,
-    ) {
+    match calculate_one(&state, reference, &request.birth, &request.observation) {
         Ok(bytes) => raw_json(StatusCode::OK, bytes),
         Err(Rejection::Report(error)) => route_failed(*error),
         Err(Rejection::Respond(response)) => *response,
     }
 }
 
-async fn uk_who_bulk_calculation(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
+async fn bulk_calculation(
+    state: Arc<AppState>,
+    body: Bytes,
+    reference: GrowthReference,
+) -> Response {
     let value = match parse_body(&body) {
         Ok(v) => v,
         Err(response) => return *response,
@@ -594,7 +625,7 @@ async fn uk_who_bulk_calculation(State(state): State<Arc<AppState>>, body: Bytes
         if i > 0 {
             out.push(b',');
         }
-        match calculate_one(&state, GrowthReference::UkWho, &request.birth, observation) {
+        match calculate_one(&state, reference, &request.birth, observation) {
             Ok(bytes) => out.extend_from_slice(&bytes),
             Err(Rejection::Report(error)) => {
                 out.extend_from_slice(&pyjson::to_vec(&InlineError::from(*error)));
@@ -606,7 +637,11 @@ async fn uk_who_bulk_calculation(State(state): State<Arc<AppState>>, body: Bytes
     raw_json(StatusCode::OK, out)
 }
 
-async fn uk_who_fictional_child_data(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
+async fn fictional_child_data(
+    state: Arc<AppState>,
+    body: Bytes,
+    reference: GrowthReference,
+) -> Response {
     let value = match parse_body(&body) {
         Ok(v) => v,
         Err(response) => return *response,
@@ -615,7 +650,7 @@ async fn uk_who_fictional_child_data(State(state): State<Arc<AppState>>, body: B
         Ok(r) => r,
         Err(errors) => return validation_failed(errors),
     };
-    match fictional_child_response(&state, GrowthReference::UkWho, "UK-WHO", &request) {
+    match fictional_child_response(&state, reference, route_name(reference), &request) {
         Ok(bytes) => raw_json(StatusCode::OK, bytes),
         Err(Rejection::Report(error)) => route_failed(*error),
         Err(Rejection::Respond(response)) => *response,
@@ -909,7 +944,11 @@ fn python_list(values: &[f64]) -> String {
     format!("[{}]", items.join(", "))
 }
 
-async fn uk_who_chart_coordinates(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
+async fn chart_coordinates(
+    state: Arc<AppState>,
+    body: Bytes,
+    reference: GrowthReference,
+) -> Response {
     let value = match parse_body(&body) {
         Ok(v) => v,
         Err(response) => return *response,
@@ -924,9 +963,9 @@ async fn uk_who_chart_coordinates(State(state): State<Arc<AppState>>, body: Byte
         .parse()
         .expect("validated literal");
     let render = |spec: CentileSpec<'_>| -> Result<Vec<u8>, ChartError> {
-        let chart = chart(&state.store, GrowthReference::UkWho, method, sex, spec)?;
+        let chart = chart(&state.store, reference, method, sex, spec)?;
         let provenance = Provenance::new(
-            GrowthReference::UkWho.as_str(),
+            reference.as_str(),
             tables_used(&state.store, &chart.tables_read),
         );
         Ok(pyjson::to_vec(&ChartResponse::new(
@@ -935,7 +974,8 @@ async fn uk_who_chart_coordinates(State(state): State<Arc<AppState>>, body: Byte
     };
     let not_found = |name: &str| {
         route_failed(RouteError::request(format!(
-            "Item not found: chart-data/{name}-uk-who-{sex}-{method}.json"
+            "Item not found: chart-data/{name}-{}-{sex}-{method}.json",
+            reference.as_str()
         )))
     };
 
@@ -947,7 +987,8 @@ async fn uk_who_chart_coordinates(State(state): State<Arc<AppState>>, body: Byte
             Ok(bytes) => Ok(Arc::new(bytes)),
             Err(ChartError::NonFinite(_)) => {
                 return route_failed(RouteError::request(format!(
-                    "Error creating {sex} {method} UK-WHO chart on the server, using {} centile format.",
+                    "Error creating {sex} {method} {} chart on the server, using {} centile format.",
+                    route_name(reference),
                     python_list(values)
                 )));
             }
@@ -956,7 +997,7 @@ async fn uk_who_chart_coordinates(State(state): State<Arc<AppState>>, body: Byte
         CentileFormatRequest::Named(name) => match CentileFormat::from_name(name) {
             None => return not_found(name),
             Some(format) => {
-                let key = (format, method, sex);
+                let key = (reference, format, method, sex);
                 let cached = state
                     .chart_cache
                     .lock()

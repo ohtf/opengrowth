@@ -5,8 +5,8 @@
 Captured from the pinned server with Starlette's TestClient: parents across
 the plausible range and at the +/-8 SD limits, every combination of limit
 errors (their order is part of the response), a seeded sample of parent
-pairs for rounding, and validation. The cdc and who references are captured
-too; the opengrowth test lists them as pending until those references exist.
+pairs for rounding, and validation, for UK-WHO and WHO. The cdc reference is captured
+too; the opengrowth test lists cdc as pending until that reference exists.
 """
 
 import contextlib
@@ -80,7 +80,12 @@ CASES = [
     ("error negative heights", parents(-10, -10), True),
     ("lax numbers", parents("180.5", "165.2", "female"), False),
     ("pending cdc", parents(180, 165, reference="cdc"), False),
-    ("pending who", parents(180, 165, "female", reference="who"), False),
+    ("who typical girl", parents(180, 165, "female", reference="who"), False),
+    ("who typical boy", parents(178, 162, reference="who"), True),
+    ("who tall parents", parents(200, 185, reference="who"), False),
+    ("who short parents", parents(150, 140, "female", reference="who"), False),
+    ("who error paternal above 8", parents(235, 165, reference="who"), True),
+    ("who error both low", parents(100, 100, "female", reference="who"), True),
     ("validation missing fields", {}, True),
     ("validation missing maternal", {"height_paternal": 180, "sex": "male"}, True),
     ("validation sex", parents(180, 165, "Male"), True),
@@ -95,6 +100,10 @@ for i in range(40):
     paternal = round(rng.uniform(140, 215), rng.choice([0, 1, 2]))
     maternal = round(rng.uniform(130, 200), rng.choice([0, 1, 2]))
     CASES.append((f"sample {i}", parents(paternal, maternal, rng.choice(["male", "female"])), False))
+for i in range(20):
+    paternal = round(rng.uniform(140, 215), rng.choice([0, 1, 2]))
+    maternal = round(rng.uniform(130, 200), rng.choice([0, 1, 2]))
+    CASES.append((f"who sample {i}", parents(paternal, maternal, rng.choice(["male", "female"]), reference="who"), False))
 
 c = client()
 cases = [call(c, name, body, full) for name, body, full in CASES]

@@ -156,7 +156,10 @@ pub fn measure(
     data: &dyn ReferenceData,
     input: &MeasurementInput,
 ) -> Result<Measurement, MeasureError> {
-    if input.reference != GrowthReference::UkWho {
+    if !matches!(
+        input.reference,
+        GrowthReference::UkWho | GrowthReference::Who
+    ) {
         return Err(MeasureError::ReferenceNotImplemented(input.reference));
     }
     let mut tables_read = Vec::new();
@@ -208,11 +211,24 @@ pub fn measure(
     })
 }
 
-/// The upstream `__calculate_ages`, for references that correct every gestation.
+/// The upstream `__calculate_ages`. UK-WHO corrects every gestation; WHO
+/// and CDC treat 37 to 42 weeks as term and stop correcting at 2 years, by
+/// using the chronological age as the corrected age.
 fn ages(input: &MeasurementInput) -> MeasurementDates {
     let chronological = chronological_decimal_age(input.birth_date, input.observation_date);
+    let weeks = input.gestation.weeks;
     let corrected =
-        dates::corrected_decimal_age(input.birth_date, input.observation_date, input.gestation);
+        dates::corrected_decimal_age(input.birth_date, input.observation_date, input.gestation)
+            .map(|age| {
+                let term_rules =
+                    matches!(input.reference, GrowthReference::Cdc | GrowthReference::Who);
+                let as_term = (age >= 2.0 && weeks < 37) || (37..=42).contains(&weeks);
+                if term_rules && as_term {
+                    chronological
+                } else {
+                    age
+                }
+            });
     let edd = estimated_date_delivery(input.birth_date, input.gestation).ok();
     let corrected_gestational_age =
         corrected_gestational_age(input.birth_date, input.observation_date, input.gestation);
@@ -355,7 +371,9 @@ fn calculated_values(
             Ok(result.sds)
         }
         Err(CalcError::Data(error)) => return Err(error.into()),
-        Err(error @ CalcError::UkWhoAbsent(_)) => Err(error.to_string()),
+        Err(error @ (CalcError::UkWhoAbsent(_) | CalcError::WhoAbsent(_))) => {
+            Err(error.to_string())
+        }
         Err(error) => return Err(MeasureError::Raised(error.to_string())),
     };
 

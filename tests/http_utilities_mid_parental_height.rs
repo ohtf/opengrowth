@@ -17,7 +17,7 @@ use opengrowth::store::ReferenceStore;
 
 /// Requests for references opengrowth has not ported yet, which must say so
 /// with a 501 until they are. Remove each as its reference lands.
-const PENDING: &[&str] = &["pending cdc", "pending who"];
+const PENDING: &[&str] = &["pending cdc"];
 
 #[tokio::test]
 async fn mid_parental_height_matches_fastapi_byte_for_byte() {
