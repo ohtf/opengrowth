@@ -2,7 +2,7 @@
 
 An open-source growth calculation engine for children: SDS, centiles, centile bands, and chart coordinates against the UK-WHO, WHO, CDC, Trisomy 21, and Turner syndrome growth references. One Rust binary provides the library, CLI, HTTP API, and MCP server.
 
-> **Status: Experimental.** UK-WHO works in the CLI and the HTTP API. `POST /uk-who/calculation` and `/uk-who/bulk-calculation` return the same bytes as the RCPCH FastAPI server, outside provenance, for 5,284 of 5,286 captured requests. Other references and the MCP server are not built yet. Do not use this for anything clinical.
+> **Status: Experimental.** All six references work in the CLI and the HTTP API. All 25 API operations return the same bytes as the RCPCH FastAPI server, outside provenance, for every captured request apart from the differences listed in [spec/standard.md](spec/standard.md) section 6.3, most of them requests where upstream fails with a 500. The MCP server is not built yet. Do not use this for anything clinical.
 
 opengrowth is an [Open Health Technology Foundation](https://openhealthtechnology.org) project, hosted at [github.com/ohtf/opengrowth](https://github.com/ohtf/opengrowth). Its OHTF lifecycle status is **Experimental**.
 
@@ -34,7 +34,7 @@ opengrowth is an independent derivative of [`rcpchgrowth`](https://github.com/rc
 
 ## Reference data
 
-The reference tables are in [`data/`](data/) and compiled into the binary, copied unmodified from the `rcpchgrowth` 4.6.5 package, where they are already publicly distributed. They are not covered by this repository's code licence and carry their own terms ([`LICENSES/`](LICENSES/)).
+The reference tables are in [`data/`](data/) and compiled into the binary, copied unmodified from the `rcpchgrowth` 4.6.5 package, where they are already publicly distributed. They are not covered by this repository's code licence and carry their own terms ([`LICENSES/`](LICENSES/)). The exceptions are the Turner syndrome and Trisomy 21 tables, whose terms are not yet recorded: they are not in the repository, and those references need them imported. `opengrowth data import "$(s/reference-tables)"` imports `rcpchgrowth`'s own copies, downloaded from PyPI and checked against the manifest.
 
 The UK90 reference, which UK-WHO depends on, was produced under the Medical Research Council and is now owned by UK Research and Innovation (UKRI). **It is included for pre-alpha research and development only. A licence application to UKRI is pending, and no opengrowth release will be used for patient care until it is granted.** If UKRI refuses, the tables come out of the binary and users who hold their own licence import them with `opengrowth data import`, a path that already works and is tested.
 

@@ -21,4 +21,4 @@ Design specifications for opengrowth, the Open Health Technology Foundation's Ru
 
 ## Status
 
-Experimental. UK-WHO calculation, the CLI, and the UK-WHO HTTP API are implemented and measured; see `conformance/README.md`.
+Experimental. All six references are implemented, in the CLI and in all 25 operations of the HTTP API, and measured against the pinned Python engine and FastAPI server; see `conformance/README.md`. The MCP server is not built yet.
