@@ -16,10 +16,10 @@ Thank you for helping. opengrowth calculates children's growth measurements agai
 s/lint          # rustfmt and clippy, as CI runs them
 s/test          # unit tests and the SciPy and CPython comparisons
 s/deny          # dependency licences, advisories, and sources
-s/conformance   # if you touched calculation, dates, validation, or the API (needs reference tables)
+s/conformance   # agreement reports, if you touched calculation, dates, validation, or the API
 ```
 
-`s/conformance` needs the reference tables, which are not in the repository; see [s/README.md](s/README.md). CI cannot run the UK-WHO conformance tests yet (`spec/queries.md` Q12), so a maintainer runs them before merging anything that could affect them.
+`cargo test` runs every conformance suite against the tables in `data/`, as CI does; `s/conformance` runs them with their agreement reports.
 
 ## Changes that need more than green tests
 
@@ -27,7 +27,7 @@ s/conformance   # if you touched calculation, dates, validation, or the API (nee
 | --- | --- |
 | Any change to a calculated number, a clinical string, or which reference is used | Evidence against the independent vectors or the published method, the clinical safety review in [SAFETY.md](SAFETY.md), and an entry in the changelog's clinical changes section. Never change a number to make a test pass. |
 | Preterm or early-infant behaviour | All of the above, plus review by a clinician. |
-| Reference tables | Source, licence, transformation, and validation evidence, in the same change. Never commit a UK90-derived table (`spec/queries.md` Q1). |
+| Reference tables | Source, licence, transformation, and validation evidence, in the same change. Tables in `data/` are copied unmodified from a verified source; never edit one by hand (`spec/queries.md` Q1). |
 | A conformance golden | Regenerate it with `s/goldens`; never edit it by hand. Say why it changed in the commit. |
 | The HTTP API, CLI JSON, or MCP tool schemas | Follow [spec/versioning.md](spec/versioning.md). A new difference from the upstream API goes in `KNOWN_DIFFERENCES` with a reason. |
 | Anything that adds interpretation, alerts, recommendations, or predictions, or changes what opengrowth says it is for | A regulatory impact assessment against [qms/intended-purpose.md](qms/intended-purpose.md) before the work starts. Such features could change the device class. |

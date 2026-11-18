@@ -1,14 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Run the conformance suite against the independent R vectors and Python goldens.
-# Needs reference data: OPENGROWTH_REFERENCE_DATA_DIR, or the reference environment's
-# rcpchgrowth data_tables if s/reference-python has been run.
+# Run the conformance suites with their reports: R vectors, Python goldens, SciPy,
+# CPython, and the FastAPI HTTP replay. Uses the embedded tables; set
+# OPENGROWTH_REFERENCE_DATA_DIR to layer imported files over them.
 set -euo pipefail
-venv="${OPENGROWTH_REFERENCE_VENV:-$HOME/.cache/opengrowth/reference-python}"
-if [[ -z "${OPENGROWTH_REFERENCE_DATA_DIR:-}" ]]; then
-  candidate=$(compgen -G "$venv/lib/python*/site-packages/rcpchgrowth/data_tables" | head -n 1 || true)
-  [[ -n "$candidate" ]] || { echo "Set OPENGROWTH_REFERENCE_DATA_DIR or run s/reference-python" >&2; exit 1; }
-  export OPENGROWTH_REFERENCE_DATA_DIR="$candidate"
-fi
-exec cargo test --release -p opengrowth-conformance "$@" -- --include-ignored --nocapture
+exec cargo test --release --test uk_who_r_vectors --test http_uk_who --test normal_vs_scipy \
+  --test python_round --test python_repr "$@" -- --nocapture

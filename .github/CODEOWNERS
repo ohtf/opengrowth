@@ -12,9 +12,10 @@
 /spec/versioning.md                      @pacharanero
 /NOTICE.md                               @pacharanero
 
-# Clinical calculation and reference data
-/crates/opengrowth-core/                 @pacharanero
-/crates/opengrowth-data/src/manifest.rs  @pacharanero
+# Clinical calculation, reference data, and its terms
+/src/                                    @pacharanero
+/data/                                   @pacharanero
+/LICENSES/                               @pacharanero
 
 # Verification evidence: goldens are never hand-edited
 /conformance/                            @pacharanero

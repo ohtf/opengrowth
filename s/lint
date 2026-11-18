@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Format check and clippy, as CI runs them.
+# Format check and clippy, for the default build and the engine alone, as CI runs them.
 set -euo pipefail
 cargo fmt --all --check
-exec cargo clippy --workspace --all-targets "$@" -- -D warnings
+cargo clippy --all-targets "$@" -- -D warnings
+exec cargo clippy --all-targets --no-default-features "$@" -- -D warnings

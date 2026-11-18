@@ -26,7 +26,8 @@ opengrowth adopts the shape the upstream server returns (engine `provenance` plu
       {
         "table": "uk90-preterm",
         "file": "uk90_preterm.json",
-        "sha256": "fcd126301d8fb961e3006b828688022ce950f085b0ec1d877a40c8f6df21f3ef"
+        "sha256": "fcd126301d8fb961e3006b828688022ce950f085b0ec1d877a40c8f6df21f3ef",
+        "source": "embedded"
       }
     ]
   },
@@ -36,7 +37,7 @@ opengrowth adopts the shape the upstream server returns (engine `provenance` plu
 
 Reference: `rcpchgrowth/measurement.py:202-210` on that branch.
 
-`reference_data` is an opengrowth addition and is purely additive, so clients written against the Python shape are unaffected. It exists because tables are supplied by the user at install time (`Q1`), which makes "which data did this calculation use?" a real question rather than one answered by the engine version. It lists each table the calculation actually read, once, with the SHA-256 of the verified file; a measurement whose chronological and corrected ages fall in different UK-WHO segments lists both. The `opengrowth calculate --format json` output already follows this shape. Whether embedded tables (after `Q1`) add a `source` field is decided in `R7`.
+`reference_data` is an opengrowth addition and is purely additive, so clients written against the Python shape are unaffected. It exists because tables are supplied by the user at install time (`Q1`), which makes "which data did this calculation use?" a real question rather than one answered by the engine version. It lists each table the calculation actually read, once, with the SHA-256 of the verified file; a measurement whose chronological and corrected ages fall in different UK-WHO segments lists both. The `opengrowth calculate --format json` output already follows this shape. `source` is `embedded` for a table compiled into the binary and `imported` for a verified file from the data directory, which takes precedence.
 
 ## 2. Invariants
 

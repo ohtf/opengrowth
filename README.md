@@ -34,24 +34,18 @@ opengrowth is an independent derivative of [`rcpchgrowth`](https://github.com/rc
 
 ## Reference data
 
-The reference datasets are not covered by this repository's code licence and carry their own terms. WHO and CDC data are open. The UK90 reference, which UK-WHO depends on, was produced under the Medical Research Council and is now owned by UK Research and Innovation (UKRI). A licence application to UKRI is pending.
+The reference tables are in [`data/`](data/) and compiled into the binary, copied unmodified from the `rcpchgrowth` 4.6.5 package, where they are already publicly distributed. They are not covered by this repository's code licence and carry their own terms ([`LICENSES/`](LICENSES/)).
 
-opengrowth is designed to work under either outcome:
-
-- if redistribution is permitted, UK90 tables are embedded in the binary like the others
-- if it is not, the binary ships without them, and users who hold their own licence supply the data at install time through a verified import command, much as SNOMED CT releases are loaded
+The UK90 reference, which UK-WHO depends on, was produced under the Medical Research Council and is now owned by UK Research and Innovation (UKRI). **It is included for pre-alpha research and development only. A licence application to UKRI is pending, and no opengrowth release will be used for patient care until it is granted.** If UKRI refuses, the tables come out of the binary and users who hold their own licence import them with `opengrowth data import`, a path that already works and is tested.
 
 Every table records its own provenance and terms, enforced by a test. See [spec/standard.md](spec/standard.md) section 3 and `Q1` in [spec/queries.md](spec/queries.md).
 
 ## Quick start
 
 ```sh
-cargo install --locked --path crates/opengrowth-cli   # installs `opengrowth` and its short alias `og`
+cargo install --locked --path .   # installs `opengrowth` and its short alias `og`
 
-# Reference tables are not shipped. If you hold them (an installed rcpchgrowth
-# package's data_tables directory works as-is), import and verify them:
-opengrowth data import /path/to/rcpchgrowth/data_tables
-opengrowth data status
+opengrowth data status            # the reference tables are built in, and verified
 
 opengrowth calculate --sex female --birth-date 2026-10-06 --observation-date 2026-11-17 \
   --gestation 27+3 --measurement weight --value 1.42
@@ -77,26 +71,24 @@ You need a stable Rust toolchain, [`uv`](https://docs.astral.sh/uv/) (for the Py
 
 ```sh
 git clone git@github.com:ohtf/opengrowth.git && cd opengrowth
-cargo install --locked --path crates/opengrowth-cli
+cargo install --locked --path .
 opengrowth            # bare invocation lists the commands
 og                    # the same program, shorter to type
 og completions install   # tab completion for both names; detects your shell, or pass --shell
 ```
 
-### 2. Get the reference tables
+### 2. Look at the reference tables
 
-opengrowth ships no tables (see [Reference data](#reference-data)). The easiest licensed copy to hand is the one inside the Python package. `s/reference-python` installs `rcpchgrowth` 4.6.5 into its own environment under `~/.cache/opengrowth`:
+The tables are built in (see [Reference data](#reference-data)), but you can also import your own copy, which then takes precedence:
 
 ```sh
-s/reference-python
-TABLES=$(~/.cache/opengrowth/reference-python/bin/python -c \
-  "import rcpchgrowth, pathlib; print(pathlib.Path(rcpchgrowth.__file__).parent / 'data_tables')")
-opengrowth data import "$TABLES"
-opengrowth data status      # all four should say "verified"
+opengrowth data status      # every table "embedded" and in use
 opengrowth data manifest    # where each table comes from, and its terms
+opengrowth data import data # import the repository's own copy
+opengrowth data status      # now "imported", verified against the same checksums
 ```
 
-Run the import a second time: every table should say "already present".
+Run the import a second time: every table should say "already present". For step 5 you also need the Python engine: `s/reference-python` installs `rcpchgrowth` 4.6.5 into its own environment under `~/.cache/opengrowth`.
 
 ### 3. Calculations to try
 
@@ -126,7 +118,7 @@ opengrowth --format json calculate --sex male --birth-date 2019-03-04 --observat
 - **Tampered table.** Copy the tables, change one digit, and point opengrowth at the copy (GNU `sed`; on macOS write `sed -i ''`):
 
   ```sh
-  W=$(mktemp -d) && cp -r "$TABLES/." "$W/"
+  W=$(mktemp -d) && cp -r data/. "$W/"
   sed -i '0,/"M": 102.49/s//"M": 102.50/' "$W/uk90_child.json"
   opengrowth --data-dir "$W" data status    # uk90-child: checksum mismatch
   opengrowth --data-dir "$W" calculate --sex male --birth-date 2019-03-04 \
@@ -134,7 +126,7 @@ opengrowth --format json calculate --sex male --birth-date 2019-03-04 --observat
   ```
 
   The calculation refuses to run at all. That includes calculations that would not have needed the tampered table, which is deliberately conservative. Tell us whether you think it is right.
-- **Missing tables.** `OPENGROWTH_DATA_HOME=$(mktemp -d) opengrowth calculate ...` reports which table is missing and how to import it. It never substitutes another reference.
+- **Missing tables.** Build without the tables (`cargo run --no-default-features --features cli -- calculate ...`): the calculation reports which table is missing and how to import it. It never substitutes another reference.
 
 ### 5. Check it against the Python engine yourself
 
@@ -167,7 +159,7 @@ Things to try:
 - Send something wrong: a missing field, `"sex": "Male"`, `"gestation_weeks": 50`, a measurement of 300 cm, malformed JSON. The 422 bodies should be exactly the upstream ones.
 - `POST /uk-who/bulk-calculation` with up to 200 observations; a bad observation becomes an inline error and the rest still calculate.
 - `GET /uk-who/calculation` (405), `POST /uk-who/calculation/` (307), and a CDC endpoint (501: not ported yet).
-- Run with no tables imported (`OPENGROWTH_DATA_HOME=$(mktemp -d) opengrowth serve`): calculations return 503 naming the missing table, never an answer from another reference.
+- Run a build without tables (`cargo run --no-default-features --features cli -- serve`): calculations return 503 naming the missing table, never an answer from another reference.
 
 ### 7. Run the evidence
 
@@ -190,7 +182,7 @@ Open an issue. For anything that could affect a clinical result, label it `hazar
 ### Clean up
 
 ```sh
-cargo uninstall opengrowth-cli
+cargo uninstall opengrowth
 rm -r ~/.local/share/opengrowth ~/.cache/opengrowth
 ```
 
@@ -199,7 +191,7 @@ rm -r ~/.local/share/opengrowth ~/.cache/opengrowth
 ```sh
 s/test          # unit and SciPy/CPython conformance tests
 s/lint          # rustfmt and clippy, as CI runs them
-s/conformance   # UK-WHO against Tim Cole's R vectors and the Python engine (needs reference tables)
+s/conformance   # the conformance suites with their reports (cargo test also runs them)
 ```
 
 See [s/README.md](s/README.md) and [conformance/README.md](conformance/README.md), which records the current agreement figures.

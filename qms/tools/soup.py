@@ -3,7 +3,8 @@
 """Generate qms/soup.md, the IEC 62304 SOUP register, from Cargo.lock.
 
 SOUP here is every third-party crate compiled into the released `opengrowth`
-binary: the normal and build dependencies of opengrowth-cli, transitively.
+binary: the normal and build dependencies of the opengrowth package with its
+default features, transitively.
 Dev-only dependencies (tests, benchmarks) are excluded.
 
     python3 -I qms/tools/soup.py            write qms/soup.md
@@ -17,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "qms" / "soup.md"
-RELEASED = "opengrowth-cli"
+RELEASED = "opengrowth"
 
 
 def main() -> int:

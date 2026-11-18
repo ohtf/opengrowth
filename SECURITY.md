@@ -14,4 +14,4 @@ opengrowth calculates anthropometric values (SDS and centiles) used in children'
 
 This repository should contain no patient data and no credentials. If you find patient-identifiable data, credentials, or restricted reference material that should not have been committed, report it privately and do not redistribute it.
 
-Reference datasets carry redistribution restrictions independent of any security concern. Unauthorised redistribution of restricted reference data, in particular UK90-derived tables, is a licensing issue and should be reported the same way. See [spec/standard.md](spec/standard.md) section 3.
+Reference datasets carry redistribution restrictions independent of any security concern. A concern about the reference data's terms is a licensing issue and should be reported the same way. See [spec/standard.md](spec/standard.md) section 3.

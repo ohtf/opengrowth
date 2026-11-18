@@ -1,0 +1,21 @@
+UK90 growth reference data
+
+The UK90 growth reference (Cole TJ, Freeman JV, Preece MA, 1998, and
+related publications) was produced under the Medical Research Council. The
+Medical Research Council's functions passed to UK Research and Innovation
+(UKRI) in 2018, and UKRI now owns the data.
+
+No licence for redistribution or for production use has been granted to
+opengrowth or to the Open Health Technology Foundation. A licence
+application to UKRI is pending.
+
+These files are copied unmodified from the rcpchgrowth Python package
+(version 4.6.5, published on PyPI by the Royal College of Paediatrics and
+Child Health), where they are already publicly distributed. They are
+included in opengrowth for pre-alpha research and development only, by
+decision of the project maintainer recorded in spec/queries.md (Q1).
+
+They must not be used to calculate values for the care of any patient until
+a licence has been obtained. The opengrowth software licence
+(AGPL-3.0-or-later) does not apply to these files and grants no rights in
+them.

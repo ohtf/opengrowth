@@ -5,10 +5,6 @@
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 venv="${OPENGROWTH_REFERENCE_VENV:-$HOME/.cache/opengrowth/reference-python}"
-if [[ -z "${OPENGROWTH_REFERENCE_DATA_DIR:-}" ]]; then
-  candidate=$(compgen -G "$venv/lib/python*/site-packages/rcpchgrowth/data_tables" | head -n 1 || true)
-  [[ -n "$candidate" ]] || { echo "Set OPENGROWTH_REFERENCE_DATA_DIR or run s/reference-python" >&2; exit 1; }
-  export OPENGROWTH_REFERENCE_DATA_DIR="$candidate"
-fi
-cargo run --quiet --release -p opengrowth-conformance --example round0
+[[ -x "$venv/bin/python" ]] || { echo "No reference environment at $venv; run s/reference-python" >&2; exit 1; }
+cargo run --quiet --release --example round0
 exec "$venv/bin/python" "$root/bench/round0/python.py"

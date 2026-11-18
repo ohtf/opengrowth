@@ -17,7 +17,7 @@ Before 1.0.0, a minor release may break the Rust library API, with migration not
 | HTTP API | Paths, methods, request fields and their validation, response fields, their names, types, nullability, order, and meaning, status codes, and error shapes. The target is byte identity with the upstream RCPCH API outside `provenance` (`standard.md` section 4.2). | Transport headers other than `content-type`, `allow`, and `location`; timing. |
 | CLI | Command names, flags, exit codes, and `--format json` output. | Text output, which is for people and may change in any release. |
 | MCP | Tool names and input and output schemas. | Tool descriptions, which may be reworded. |
-| Rust library | The public API of `opengrowth-core`, from 1.0.0. | Everything in the CLI, server, data, and conformance crates. |
+| Rust library | The public API of the engine and `store`, from 1.0.0. | The `cli` and `server` modules, which are applications. |
 | Python bindings | The public API, from their first stable release (`R18`). | |
 
 Additive changes (a new optional request field, a new response field, a new endpoint, command, or tool) are allowed in a minor release. For the HTTP API, a new response field is still a difference from upstream, so it goes in the migration notes; the only one so far is `provenance.reference_data`.
@@ -50,4 +50,4 @@ Reference tables are identified by checksum, not by name. A corrected or updated
 
 ## 6. Differences from the upstream API
 
-Every intentional difference from the RCPCH API is enumerated in three places, kept in step: `standard.md` section 6.3, the `KNOWN_DIFFERENCES` list in `crates/opengrowth-conformance/tests/http_uk_who.rs`, and the migration notes in the documentation (`R30`). A difference that appears in only one of them is a defect.
+Every intentional difference from the RCPCH API is enumerated in three places, kept in step: `standard.md` section 6.3, the `KNOWN_DIFFERENCES` list in `tests/http_uk_who.rs`, and the migration notes in the documentation (`R30`). A difference that appears in only one of them is a defect.

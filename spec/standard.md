@@ -57,19 +57,14 @@ The datasets do not share one set of terms. [`growth-references`](https://github
 
 UK90 matters most because UK-WHO depends on it: UK-WHO uses UK90 for preterm infants and from 4 years to 20 years, with WHO 2006 in between. Without UK90 there is no UK-WHO.
 
-A licence application to UKRI has been made and is pending (`Q1`). Possible outcomes:
-
-- **Open licence or redistribution permission.** UK90 tables are embedded like the others and the restriction below lapses.
-- **No redistribution permission.** Public artefacts ship without UK90-derived tables, and users who hold their own licence supply the data at install time (section 7.2).
-
-The design supports both, so implementation does not wait for the answer.
+A licence application to UKRI has been made and is pending (`Q1`). **Maintainer decision, 2026-11-18:** the UK90 tables are included in this repository and embedded in the binary for pre-alpha research and development, because they are already publicly distributed in the `rcpchgrowth` package. No release is for production use until UKRI has granted a licence. If UKRI refuses, the `embedded-data` feature is turned off for public artefacts and the tables are removed, and users with their own licence import them at install time (section 7.2); the design already supports this.
 
 Requirements:
 
-- Reference data lives in its own crate (`opengrowth-data`), separable from the engine. This keeps the redistribution question confined to one artefact rather than spread across the workspace.
+- Reference data lives in `data/`, separate from the code, with its own `LicenseRef` terms in `LICENSES/` and `REUSE.toml`. The `embedded-data` feature compiles it in; without the feature, the binary contains the manifest but no values.
 - Each table carries machine-readable provenance and licence metadata: source, publication, version or retrieval date, transformation applied, terms, and a content checksum.
 - A registry test asserts every table, embedded or importable, has non-empty provenance, a licence identifier, and a checksum. A table without recorded terms fails the build. This mirrors the `clincalc` pattern where each calculator must record its own licence, and it satisfies the change-control rule `growth-references` imposes on itself.
-- Each restricted table is either embedded or runtime-supplied, chosen per table by a feature flag. While `Q1` is open, UK90-derived tables are runtime-supplied in every public artefact: crates, release binaries, container images, Python wheels, CI caches.
+- Every result names the tables it read and whether each was embedded or imported, so a change of data is visible in the output.
 - No table is added, replaced, or regenerated without recording source, licence, transformation, and validation evidence in the same change.
 
 ### 3.4 Third-party material already identified as restricted
@@ -212,68 +207,76 @@ The port takes the function and feature set, not the code. These upstream proble
 
 ## 7. Architecture
 
-A Cargo workspace with leaf-crate discipline: dependency arrows point inward to the engine, and the engine depends on nothing above it.
+**One crate**, `opengrowth`, with feature flags, following `clincalc`. A workspace of separate crates was the original plan; it was dropped on 2026-11-18 because nothing gained from it (enforced boundaries, separate publishing) needs it: features enforce the boundary, and a published crate cannot depend on unpublished siblings anyway. Split a part out only when someone else needs to reuse it on its own (house-style `library-extraction.md`).
 
 ```text
 opengrowth/
-|-- crates/
-|   |-- opengrowth-core/     engine: LMS math, interpolation, references, dates, measurement
-|   |-- opengrowth-data/     reference tables, importer, provenance and licence metadata
-|   |-- opengrowth-cli/      command-line surface; builds the single `opengrowth` binary
-|   |-- opengrowth-server/   HTTP surface, API-compatible with digital-growth-charts-server
-|   |-- opengrowth-mcp/      MCP surface, stdio and streamable HTTP
-|   `-- opengrowth-py/       PyO3 bindings (R18, deferred)
-|-- conformance/            language-agnostic cases, fixtures, and expected output
+|-- src/
+|   |-- lib.rs, advice.rs, dates.rs, lms.rs, measurement.rs, normal.rs, ...
+|   |                        the engine: a leaf, always built
+|   |-- store/               table manifest, verification, embedding, import
+|   |-- server/              HTTP API (feature `server`)
+|   |-- cli/                 command-line tool (feature `cli`)
+|   |-- main.rs, bin/og.rs   the `opengrowth` and `og` binaries
+|-- data/                   reference tables (feature `embedded-data`)
+|-- tests/                  conformance suites and server tests
+|-- conformance/            cases, independent vectors, and goldens
 |-- docs/                   user documentation site (R30)
+|-- qms/                    quality management system
 |-- spec/
 `-- s/                      repeated-process scripts
 ```
 
-The server and MCP crates are libraries. The `opengrowth` binary exposes them as subcommands (`opengrowth serve`, `opengrowth mcp`) alongside the calculation commands, so there is one artefact to build, version, sign, and deploy.
+| Feature | Adds | Default |
+| --- | --- | --- |
+| *(none)* | The engine and `store`: `serde`, `serde_json`, `jiff`, `libm`, `sha2`, `thiserror` | always |
+| `embedded-data` | The tables in `data/`, compiled in | yes |
+| `server` | The HTTP API: `axum`, `tokio` | via `cli` |
+| `cli` | The binaries: `clap`, `anyhow`, and `server` | yes |
 
-### 7.1 `opengrowth-core`
+Later surfaces are features of the same crate: `mcp` (`R26`), `python` (`R18`, built with maturin), and `wasm` (`R38`). CI builds and tests both the default set and `--no-default-features`, so the engine cannot quietly acquire a dependency on a surface.
 
-Pure calculation. No clock, no I/O, no global state, no async runtime, no HTTP types. Timestamps and I/O are the caller's responsibility. This is what makes the engine embeddable in every surface and testable deterministically.
+The `opengrowth` binary exposes every surface as subcommands (`opengrowth serve`, later `opengrowth mcp`), so there is one artefact to build, version, sign, and deploy.
 
-Dependencies are minimised to `serde` plus a reviewed numerical crate for the normal distribution (`Q5`). It must remain buildable without the data crate, using injected tables, so that core numerical tests do not require redistributable data.
+### 7.1 The engine
+
+Every module outside `store`, `server`, and `cli`. Pure calculation: no clock, no I/O, no global state, no async runtime, no HTTP types. Timestamps and I/O are the caller's responsibility. This is what makes the engine embeddable in every surface and testable deterministically. Tables reach it through the `ReferenceData` trait, so tests can inject synthetic ones.
 
 Errors are typed. `anyhow` belongs in the CLI and server, not in the engine, because callers need to match on failure modes such as out-of-domain age, unsupported measurement method for a reference, and unavailable reference data.
 
-### 7.2 `opengrowth-data`
+### 7.2 `store`: reference tables
 
-Two ways to provide a table, behind one interface the engine sees (`ReferenceProvider`, or similar):
+A table reaches the engine from one of two places, behind the same `ReferenceData` interface:
 
-- **Embedded.** Tables are `&'static` slices compiled into the binary, not parsed at runtime, so lookup is allocation-free and the binary is self-contained. The default for open tables.
-- **Runtime-supplied.** For tables that cannot be redistributed (UK90-derived, while `Q1` is open). The binary contains the table's provenance metadata and expected checksum, but not its values. A user with their own licence runs `opengrowth data import <path>`, which parses the source files, verifies them against the checked-in checksum manifest, converts them to the same in-memory form, and stores them in the platform data directory. This follows the SNOMED CT pattern, where the software is distributed freely and the licensed release is loaded separately.
+- **Embedded.** The files in `data/`, compiled in by the `embedded-data` feature and verified against the manifest when first loaded.
+- **Imported.** `opengrowth data import <path>` verifies source files against the checked-in checksum manifest and copies them into the platform data directory. A verified imported file replaces the embedded table with the same identity, so a deployment can pin or update a table without a new binary. This is also the route for users who hold their own licence if a table can no longer be embedded.
 
-Rules for runtime-supplied data:
+Rules:
 
-- An unverified, partial, or mismatched table is never used. The import fails loudly; it does not fall back or partially load.
-- A calculation needing an absent table returns a typed `ReferenceDataUnavailable` error naming the table and how to import it. It never silently substitutes another reference, such as WHO for UK-WHO.
-- Provenance records the data version and checksum used for the calculation (see [provenance.md](provenance.md)).
-- `opengrowth data status` lists every table, whether it is embedded, imported, or missing, and its version.
+- An unverified, partial, or mismatched table is never used. A bad file fails loudly; it does not fall back or partially load.
+- A calculation needing an absent table returns a typed `DataError::Unavailable` naming the table and how to import it. It never silently substitutes another reference, such as WHO for UK-WHO.
+- Provenance records each table read, its checksum, and whether it was embedded or imported (see [provenance.md](provenance.md)).
+- `opengrowth data status` lists every table, which copy is in use, and the state of any file in the data directory.
 - The data directory location follows house-style deterministic configuration discovery and can be overridden by flag or environment variable, so containers and CI can mount it.
 
 **JSON floats must be parsed exactly.** `serde_json` is built with `float_roundtrip`; without it, parsing can be off by one unit in the last place, which made 12% of ages and SDS differ from Python by 1 ulp until it was enabled. This applies equally to reference tables, goldens, and API requests.
 
-A build step converts the source JSON into Rust data, and integrity tests assert per-table invariants: expected point counts, ascending age ordering, no duplicate ages, and endpoint values matching the source. The same checks run at import time for runtime-supplied tables. These are the defence against a silent transcription error, which is the highest-consequence failure mode in this project.
+Integrity checks run on every table, embedded or imported: the checksum, then the table invariants (finite values, positive M and S, strictly ascending ages, consistent sigma). These are the defence against a silent transcription error, which is the highest-consequence failure mode in this project.
 
-If `Q1` resolves in favour of redistribution, UK90 tables switch to embedded by changing a feature default. The import path stays as a way to pin or update data without a new binary.
-
-### 7.3 `opengrowth-cli`
+### 7.3 `cli`
 
 `clap` derive, thin `main.rs` delegating to a reusable library, `anyhow::Result`, global `--format text|json`, data on stdout and everything else on stderr, SIGPIPE reset on Unix. A bare invocation prints a useful command list rather than an error. Full conventions in house-style [`rust-cli.md`](https://github.com/pacharanero/house-style/blob/main/rust-cli.md).
 
 The CLI covers the command surface of [`rcpchgrowth-python-cli`](https://github.com/rcpch/rcpchgrowth-python-cli), so that surface is an input to the design and its users are a migration audience. Unlike the HTTP API, the CLI requires sex and gestation explicitly rather than defaulting them, because agents are among its main users and a silently defaulted gestation changes the result.
 
-### 7.4 `opengrowth-server`
+### 7.4 `server`
 
 Reimplements the current HTTP contract: six reference families, each with `calculation`, `bulk-calculation`, `chart-coordinates`, and `fictional-child-data`, plus `utilities/mid-parental-height`. Twenty-five POST operations in total.
 
 Behaviour that must be preserved exactly:
 
 - Bulk requests accept 1 to 200 observations. Structural failures reject the whole request with `422`; domain and calculation failures become inline error objects while the response stays `200`. Result ordering and count match the input.
-- Inline error objects carry exactly `loc`, `msg`, `type`, `input`, in that order.
+- Route errors carry `loc`, `msg`, `type`, `input`, in that order. Inline bulk errors are re-validated upstream as `APIErrorDetail`, so they carry `type`, `loc`, `msg`, `input`, `ctx`, `url` (measured; see `conformance/expected/http-uk-who.json`).
 - Optional response fields serialise as explicit `null`, never omitted.
 - Only the four centile fields carrying the rounding validator are rounded, to four decimal places. SDS and ages are not rounded.
 - Mid-parental height applies its own rounding sequence, including a double rounding of the centile.
@@ -295,7 +298,7 @@ The engine produces provenance; every surface passes it through. A surface must 
 
 Full contract, invariants, and version/commit semantics: [provenance.md](provenance.md). The remaining open element is the server-layer addition, tracked in `Q3`.
 
-### 7.6 `opengrowth-mcp`
+### 7.6 MCP (feature `mcp`, `R26`)
 
 An MCP server exposing calculation, chart-coordinate, and mid-parental-height operations as tools, over stdio for local agents and streamable HTTP for hosted use. It calls the engine directly, not the HTTP server.
 
@@ -329,7 +332,7 @@ There are two kinds of oracle, with different authority:
 
 Where an independent vector and a Python golden disagree beyond tolerance, that is a finding about the Python engine, not a licence to choose whichever Rust matches. Record it as a defect for classification under section 6.
 
-Goldens contain calculated outputs, not LMS tables, so they can be committed while `Q1` is open. Running the UK-WHO suite needs UK90 tables, so CI obtains them without publishing them (`Q12`).
+Every suite runs in CI against the embedded tables, including UK-WHO and the HTTP replay (`Q12`, closed).
 
 ### 8.1 Existing fixtures to reuse directly
 
@@ -379,7 +382,7 @@ The first useful release is complete when:
 2. Profile A holds for every existing Python fixture, within the declared tolerances, with every rounding-boundary flip individually enumerated and reviewed.
 3. UK-WHO preterm and early-infant cases pass, including the boundaries at 42 weeks, 2 years, and 4 years, and the 18 cases changed during the WHO migration. **This is the highest-risk gate and is not waivable.** Clinical review is required here in addition to green tests.
 4. Every reference table, embedded or importable, has recorded provenance, licence, checksum, and integrity tests, and no public artefact contains a table whose terms do not permit redistribution.
-5. If UK90 is runtime-supplied, the import, verification, status, and `ReferenceDataUnavailable` paths are tested, including rejection of a tampered and a truncated file.
+5. The import, verification, status, and `DataError::Unavailable` paths are tested, including rejection of a tampered and a truncated file, so that removing an embedded table remains a working option.
 6. The CLI covers the surface of the existing Python CLI.
 7. The server passes an endpoint-level differential suite against the Python server for all 25 operations, including bulk partial-failure semantics.
 8. Category 3 differences are documented in migration notes.

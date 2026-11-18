@@ -491,72 +491,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
-name = "opengrowth-cli"
+name = "opengrowth"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "clap",
  "clap_complete",
- "jiff",
- "opengrowth-core",
- "opengrowth-data",
- "opengrowth-server",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "opengrowth-conformance"
-version = "0.1.0"
-dependencies = [
- "axum",
  "http-body-util",
  "jiff",
  "libm",
- "opengrowth-core",
- "opengrowth-data",
- "opengrowth-server",
- "serde",
- "serde_json",
- "sha2",
- "tokio",
- "tower",
-]
-
-[[package]]
-name = "opengrowth-core"
-version = "0.1.0"
-dependencies = [
- "jiff",
- "libm",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "opengrowth-data"
-version = "0.1.0"
-dependencies = [
- "opengrowth-core",
  "serde",
  "serde_json",
  "sha2",
  "thiserror",
-]
-
-[[package]]
-name = "opengrowth-server"
-version = "0.1.0"
-dependencies = [
- "axum",
- "http-body-util",
- "jiff",
- "opengrowth-core",
- "opengrowth-data",
- "serde",
- "serde_json",
  "tokio",
  "tower",
 ]

@@ -29,11 +29,13 @@ jobs:
           rustup show active-toolchain
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      # UK-WHO conformance needs UK90 tables, which cannot be published while
-      # spec/queries.md Q1 is open; it runs under s/conformance (Q12). The
-      # SciPy-grid and CPython-rounding conformance tests run here.
-      - run: cargo test --workspace
+      - run: cargo clippy --all-targets -- -D warnings
+      # The engine alone, with no features: the leaf-crate boundary.
+      - run: cargo clippy --all-targets --no-default-features -- -D warnings
+      # Includes every conformance suite: R vectors, Python goldens, SciPy,
+      # CPython, and the FastAPI HTTP replay, against the embedded tables.
+      - run: cargo test --release
+      - run: cargo test --no-default-features
       - name: SOUP register is current
         run: s/soup --check
 

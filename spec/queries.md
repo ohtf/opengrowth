@@ -23,7 +23,11 @@ Possible outcomes:
 - **Licence permitting OHTF use but not onward redistribution.** OHTF may run a hosted server with embedded data; public binaries ship without it, and users import their own licensed copy.
 - **Refusal or no answer.** Public artefacts ship without UK90 tables; users import their own licensed copy. A hosted OHTF server needs a separate legal basis before using UK90.
 
-**Working assumption:** UK90-derived tables are runtime-supplied in every public artefact, and are not committed to this repository. `opengrowth-data` carries their metadata and checksums but not their values. This costs one import command and is reversed by changing a feature default.
+**Working assumption (superseded):** UK90-derived tables are runtime-supplied in every public artefact, and are not committed to this repository.
+
+**Maintainer decision, 2026-11-18:** the UK90 tables are committed to this public repository (`data/`) and embedded in the binary by default, for pre-alpha research and development. The reasoning: the same files are already publicly distributed in the `rcpchgrowth` package and its public repository, and opengrowth is not in production use. This is onward redistribution of data whose owner, UKRI, has not yet granted a licence; the maintainer accepts that, and **no opengrowth release will be used for patient care, or declared conformant (`R43`), until UKRI grants a licence.** The files carry `LicenseRef-UK90` terms saying so, and the README says so.
+
+Still open: UKRI's answer. If it is a refusal, or a licence that does not permit redistribution, the tables are removed from `data/` and from public artefacts, and the import path, which is tested, becomes the only route. The package is `publish = false` until this is settled.
 ---
 
 ## Q2 - Which Category 2 defects are corrected, and by whom?
@@ -88,7 +92,7 @@ Needed: an experiment evaluating candidate Rust implementations against a SciPy-
 
 **Working assumption:** none. Do not pick a crate before the experiment.
 
-**Experiment, 2026-11-17** (`crates/opengrowth-conformance/tests/normal_vs_scipy.rs`, SciPy 1.18.1):
+**Experiment, 2026-11-17** (`tests/normal_vs_scipy.rs`, SciPy 1.18.1):
 
 | Candidate | Max relative difference from SciPy | Bit-exact |
 | --- | --- | --- |
@@ -195,6 +199,8 @@ The repository is public, so UK90 tables cannot be committed, cached in public C
 Options: fetch the tables at job start from private storage using a repository secret, never caching or uploading them; run UK-WHO conformance only on a self-hosted runner that holds a licensed copy; or skip UK-WHO conformance on forks and external PRs and require it on `main`.
 
 **Working assumption:** fetch from private storage with a secret, verified against the checksum manifest, on `main` and maintainer PRs only. External PRs run everything except UK-WHO conformance, and a maintainer runs it before merging. Revisit if `Q1` resolves in favour of open data.
+
+**Closed, 2026-11-18:** with the tables in the repository (`Q1` decision), CI runs every suite, including UK-WHO conformance and the HTTP replay, on every push.
 
 ---
 

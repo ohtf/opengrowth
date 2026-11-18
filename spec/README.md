@@ -21,4 +21,4 @@ Design specifications for opengrowth, the Open Health Technology Foundation's Ru
 
 ## Status
 
-Experimental. The first slice (UK-WHO SDS, the numerical primitives, runtime-supplied data, and the CLI) is implemented and measured; see `conformance/README.md`.
+Experimental. UK-WHO calculation, the CLI, and the UK-WHO HTTP API are implemented and measured; see `conformance/README.md`.

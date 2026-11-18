@@ -27,9 +27,8 @@ allow = [
 confidence-threshold = 0.9
 
 [licenses.private]
-# Workspace crates that are never published (opengrowth-data while Q1 is open,
-# the CLI, server, and conformance crates) are checked as part of the graph
-# but not as packages of their own.
+# opengrowth is not published while Q1 is open; its dependencies are still
+# checked, but not the package's own licence.
 ignore = true
 
 [bans]

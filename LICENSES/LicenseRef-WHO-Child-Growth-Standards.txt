@@ -1,0 +1,14 @@
+WHO Child Growth Standards data
+
+The WHO Child Growth Standards (WHO Multicentre Growth Reference Study
+Group, 2006) are published by the World Health Organization, which holds
+copyright in them.
+
+These files are copied unmodified from the rcpchgrowth Python package
+(version 4.6.5, published on PyPI by the Royal College of Paediatrics and
+Child Health), which transcribed them from the WHO's published tables.
+
+WHO publishes these tables for public use. The specific terms that apply to
+their redistribution in software have not yet been recorded by opengrowth
+(roadmap item R2). The opengrowth software licence (AGPL-3.0-or-later)
+does not apply to these files and grants no rights in them.

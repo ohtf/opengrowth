@@ -54,7 +54,7 @@ Bit-identical SDS on Linux depends on using the platform `pow` (glibc), as CPyth
 ```sh
 s/reference-python   # once: create the pinned Python environment
 s/goldens            # only when regenerating goldens
-s/conformance        # run the suite; reads tables from the reference environment
+s/conformance        # run the suites with their reports
 ```
 
-`s/conformance` uses `$OPENGROWTH_REFERENCE_DATA_DIR` if set, otherwise the reference environment's `rcpchgrowth/data_tables`. `cargo test` runs the SciPy and CPython comparisons but skips UK-WHO, which needs UK90 tables (`spec/queries.md` Q12).
+`cargo test` runs every suite, in CI too, against the embedded tables; set `$OPENGROWTH_REFERENCE_DATA_DIR` to layer imported files over them. `s/conformance` runs the same suites with their agreement reports.

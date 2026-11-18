@@ -2,9 +2,9 @@
 
 opengrowth is an Open Health Technology Foundation project: a Rust reimplementation of the `rcpchgrowth` growth calculation engine, driving a library, CLI, MCP server, HTTP API, and later Python bindings from one engine. It is an independent derivative of RCPCH's AGPL-licensed Python engine, not an RCPCH project. This file is the entry point for AI coding agents. Read it before changing anything.
 
-The project is **experimental**. The engine computes UK-WHO SDS and centiles, bit-identical to the Python engine on the conformance corpus; the other references, the full result object, the HTTP server, and the MCP server do not exist yet. Check the [roadmap](spec/roadmap.md) before starting work. Distribution of UK90-derived tables is gated on `Q1`.
+The project is **experimental**. The engine computes UK-WHO SDS and centiles, bit-identical to the Python engine on the conformance corpus; the other references, the full result object, the HTTP server, and the MCP server do not exist yet. Check the [roadmap](spec/roadmap.md) before starting work. The UK90 tables are in the repository for research only, pending a UKRI licence (`Q1`).
 
-Crates: `opengrowth-core` (the engine, a leaf), `opengrowth-data` (table manifest, verification, import), `opengrowth-server` (the HTTP API, served by `opengrowth serve`), `opengrowth-cli` (the `opengrowth` binary), `opengrowth-conformance` (the differential suite; not published).
+One crate, `opengrowth`, with features: the engine (every module outside `store`, `server`, `cli`), `store` (tables: embedded and imported), `server` (the HTTP API, `opengrowth serve`), `cli` (the `opengrowth` and `og` binaries), and `embedded-data` (the tables in `data/`). Conformance suites are in `tests/`. Do not split out a crate unless something else needs to reuse it on its own (`spec/standard.md` section 7).
 
 ## Read first
 
@@ -27,13 +27,13 @@ Crates: `opengrowth-core` (the engine, a leaf), `opengrowth-data` (table manifes
 - **Published methods and the reference implementation define clinical behaviour.** Never change a number to make a test pass. If Rust disagrees with a golden, the default assumption is that Rust is wrong. Investigate before adjusting anything.
 - **Never hand-edit a conformance golden.** Goldens are captured from a pinned Python version by a recorded command, or are independent vectors from the R implementation. A golden change without a stated rationale is a defect.
 - **Never widen a numerical tolerance to get green.** A wide tolerance hides algorithmic divergence. Investigate the cause instead. See `standard.md` section 5.
-- **`opengrowth-core` stays a leaf.** No clock, no I/O, no global state, no async runtime, no HTTP types. Timestamps and I/O belong to callers. This is what keeps the engine embeddable and deterministically testable.
+- **The engine stays a leaf**, and builds with `--no-default-features`. No clock, no I/O, no global state, no async runtime, no HTTP types. Timestamps and I/O belong to callers. This is what keeps the engine embeddable and deterministically testable.
 - **No reference table without provenance and a licence.** A table lacking either fails the registry test. See `standard.md` section 3.3.
-- **Never commit or publish UK90-derived tables while `Q1` is open.** That includes the data crate, fixtures that contain LMS values, release artefacts, and CI caches. Calculated outputs (SDS, centiles) in goldens are not tables and are fine.
+- **The UK90 tables are for research only until UKRI grants a licence (`Q1`).** Never describe opengrowth as usable for patient care, and never publish it to a package registry, while `Q1` is open. Do not change files in `data/` except by copying a new verified source with a manifest update.
 - **Provenance reports what was computed, never what was requested.** A surface that derives provenance from its own routing has defeated the point. This is a safety control, not a convenience field.
-- **Use Python-compatible rounding.** `f64::round()` is half-away-from-zero; Python is half-to-even. Use `opengrowth_core::round::python_round`. Never let `f64::round()` reach an output field.
+- **Use Python-compatible rounding.** `f64::round()` is half-away-from-zero; Python is half-to-even. Use `opengrowth::round::python_round`. Never let `f64::round()` reach an output field.
 - **Parse floats exactly.** `serde_json` must keep its `float_roundtrip` feature; without it, parsed tables and goldens can be 1 ulp off and bit-identity with Python is lost. Don't add a JSON parser that lacks an exact mode.
-- **The HTTP API is byte-identical to upstream outside `provenance`.** Response field order follows the upstream Pydantic models, floats go through `pyjson`, and request validation follows Pydantic's order and messages. Any new difference goes into `KNOWN_DIFFERENCES` in `crates/opengrowth-conformance/tests/http_uk_who.rs` and `spec/standard.md` section 6.3, with a reason.
+- **The HTTP API is byte-identical to upstream outside `provenance`.** Response field order follows the upstream Pydantic models, floats go through `pyjson`, and request validation follows Pydantic's order and messages. Any new difference goes into `KNOWN_DIFFERENCES` in `tests/http_uk_who.rs` and `spec/standard.md` section 6.3, with a reason.
 - **Keep the platform `pow`, `ln`, and `exp`.** They make SDS bit-identical to CPython on Linux; the portable `libm` versions do not (`conformance/README.md`).
 - **Do not vendor restrictively licensed source material.** Reimplement from published method descriptions. Named exclusions are in `standard.md` section 3.4.
 - **Preterm and early-infant behaviour is the highest-risk area.** Changes there need clinical review, not just passing tests.
@@ -86,7 +86,7 @@ Suggest a post at milestones per [house-style publicity](https://github.com/pach
 Ask before:
 
 - creating a GitHub remote, pushing, or publishing anything
-- committing, publishing, or caching any UK90-derived table, which is gated on `Q1`
+- publishing the crate or any artefact to a registry, which is gated on `Q1`
 - changing clinical behaviour, including correcting a Category 2 defect
 - adding, replacing, or regenerating a reference table
 - changing the API contract in a way that is not purely additive

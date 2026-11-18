@@ -5,7 +5,7 @@
 Standard library only. Run through s/bench, which supplies the paths:
 
     python3 -I bench/http/run.py --opengrowth BIN --python-server SRC --python-venv VENV \
-        --data-dir DIR --out DIR [--cpus 4] [--quick]
+        --out DIR [--data-dir DIR] [--cpus 4] [--quick]
 
 Each server gets the same pinned CPU set; oha runs on a disjoint set. The
 Python contestant runs its production configuration (gunicorn with one
@@ -193,7 +193,7 @@ def main():
     parser.add_argument("--opengrowth", required=True)
     parser.add_argument("--python-server", required=True)
     parser.add_argument("--python-venv", required=True)
-    parser.add_argument("--data-dir", required=True)
+    parser.add_argument("--data-dir", help="imported tables to layer over the embedded ones (optional)")
     parser.add_argument("--out", required=True)
     parser.add_argument("--cpus", type=int, default=4)
     parser.add_argument("--quick", action="store_true", help="short durations, for a smoke run")
@@ -209,7 +209,9 @@ def main():
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    env = {**os.environ, "OPENGROWTH_REFERENCE_DATA_DIR": args.data_dir}
+    env = dict(os.environ)
+    if args.data_dir:
+        env["OPENGROWTH_REFERENCE_DATA_DIR"] = args.data_dir
     env.pop("AUTHORIZATION_KEY", None)
     contestants = {
         "Python": (
