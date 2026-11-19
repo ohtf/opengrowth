@@ -11,71 +11,59 @@
 use crate::table::LmsTable;
 use crate::vocabulary::{MeasurementMethod, Sex};
 
-/// A source data table, identified by what it contains rather than by file name.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum TableId {
-    /// UK90 preterm and neonatal, 23 to 42 weeks gestation.
-    Uk90Preterm,
-    /// WHO 2006 standard, birth to 2 years (daily).
-    Who2006Infant,
-    /// WHO 2006 standard, 2 to 5 years (daily).
-    Who2006Child,
-    /// UK90, 4 to 20 years.
-    Uk90Child,
-    /// WHO 2007 growth reference, 5 to 19 years (monthly).
-    Who2007Child,
-    /// The earlier WHO 2006 infant table, birth to 2 years, which the CDC
-    /// reference uses for height and weight.
-    Who2006InfantPre2025,
-    /// CDC infant head circumference (with height and weight), birth to 3 years.
-    CdcInfant,
-    /// CDC 2000, 2 to 20 years, with the extended-BMI sigma.
-    CdcChild,
-    /// UK Turner syndrome reference: girls' height, 1 to 20 years.
-    Turner,
-    /// UK Down syndrome (Trisomy 21) reference, birth to 20 years.
-    Trisomy21,
-    /// AAP Down syndrome charts, infants to 3 years.
-    Trisomy21AapInfant,
-    /// AAP Down syndrome charts, 2 to 20 years.
-    Trisomy21AapChild,
+/// Declares the tables once: each one's variant of [`TableId`], its
+/// documentation, and its machine name. `TableId::ALL` and `as_str` are made
+/// from the same list, so no table can be left out of either, and the
+/// manifest's own test then requires an entry for every table.
+macro_rules! tables {
+    ($($(#[$meta:meta])* $variant:ident => $name:literal,)+) => {
+        /// A source data table, identified by what it contains rather than by file name.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub enum TableId {
+            $($(#[$meta])* $variant,)+
+        }
+
+        impl TableId {
+            /// Every table, in manifest order.
+            pub const ALL: [Self; [$($name),+].len()] = [$(Self::$variant),+];
+
+            /// Stable machine name, used in provenance and error messages.
+            #[must_use]
+            pub const fn as_str(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $name,)+
+                }
+            }
+        }
+    };
 }
 
-impl TableId {
-    /// Every table, in manifest order.
-    pub const ALL: [Self; 12] = [
-        Self::Uk90Preterm,
-        Self::Who2006Infant,
-        Self::Who2006Child,
-        Self::Uk90Child,
-        Self::Who2007Child,
-        Self::Who2006InfantPre2025,
-        Self::CdcInfant,
-        Self::CdcChild,
-        Self::Turner,
-        Self::Trisomy21,
-        Self::Trisomy21AapInfant,
-        Self::Trisomy21AapChild,
-    ];
-
-    /// Stable machine name, used in provenance and error messages.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Uk90Preterm => "uk90-preterm",
-            Self::Who2006Infant => "who-2006-infant",
-            Self::Who2006Child => "who-2006-child",
-            Self::Uk90Child => "uk90-child",
-            Self::Who2007Child => "who-2007-child",
-            Self::Who2006InfantPre2025 => "who-2006-infant-pre-2025",
-            Self::CdcInfant => "cdc-infant",
-            Self::CdcChild => "cdc-child",
-            Self::Turner => "turner",
-            Self::Trisomy21 => "trisomy-21",
-            Self::Trisomy21AapInfant => "trisomy-21-aap-infant",
-            Self::Trisomy21AapChild => "trisomy-21-aap-child",
-        }
-    }
+tables! {
+    /// UK90 preterm and neonatal, 23 to 42 weeks gestation.
+    Uk90Preterm => "uk90-preterm",
+    /// WHO 2006 standard, birth to 2 years (daily).
+    Who2006Infant => "who-2006-infant",
+    /// WHO 2006 standard, 2 to 5 years (daily).
+    Who2006Child => "who-2006-child",
+    /// UK90, 4 to 20 years.
+    Uk90Child => "uk90-child",
+    /// WHO 2007 growth reference, 5 to 19 years (monthly).
+    Who2007Child => "who-2007-child",
+    /// The earlier WHO 2006 infant table, birth to 2 years, which the CDC
+    /// reference uses for height and weight.
+    Who2006InfantPre2025 => "who-2006-infant-pre-2025",
+    /// CDC infant head circumference (with height and weight), birth to 3 years.
+    CdcInfant => "cdc-infant",
+    /// CDC 2000, 2 to 20 years, with the extended-BMI sigma.
+    CdcChild => "cdc-child",
+    /// UK Turner syndrome reference: girls' height, 1 to 20 years.
+    Turner => "turner",
+    /// UK Down syndrome (Trisomy 21) reference, birth to 20 years.
+    Trisomy21 => "trisomy-21",
+    /// AAP Down syndrome charts, infants to 3 years.
+    Trisomy21AapInfant => "trisomy-21-aap-infant",
+    /// AAP Down syndrome charts, 2 to 20 years.
+    Trisomy21AapChild => "trisomy-21-aap-child",
 }
 
 impl std::fmt::Display for TableId {
