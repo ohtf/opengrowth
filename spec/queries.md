@@ -252,3 +252,21 @@ The upstream centile-band sentences say a measurement is "on or near the 50th ce
 Options: keep them, byte-identical to the upstream Class I device, with the argument recorded; or replace "normal range" with positional wording, such as "below the 0.4th centile line", as an enumerated difference from upstream and a clinical change.
 
 **Working assumption:** keep them, since they are the wording of a registered Class I device, and record the argument in the classification rationale.
+
+---
+
+## Q15 - How should the CLARITY achondroplasia tables be used?
+
+**Resolved by:** the authors of Hoover-Fong JE et al. 2021 (CLARITY), asked by the maintainer, then the PRRC.
+**Blocks:** the CLARITY reference in `R47`.
+
+CLARITY's Table S1 (`data/sources/clarity-2021/`) gives, for each sex and month of age, a mean, an SD, and separate SDs below and above the mean. The paper does not say enough to calculate a Z-score at every age the way its authors intend:
+
+1. **Which SD?** The methods say weight Z-scores use the SD on the measurement's side of the mean. Do height and head circumference Z-scores also use the lower and upper SDs, or the single SD?
+2. **Which age is each row?** The values were estimated at each month of age, but the file labels each row as the interval `[k, k+1)`. Is row k the value at exactly k months, or for the whole month? For boys, row 0 gives a mean length of 52.8 cm and weight of 4.7 kg, above the WHO medians for average-stature boys at birth (49.9 cm, 3.3 kg). Is row 0 the value at birth?
+3. **Between months?** For an age between two rows, should the values be interpolated, and how, or should the row for the completed month be used?
+4. **Beyond 18 years?** The paper covers birth to 18 years, but the file runs to 239 months, with few or no measurements after about 15 years. Are the rows after 216 months meant for use?
+
+**Decided, 2026-11-19 (maintainer):** the reference is `achondroplasia-clarity`, as `trisomy-21-aap` names its source; ages are chronological, with no correction for gestation, since the cohort was born at about term; and `R46` comes first, so that CLARITY is the first reference added as a self-contained definition.
+
+**Working assumption** until the authors reply: none. The CLARITY reference is not built until these are answered.
