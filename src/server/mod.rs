@@ -5,9 +5,11 @@
 //! API (`digital-growth-charts-server`).
 //!
 //! The goal is byte-identical response bodies outside `provenance`
-//! (`spec/standard.md` section 4.2). Every upstream operation is implemented
-//! ([`IMPLEMENTED`]), with bearer-token authorisation, CORS ([`cors`]), 404,
-//! 405, and trailing-slash redirects.
+//! (`spec/standard.md` section 4.2). Every upstream operation is implemented:
+//! four for each reference in [`references::ALL`], under the route prefix
+//! its definition gives, and the mid-parental height utility. Around them
+//! are bearer-token authorisation, CORS ([`cors`]), 404, 405, and
+//! trailing-slash redirects.
 //!
 //! The `/growth/v1` prefix belongs to the gateway, not this router.
 
@@ -29,6 +31,7 @@ use crate::fictional_child::{
 };
 use crate::measurement::{MeasureError, Measurement, MeasurementInput, measure};
 use crate::mid_parental_height::{adult_age, expected_range, mid_parental_sds};
+use crate::references;
 use crate::round::{PyFloat, numpy_round, python_round};
 use crate::sds::measurement_from_sds;
 use crate::store::ReferenceStore;
@@ -139,87 +142,84 @@ impl NoiseSource {
     }
 }
 
-/// The references whose four operations opengrowth serves.
-const PORTED: [GrowthReference; 6] = [
-    GrowthReference::UkWho,
-    GrowthReference::Who,
-    GrowthReference::Cdc,
-    GrowthReference::TurnersSyndrome,
-    GrowthReference::Trisomy21,
-    GrowthReference::Trisomy21Aap,
-];
+/// The operations upstream serves for every reference, each at
+/// `/{prefix}/{path}`, where the prefix is the reference definition's.
+#[derive(Debug, Clone, Copy)]
+enum Operation {
+    Calculation,
+    BulkCalculation,
+    ChartCoordinates,
+    FictionalChildData,
+}
 
-/// The route prefix upstream gives a reference: its name, except Turner,
-/// whose routes are under `/turner`.
-fn route_prefix(reference: GrowthReference) -> &'static str {
-    match reference {
-        GrowthReference::TurnersSyndrome => "turner",
-        other => other.as_str(),
+impl Operation {
+    const ALL: [Self; 4] = [
+        Self::Calculation,
+        Self::BulkCalculation,
+        Self::ChartCoordinates,
+        Self::FictionalChildData,
+    ];
+
+    /// The path after the reference's prefix.
+    const fn path(self) -> &'static str {
+        match self {
+            Self::Calculation => "calculation",
+            Self::BulkCalculation => "bulk-calculation",
+            Self::ChartCoordinates => "chart-coordinates",
+            Self::FictionalChildData => "fictional-child-data",
+        }
+    }
+
+    async fn handle(
+        self,
+        state: Arc<AppState>,
+        body: Bytes,
+        reference: GrowthReference,
+    ) -> Response {
+        match self {
+            Self::Calculation => calculation(state, body, reference).await,
+            Self::BulkCalculation => bulk_calculation(state, body, reference).await,
+            Self::ChartCoordinates => chart_coordinates(state, body, reference).await,
+            Self::FictionalChildData => fictional_child_data(state, body, reference).await,
+        }
     }
 }
 
-/// What upstream calls a reference in its chart messages.
-fn chart_name(reference: GrowthReference) -> &'static str {
-    match reference {
-        GrowthReference::TurnersSyndrome => "Turner's syndrome",
-        other => fictional_child_name(other),
-    }
-}
+/// The mid-parental height utility, the one operation that belongs to no
+/// reference.
+const MID_PARENTAL_HEIGHT: &str = "/utilities/mid-parental-height";
 
-/// What upstream calls a reference in its fictional-child messages.
-fn fictional_child_name(reference: GrowthReference) -> &'static str {
-    match reference {
-        GrowthReference::UkWho => "UK-WHO",
-        GrowthReference::Who => "WHO",
-        GrowthReference::Cdc => "CDC",
-        GrowthReference::TurnersSyndrome => "Turner",
-        GrowthReference::Trisomy21 => "Trisomy 21",
-        GrowthReference::Trisomy21Aap => "trisomy-21-aap",
+/// Whether `path` is one of upstream's operations.
+fn is_operation(path: &str) -> bool {
+    if path == MID_PARENTAL_HEIGHT {
+        return true;
     }
+    let Some((prefix, operation)) = path.strip_prefix('/').and_then(|p| p.split_once('/')) else {
+        return false;
+    };
+    references::ALL.iter().any(|d| d.api.prefix == prefix)
+        && Operation::ALL.iter().any(|o| o.path() == operation)
 }
 
 /// The application router.
 pub fn router(state: Arc<AppState>) -> Router {
     let mut app = Router::new().route("/", get(root));
-    for reference in PORTED {
-        let path = |operation: &str| format!("/{}/{operation}", route_prefix(reference));
-        app = app
-            .route(
-                &path("calculation"),
+    for definition in references::ALL {
+        let reference = definition.reference;
+        for operation in Operation::ALL {
+            app = app.route(
+                &format!("/{}/{}", definition.api.prefix, operation.path()),
                 post(move |State(state): State<Arc<AppState>>, body: Bytes| {
-                    calculation(state, body, reference)
-                })
-                .fallback(method_not_allowed),
-            )
-            .route(
-                &path("bulk-calculation"),
-                post(move |State(state): State<Arc<AppState>>, body: Bytes| {
-                    bulk_calculation(state, body, reference)
-                })
-                .fallback(method_not_allowed),
-            )
-            .route(
-                &path("chart-coordinates"),
-                post(move |State(state): State<Arc<AppState>>, body: Bytes| {
-                    chart_coordinates(state, body, reference)
-                })
-                .fallback(method_not_allowed),
-            )
-            .route(
-                &path("fictional-child-data"),
-                post(move |State(state): State<Arc<AppState>>, body: Bytes| {
-                    fictional_child_data(state, body, reference)
+                    operation.handle(state, body, reference)
                 })
                 .fallback(method_not_allowed),
             );
+        }
     }
     app = app.route(
-        "/utilities/mid-parental-height",
+        MID_PARENTAL_HEIGHT,
         post(utilities_mid_parental_height).fallback(method_not_allowed),
     );
-    for path in NOT_YET_IMPLEMENTED {
-        app = app.route(path, post(not_implemented).fallback(method_not_allowed));
-    }
     let api = app.fallback(not_found).with_state(state.clone());
     // The middleware wraps the whole router, as upstream's wraps its app, so
     // that method routing cannot add `Allow` to what the middleware returns.
@@ -243,38 +243,6 @@ pub async fn serve(address: SocketAddr, state: Arc<AppState>) -> std::io::Result
         })
         .await
 }
-
-/// The upstream operations opengrowth serves.
-pub const IMPLEMENTED: &[&str] = &[
-    "/uk-who/calculation",
-    "/uk-who/bulk-calculation",
-    "/uk-who/chart-coordinates",
-    "/uk-who/fictional-child-data",
-    "/who/calculation",
-    "/who/bulk-calculation",
-    "/who/chart-coordinates",
-    "/who/fictional-child-data",
-    "/cdc/calculation",
-    "/cdc/bulk-calculation",
-    "/cdc/chart-coordinates",
-    "/cdc/fictional-child-data",
-    "/turner/calculation",
-    "/turner/bulk-calculation",
-    "/turner/chart-coordinates",
-    "/turner/fictional-child-data",
-    "/trisomy-21/calculation",
-    "/trisomy-21/bulk-calculation",
-    "/trisomy-21/chart-coordinates",
-    "/trisomy-21/fictional-child-data",
-    "/trisomy-21-aap/calculation",
-    "/trisomy-21-aap/bulk-calculation",
-    "/trisomy-21-aap/chart-coordinates",
-    "/trisomy-21-aap/fictional-child-data",
-    "/utilities/mid-parental-height",
-];
-
-/// Upstream operations opengrowth does not serve yet: none at present.
-const NOT_YET_IMPLEMENTED: &[&str] = &[];
 
 fn json_response<T: Serialize + ?Sized>(status: StatusCode, body: &T) -> Response {
     let mut response = Response::new(Body::from(pyjson::to_vec(body)));
@@ -328,8 +296,7 @@ async fn not_found(request: Request) -> Response {
     let path = request.uri().path();
     if path != "/" && path.ends_with('/') {
         let trimmed = path.trim_end_matches('/');
-        let known = IMPLEMENTED.contains(&trimmed) || NOT_YET_IMPLEMENTED.contains(&trimmed);
-        if known {
+        if is_operation(trimmed) {
             let host = request
                 .headers()
                 .get(header::HOST)
@@ -358,16 +325,6 @@ async fn method_not_allowed() -> Response {
         .headers_mut()
         .insert(header::ALLOW, HeaderValue::from_static("POST"));
     response
-}
-
-async fn not_implemented(request: Request) -> Response {
-    detail(
-        StatusCode::NOT_IMPLEMENTED,
-        &format!(
-            "{} is not implemented in opengrowth yet.",
-            request.uri().path()
-        ),
-    )
 }
 
 fn validation_failed(errors: Vec<FieldError>) -> Response {
@@ -463,12 +420,7 @@ fn validate_observation_value(
         .map_err(|e| report(e.to_string()))?;
     let sds = match sds_for_measurement(store, reference, age, method, value, sex) {
         Ok(result) => result.sds,
-        Err(CalcError::UkWhoAbsent(absence)) => return Err(report(absence.to_string())),
-        Err(CalcError::WhoAbsent(absence)) => return Err(report(absence.to_string())),
-        Err(CalcError::CdcAbsent(absence)) => return Err(report(absence.to_string())),
-        Err(CalcError::TurnerAbsent(absence)) => return Err(report(absence.to_string())),
-        Err(CalcError::Trisomy21Absent(absence)) => return Err(report(absence.to_string())),
-        Err(CalcError::Trisomy21AapAbsent(absence)) => return Err(report(absence.to_string())),
+        Err(CalcError::Absent(absence)) => return Err(report(absence.to_string())),
         Err(CalcError::Data(error)) => {
             return Err(Rejection::Respond(Box::new(data_unavailable(&error))));
         }
@@ -526,26 +478,24 @@ fn calculate_one(
     birth: &BirthFields,
     observation: &ObservationFields,
 ) -> Result<Vec<u8>, Rejection> {
+    let api = references::definition(reference).api;
     // Upstream's Turner routes check these before anything else.
-    if reference == GrowthReference::TurnersSyndrome {
-        let turner_only = |msg: &str, field| {
+    if let Some(only) = api.only {
+        let refuse = |msg: &str, field| {
             Err(Rejection::Report(Box::new(RouteError::value_error(
                 msg, field,
             ))))
         };
-        if birth.sex != "female" {
-            return turner_only("Turner reference data only exists in girls.", "sex");
+        if birth.sex != only.sex.as_str() {
+            return refuse(only.calculation_sex, "sex");
         }
-        if birth.measurement_method != "height" {
-            return turner_only(
-                "Turner reference data only exists for height",
-                "measurement_method",
-            );
+        if birth.measurement_method != only.method.as_str() {
+            return refuse(only.calculation_method, "measurement_method");
         }
     }
     // Upstream's AAP Trisomy 21 routes pass no bone age to the calculation.
     let without_bone_age;
-    let observation = if reference == GrowthReference::Trisomy21Aap {
+    let observation = if !api.bone_age {
         without_bone_age = ObservationFields {
             bone_age: None,
             bone_age_type: None,
@@ -578,12 +528,6 @@ fn calculate_one(
             return Err(Rejection::Report(Box::new(RouteError::value_error(
                 message,
                 "calculation_error",
-            ))));
-        }
-        Err(error @ MeasureError::ReferenceNotImplemented(_)) => {
-            return Err(Rejection::Respond(Box::new(detail(
-                StatusCode::NOT_IMPLEMENTED,
-                &error.to_string(),
             ))));
         }
     };
@@ -723,7 +667,8 @@ async fn fictional_child_data(
         Ok(r) => r,
         Err(errors) => return validation_failed(errors),
     };
-    match fictional_child_response(&state, reference, fictional_child_name(reference), &request) {
+    let label = references::definition(reference).api.fictional_child_name;
+    match fictional_child_response(&state, reference, label, &request) {
         Ok(bytes) => raw_json(StatusCode::OK, bytes),
         Err(Rejection::Report(error)) => route_failed(*error),
         Err(Rejection::Respond(response)) => *response,
@@ -739,17 +684,17 @@ fn fictional_child_response(
     label: &str,
     request: &validate::FictionalChildRequest,
 ) -> Result<Vec<u8>, Rejection> {
-    if reference == GrowthReference::TurnersSyndrome {
-        let turner_only = |msg: &str| {
+    if let Some(only) = references::definition(reference).api.only {
+        let refuse = |msg: &str| {
             Err(Rejection::Report(Box::new(RouteError::request(
                 msg.to_owned(),
             ))))
         };
-        if request.sex != "female" {
-            return turner_only("Turner's Syndrome data only exists for girls.");
+        if request.sex != only.sex.as_str() {
+            return refuse(only.fictional_child_sex);
         }
-        if request.measurement_method != "height" {
-            return turner_only("Turner's Syndrome data only exists for height.");
+        if request.measurement_method != only.method.as_str() {
+            return refuse(only.fictional_child_method);
         }
     }
     let failed = || {
@@ -760,9 +705,6 @@ fn fictional_child_response(
     let rejected = |error: FictionalChildError| match error {
         FictionalChildError::Invalid(_) => failed(),
         FictionalChildError::Data(error) => Rejection::Respond(Box::new(data_unavailable(&error))),
-        error @ FictionalChildError::ReferenceNotImplemented(_) => Rejection::Respond(Box::new(
-            detail(StatusCode::NOT_IMPLEMENTED, &error.to_string()),
-        )),
     };
     // Each of these is always used, so a null is always a TypeError.
     let (Some(start_age), Some(end_age), Some(weeks), Some(unit), Some(interval_number)) = (
@@ -920,9 +862,6 @@ fn mid_parental_height_response(
         Err(CalcError::InvalidObservation(v)) if v == f64::INFINITY => Ok(f64::INFINITY),
         Err(CalcError::InvalidObservation(_)) => Ok(f64::NEG_INFINITY),
         Err(CalcError::Data(error)) => Err(unavailable(&error)),
-        Err(error @ CalcError::ReferenceNotImplemented(_)) => Err(Rejection::Respond(Box::new(
-            detail(StatusCode::NOT_IMPLEMENTED, &error.to_string()),
-        ))),
         Err(error) => Err(raised(&error)),
     };
     let maternal = parent_sds(request.height_maternal, Sex::Female)?;
@@ -1043,11 +982,11 @@ async fn chart_coordinates(
         Ok(r) => r,
         Err(errors) => return validation_failed(errors),
     };
-    let turner_request = request.sex == "male" || request.measurement_method != "height";
-    if reference == GrowthReference::TurnersSyndrome && turner_request {
-        return route_failed(RouteError::request(
-            "Turner data only exists for height in girls.",
-        ));
+    let api = references::definition(reference).api;
+    if let Some(only) = api.only
+        && (request.sex != only.sex.as_str() || request.measurement_method != only.method.as_str())
+    {
+        return route_failed(RouteError::request(only.chart));
     }
     let sex: Sex = request.sex.parse().expect("validated literal");
     let method: MeasurementMethod = request
@@ -1080,7 +1019,7 @@ async fn chart_coordinates(
             Err(ChartError::NonFinite(_)) => {
                 return route_failed(RouteError::request(format!(
                     "Error creating {sex} {method} {} chart on the server, using {} centile format.",
-                    chart_name(reference),
+                    api.chart_name,
                     python_list(values)
                 )));
             }
@@ -1115,7 +1054,11 @@ async fn chart_coordinates(
     match result {
         Ok(bytes) => raw_json(StatusCode::OK, bytes.as_ref().clone()),
         Err(ChartError::Data(error)) => data_unavailable(&error),
-        Err(error) => detail(StatusCode::NOT_IMPLEMENTED, &error.to_string()),
+        // Unreachable: every named collection's centiles lie strictly between
+        // 0 and 100, so each has a finite SDS.
+        Err(error @ ChartError::NonFinite(_)) => {
+            detail(StatusCode::INTERNAL_SERVER_ERROR, &error.to_string())
+        }
     }
 }
 

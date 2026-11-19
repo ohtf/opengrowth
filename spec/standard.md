@@ -230,6 +230,7 @@ opengrowth/
 |-- src/
 |   |-- lib.rs, advice.rs, dates.rs, lms.rs, measurement.rs, normal.rs, ...
 |   |                        the engine: a leaf, always built
+|   |-- references/          one definition per growth reference (section 7.8)
 |   |-- store/               table manifest, verification, embedding, import
 |   |-- server/              HTTP API (feature `server`)
 |   |-- cli/                 command-line tool (feature `cli`)
@@ -347,7 +348,7 @@ Adding one takes:
 
 1. **A transcription script**, kept in the repository, that reads the publication's own file and writes the store's JSON layout, recording each transformation, such as months to decimal years. Where the only source is a PDF, a second person checks the extracted values against it, because a silent transcription error is the highest-consequence failure (section 7.2).
 2. **Manifest entries** for its tables, with source, terms, and checksum (section 3.3). A new reference's terms are checked before it is added (`R47` adds only references that can be licensed); once added, its tables are embedded like every other.
-3. **The reference's definition**: its `growth_reference` value, how it selects a table for an age, where it has no data and the message it gives there, its gestation-correction rule, its chart age grid, and its route prefix. Today these are spread over about ten places, among them `src/vocabulary.rs`, `src/store/`, a selection module such as `src/who.rs`, `src/sds.rs`, `src/chart/`, and `src/server/mod.rs`; `R46` gathers them into one definition per reference.
+3. **The reference's definition**: a module in `src/references/` whose `Definition` says how it selects a table for an age, where it has no data and the message it gives there, its SDS method and interpolation, its gestation-correction rule, the centile collection that describes a measurement, its chart segments and their age grids, and how the API serves it, such as its route prefix. The engine, charts, server, and command-line tool read the definition rather than branching on the reference. Besides the module, the reference needs its `growth_reference` value in `src/vocabulary.rs`, an entry in `references::ALL`, and its tables in `src/data.rs` and `src/store/` (`R46`).
 4. **Evidence from the publication.** There is no upstream implementation to compare with, so Profile B does not apply. Every transcribed row must equal the source, checked by script, and calculated SDS and centiles must reproduce whatever the publication tabulates, such as centile values by age or worked examples, to its stated precision. Where its centile curves were fitted separately from the parameters it tabulates, the difference is measured and recorded. The provenance drift guard ([provenance.md](provenance.md), invariant 7, `R22`) must fail until the reference has its own provenance cases.
 5. **Change control.** A new reference widens the population in [qms/intended-purpose.md](../qms/intended-purpose.md), so it needs a regulatory impact assessment first (`R44`). It is a clinical change, with a hazard log entry and clinical review, and an addition to the contract ([versioning.md](versioning.md) sections 2 and 3). The chart component, outside this repository (`R28`), has to draw it.
 

@@ -15,13 +15,14 @@
 
 use jiff::civil::Date;
 
-use crate::advice::{AgeComments, CentileFormat, centile_band, prematurity_comments};
+use crate::advice::{AgeComments, centile_band, prematurity_comments};
 use crate::data::{DataError, ReferenceData, TableId};
 use crate::dates::{
     self, DateError, Gestation, calendar_age, chronological_decimal_age, corrected_gestational_age,
     estimated_date_delivery, long_date,
 };
 use crate::pyfmt::python_repr;
+use crate::references::{self, Correction};
 use crate::round::python_round;
 use crate::sds::{CalcError, centile, percentage_median_bmi, sds_for_measurement};
 use crate::vocabulary::{GrowthReference, MeasurementMethod, Sex};
@@ -138,9 +139,6 @@ pub enum MeasureError {
     /// Upstream would raise here; the API turns it into a 422 with this message.
     #[error("{0}")]
     Raised(String),
-    /// The reference has not been ported yet.
-    #[error("the {0} reference is not implemented yet")]
-    ReferenceNotImplemented(GrowthReference),
 }
 
 /// SDS for the measurement validity check, at the upstream limits.
@@ -205,17 +203,18 @@ pub fn measure(
     })
 }
 
-/// The upstream `__calculate_ages`. UK-WHO corrects every gestation; WHO
-/// and CDC treat 37 to 42 weeks as term and stop correcting at 2 years, by
-/// using the chronological age as the corrected age.
+/// The upstream `__calculate_ages`. Most references correct every
+/// gestation; those with the term rule (WHO and CDC) treat 37 to 42 weeks as
+/// term and stop correcting at 2 years, by using the chronological age as
+/// the corrected age.
 fn ages(input: &MeasurementInput) -> MeasurementDates {
     let chronological = chronological_decimal_age(input.birth_date, input.observation_date);
     let weeks = input.gestation.weeks;
+    let correction = references::definition(input.reference).correction;
     let corrected =
         dates::corrected_decimal_age(input.birth_date, input.observation_date, input.gestation)
             .map(|age| {
-                let term_rules =
-                    matches!(input.reference, GrowthReference::Cdc | GrowthReference::Who);
+                let term_rules = correction == Correction::TermRule;
                 let as_term = (age >= 2.0 && weeks < 37) || (37..=42).contains(&weeks);
                 if term_rules && as_term {
                     chronological
@@ -240,7 +239,7 @@ fn ages(input: &MeasurementInput) -> MeasurementDates {
                 chronological,
                 corrected_age,
                 input.gestation,
-                input.reference,
+                correction,
             )),
             corrected_decimal_age_error: None,
             chronological_decimal_age_error: None,
@@ -333,11 +332,8 @@ fn calculated_values(
     chronological_age: f64,
     tables_read: &mut Vec<TableId>,
 ) -> Result<CalculatedValues, MeasureError> {
-    let format = match (input.reference, input.method) {
-        (GrowthReference::Cdc, MeasurementMethod::Bmi) => CentileFormat::EightyFivePercentCentiles,
-        (GrowthReference::Cdc, _) => CentileFormat::ThreePercentCentiles,
-        _ => CentileFormat::ColeNineCentiles,
-    };
+    let definition = references::definition(input.reference);
+    let format = (definition.centile_format)(input.method);
     let at = |age: f64| {
         sds_for_measurement(
             data,
@@ -351,11 +347,8 @@ fn calculated_values(
 
     // Upstream catches every exception at corrected age, but only LookupError
     // (no reference data at this age) at chronological age.
-    let corrected = if input.reference == GrowthReference::Cdc && corrected_age < 0.0 {
-        Err(
-            "This baby is born premature. CDC data is not available for preterm infants."
-                .to_owned(),
-        )
+    let corrected = if let Some(message) = definition.before_term.filter(|_| corrected_age < 0.0) {
+        Err(message.to_owned())
     } else {
         match at(corrected_age) {
             Ok(result) => {
@@ -372,14 +365,7 @@ fn calculated_values(
             Ok(result.sds)
         }
         Err(CalcError::Data(error)) => return Err(error.into()),
-        Err(
-            error @ (CalcError::UkWhoAbsent(_)
-            | CalcError::WhoAbsent(_)
-            | CalcError::CdcAbsent(_)
-            | CalcError::TurnerAbsent(_)
-            | CalcError::Trisomy21Absent(_)
-            | CalcError::Trisomy21AapAbsent(_)),
-        ) => Err(error.to_string()),
+        Err(error @ CalcError::Absent(_)) => Err(error.to_string()),
         Err(error) => return Err(MeasureError::Raised(error.to_string())),
     };
 

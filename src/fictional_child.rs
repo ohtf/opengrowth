@@ -137,9 +137,6 @@ pub enum FictionalChildError {
     /// A table is not loaded. Never substituted.
     #[error(transparent)]
     Data(#[from] DataError),
-    /// The reference has not been ported yet.
-    #[error("the {0} reference is not implemented yet")]
-    ReferenceNotImplemented(GrowthReference),
 }
 
 impl From<MeasureError> for FictionalChildError {
@@ -147,9 +144,6 @@ impl From<MeasureError> for FictionalChildError {
         match error {
             MeasureError::Data(error) => Self::Data(error),
             MeasureError::Raised(message) => Self::Invalid(message),
-            MeasureError::ReferenceNotImplemented(reference) => {
-                Self::ReferenceNotImplemented(reference)
-            }
         }
     }
 }
@@ -267,7 +261,8 @@ fn date_out_of_range() -> FictionalChildError {
 ///
 /// # Errors
 ///
-/// Only for a table that is not loaded, or a reference not yet ported.
+/// For a table that is not loaded, or a measurement at this SDS that is not
+/// finite.
 pub fn raw_measurement(
     data: &dyn ReferenceData,
     params: &FictionalChildParams,
@@ -285,9 +280,6 @@ pub fn raw_measurement(
     match found {
         Ok((value, _)) => Ok(value),
         Err(CalcError::Data(error)) => Err(error.into()),
-        Err(CalcError::ReferenceNotImplemented(reference)) => {
-            Err(FictionalChildError::ReferenceNotImplemented(reference))
-        }
         // Upstream gets an infinite measurement here (CDC BMI at a centile
         // that rounds to 100) and its response then fails with a 500; this
         // fails the series instead (`spec/standard.md` section 6.3).

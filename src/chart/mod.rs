@@ -10,7 +10,10 @@
 //! the reference. Ages where the reference has no data are left out of the
 //! line, as upstream does.
 //!
-//! Upstream behaviour kept exactly, because it changes the coordinates:
+//! Each reference's segments, and the rules below that differ between
+//! upstream's chart builders, are in its
+//! [`ChartRules`](crate::references::ChartRules). Upstream behaviour kept
+//! exactly, because it changes the coordinates:
 //!
 //! - For UK-WHO, the Cole nine-centile collection uses SDS rounded to the
 //!   nearest two-thirds; every other collection, and every WHO and CDC
@@ -33,6 +36,7 @@ pub mod ages;
 use crate::advice::CentileFormat;
 use crate::data::{DataError, ReferenceData, TableId};
 use crate::normal;
+use crate::references::{self, Definition, LineSds, Segment};
 use crate::round::{PyFloat, python_round, python_round_int};
 use crate::sds::{CalcError, measurement_from_sds};
 use crate::vocabulary::{GrowthReference, MeasurementMethod, Sex};
@@ -104,113 +108,7 @@ pub enum ChartError {
     /// A table is not loaded.
     #[error(transparent)]
     Data(#[from] DataError),
-    /// The reference has not been ported yet.
-    #[error("the {0} reference is not implemented yet")]
-    ReferenceNotImplemented(GrowthReference),
 }
-
-/// A segment of a reference, its age grid for a measurement, and the ages
-/// at which it uses the younger table.
-struct Segment {
-    name: &'static str,
-    ages: fn(MeasurementMethod) -> &'static [f64],
-    youngest_at: fn(f64) -> bool,
-}
-
-#[allow(clippy::float_cmp, reason = "upstream compares these ages exactly")]
-const UK_WHO_SEGMENTS: [Segment; 4] = [
-    Segment {
-        name: "uk90_preterm",
-        ages: |_| &ages::UK_90_PRETERM_AGES,
-        youngest_at: |age| age == 0.038_329_911,
-    },
-    Segment {
-        name: "uk_who_infant",
-        ages: |_| &ages::WHO_2006_UNDER_TWOS_AGES,
-        youngest_at: |age| age == 2.0,
-    },
-    Segment {
-        name: "uk_who_child",
-        ages: |_| &ages::UK_WHO_2006_OVER_TWOS_AGES,
-        youngest_at: |age| age == 4.0,
-    },
-    Segment {
-        name: "uk90_child",
-        ages: |_| &ages::UK90_AGES,
-        youngest_at: |_| false,
-    },
-];
-
-#[allow(clippy::float_cmp, reason = "upstream compares these ages exactly")]
-const WHO_SEGMENTS: [Segment; 3] = [
-    Segment {
-        name: "who_2006_infant",
-        ages: |_| &ages::WHO_2006_UNDER_TWOS_AGES,
-        youngest_at: |age| age == 0.038_329_911 || age == 2.0,
-    },
-    Segment {
-        name: "who_2006_child",
-        ages: |_| &ages::WHO_2006_OVER_TWOS_AGES,
-        youngest_at: |age| age == 5.0,
-    },
-    Segment {
-        name: "who_2007_child",
-        ages: |_| &ages::WHO_2007_AGES,
-        youngest_at: |_| false,
-    },
-];
-
-#[allow(clippy::float_cmp, reason = "upstream compares these ages exactly")]
-const CDC_SEGMENTS: [Segment; 3] = [
-    // Upstream's Fenton preterm segment has no ages, so its lines are empty.
-    Segment {
-        name: "fenton",
-        ages: |_| &[],
-        youngest_at: |_| false,
-    },
-    Segment {
-        name: "cdc_infant",
-        ages: |method| match method {
-            MeasurementMethod::Ofc => &ages::CDC_TO_THREE_AGE,
-            MeasurementMethod::Height | MeasurementMethod::Weight => {
-                &ages::WHO_2006_UNDER_TWOS_AGES
-            }
-            MeasurementMethod::Bmi => &ages::CDC_TO_TWO_AGE,
-        },
-        youngest_at: |age| age == 0.038_329_911 || age == 2.0,
-    },
-    Segment {
-        name: "cdc_child",
-        ages: |_| &ages::CDC_TWO_TWENTY,
-        youngest_at: |_| false,
-    },
-];
-
-const TURNER_SEGMENTS: [Segment; 1] = [Segment {
-    name: "turners-syndrome",
-    ages: |_| &ages::TURNER_AGES,
-    youngest_at: |_| false,
-}];
-
-const TRISOMY_21_SEGMENTS: [Segment; 1] = [Segment {
-    name: "trisomy-21",
-    ages: |_| &ages::TRISOMY_21_AGES,
-    youngest_at: |_| false,
-}];
-
-#[allow(clippy::float_cmp, reason = "upstream compares these ages exactly")]
-const TRISOMY_21_AAP_SEGMENTS: [Segment; 2] = [
-    Segment {
-        name: "trisomy_21_aap_infant",
-        ages: |_| &ages::TRISOMY_21_AAP_INFANT_AGES,
-        youngest_at: |age| age == 3.0,
-    },
-    Segment {
-        name: "trisomy_21_aap_child",
-        ages: |_| &ages::TRISOMY_21_AAP_CHILD_AGES,
-        youngest_at: |_| false,
-    },
-];
 
 /// The centile lines for one reference, measurement, and sex (the upstream `create_chart`).
 ///
@@ -224,19 +122,14 @@ pub fn chart(
     sex: Sex,
     spec: CentileSpec<'_>,
 ) -> Result<Chart, ChartError> {
-    let segments: &[Segment] = match reference {
-        GrowthReference::UkWho => &UK_WHO_SEGMENTS,
-        GrowthReference::Who => &WHO_SEGMENTS,
-        GrowthReference::Cdc => &CDC_SEGMENTS,
-        GrowthReference::TurnersSyndrome => &TURNER_SEGMENTS,
-        GrowthReference::Trisomy21 => &TRISOMY_21_SEGMENTS,
-        GrowthReference::Trisomy21Aap => &TRISOMY_21_AAP_SEGMENTS,
-    };
+    let definition = references::definition(reference);
+    let rules = definition.chart;
+    let segments = rules.segments;
     let (values, is_sds, cole) = match spec {
         CentileSpec::Named(format) => (
             format.centiles(),
             false,
-            reference == GrowthReference::UkWho && format == CentileFormat::ColeNineCentiles,
+            rules.cole_rounding && format == CentileFormat::ColeNineCentiles,
         ),
         CentileSpec::Custom { values, is_sds } => (values, is_sds, false),
     };
@@ -248,7 +141,7 @@ pub fn chart(
         for &value in values {
             match line(
                 data,
-                reference,
+                definition,
                 method,
                 sex,
                 segment,
@@ -259,7 +152,7 @@ pub fn chart(
             ) {
                 Ok(line) => lines.push(line),
                 // Upstream's Turner builder catches the overflow and leaves the line out.
-                Err(ChartError::NonFinite(_)) if reference == GrowthReference::TurnersSyndrome => {}
+                Err(ChartError::NonFinite(_)) if rules.drops_overflowing_lines => {}
                 Err(error) => return Err(error),
             }
         }
@@ -290,18 +183,18 @@ pub fn cole_sds_for_centile(centile: f64) -> PyFloat {
     PyFloat::Builtin(python_round_int(sds / (2.0 / 3.0)) * (2.0 / 3.0))
 }
 
-#[allow(clippy::too_many_arguments, reason = "mirrors the upstream loop state")]
-fn line(
-    data: &dyn ReferenceData,
-    reference: GrowthReference,
-    method: MeasurementMethod,
-    sex: Sex,
-    segment: &Segment,
+/// The SDS a line is drawn at and its centile, for a requested centile or,
+/// if `is_sds`, SDS.
+///
+/// # Errors
+///
+/// [`ChartError::NonFinite`] where upstream's rounding of the SDS fails.
+fn line_sds(
     value: f64,
     is_sds: bool,
     cole: bool,
-    tables_read: &mut Vec<TableId>,
-) -> Result<ChartLine, ChartError> {
+    rounding: LineSds,
+) -> Result<(PyFloat, f64), ChartError> {
     let (z, centile) = if is_sds {
         (PyFloat::Builtin(value), normal::cdf(value) * 100.0)
     } else if cole {
@@ -311,14 +204,29 @@ fn line(
     };
     // Upstream fails where it rounds 100 times the SDS to an integer; the
     // Trisomy 21 builder rounds the SDS itself, which fails only at infinity.
-    let overflows = if reference == GrowthReference::Trisomy21 {
-        !z.value().is_finite()
-    } else {
-        !(z.value() * 100.0).is_finite()
+    let overflows = match rounding {
+        LineSds::Rounded => !z.value().is_finite(),
+        LineSds::Hundredths => !(z.value() * 100.0).is_finite(),
     };
     if overflows {
         return Err(ChartError::NonFinite(value));
     }
+    Ok((z, centile))
+}
+
+#[allow(clippy::too_many_arguments, reason = "mirrors the upstream loop state")]
+fn line(
+    data: &dyn ReferenceData,
+    definition: &Definition,
+    method: MeasurementMethod,
+    sex: Sex,
+    segment: &Segment,
+    value: f64,
+    is_sds: bool,
+    cole: bool,
+    tables_read: &mut Vec<TableId>,
+) -> Result<ChartLine, ChartError> {
+    let (z, centile) = line_sds(value, is_sds, cole, definition.chart.line_sds)?;
     let label = if is_sds { z.round(3).value() } else { centile };
     let requested = z.round(4);
 
@@ -327,7 +235,7 @@ fn line(
     for &age in grid {
         match measurement_from_sds(
             data,
-            reference,
+            definition.reference,
             requested,
             method,
             sex,
@@ -349,10 +257,9 @@ fn line(
     }
     // Upstream's Trisomy 21 builder rounds the SDS itself, as its kind rounds;
     // the others round 100 times it to an integer.
-    let sds = if reference == GrowthReference::Trisomy21 {
-        z.round(2).value()
-    } else {
-        python_round_int(z.value() * 100.0) / 100.0
+    let sds = match definition.chart.line_sds {
+        LineSds::Rounded => z.round(2).value(),
+        LineSds::Hundredths => python_round_int(z.value() * 100.0) / 100.0,
     };
     Ok(ChartLine {
         sds,
@@ -404,6 +311,29 @@ mod tests {
                 },
             );
             assert!(matches!(result, Err(ChartError::NonFinite(_))), "{bad}");
+        }
+    }
+
+    #[test]
+    fn every_named_collection_has_a_finite_sds_for_every_line() {
+        // The server relies on this: it treats `NonFinite` from a named
+        // collection as unreachable.
+        let names = [
+            "cole-nine-centiles",
+            "three-percent-centiles",
+            "five-percent-centiles",
+            "eighty-five-percent-centiles",
+        ];
+        for name in names {
+            let format = CentileFormat::from_name(name).unwrap();
+            for &centile in format.centiles() {
+                for cole in [false, true] {
+                    for rounding in [LineSds::Hundredths, LineSds::Rounded] {
+                        let result = line_sds(centile, false, cole, rounding);
+                        assert!(result.is_ok(), "{name}, {centile}, {cole}, {rounding:?}");
+                    }
+                }
+            }
         }
     }
 

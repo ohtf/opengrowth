@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: Royal College of Paediatrics and Child Health
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! UK-WHO: choosing which source table applies at a given age.
+//! UK-WHO, ported from `rcpchgrowth.uk_who`.
 //!
-//! UK-WHO stitches together three sources (ported from `rcpchgrowth.uk_who`):
+//! UK-WHO stitches together three sources:
 //!
 //! | Decimal age            | Source                         |
 //! |------------------------|--------------------------------|
@@ -15,13 +15,17 @@
 //!
 //! At the three joins, chart generation can ask for the younger table
 //! (`youngest_at_boundary`) so a curve runs right up to the join. SDS
-//! calculation never does.
-//!
-//! Error messages are the upstream ones verbatim, because they reach API
-//! responses as measurement errors.
+//! calculation never does. Every gestation is corrected for, and the Cole
+//! nine-centile collection is drawn at SDS rounded to two-thirds.
 
+use super::{
+    Absence, Api, ChartRules, Correction, Definition, LineSds, SdsMethod, SdsRules, Segment,
+    cole_nine_centiles,
+};
+use crate::chart::ages;
 use crate::data::TableId;
-use crate::vocabulary::{MeasurementMethod, Sex};
+use crate::table::Interpolation;
+use crate::vocabulary::{GrowthReference, MeasurementMethod, Sex};
 
 /// Decimal age of 23 weeks gestation: the start of UK90.
 pub const TWENTY_THREE_WEEKS_GESTATION: f64 = ((23 * 7) - (40 * 7)) as f64 / 365.25;
@@ -40,27 +44,74 @@ pub const OFC_UPPER_MALE: f64 = 18.0;
 /// UK90 head circumference ends at 17 years in girls.
 pub const OFC_UPPER_FEMALE: f64 = 17.0;
 
-/// No UK-WHO data exists for this request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-pub enum UkWhoAbsence {
-    /// Below 23 weeks gestation.
-    #[error("There is no UK90 reference data below 23 weeks gestation")]
-    BelowTwentyThreeWeeks,
-    /// Above 20 years.
-    #[error("There is no UK90 reference data above the age of 20 years.")]
-    AboveTwentyYears,
-    /// Length below 25 weeks gestation.
-    #[error("UK-WHO length data does not exist in infants below 25 weeks gestation.")]
-    LengthBelowTwentyFiveWeeks,
-    /// BMI below 2 weeks of age.
-    #[error("UK-WHO BMI data does not exist below 2 weeks of age.")]
-    BmiBelowTwoWeeks,
-    /// Head circumference above 18 years in boys.
-    #[error("UK-WHO head circumference data does not exist in boys over 18 y of age.")]
-    OfcAboveEighteenMale,
-    /// Head circumference above 17 years in girls.
-    #[error("UK-WHO head circumference data does not exist in girls over 17 y of age.")]
-    OfcAboveSeventeenFemale,
+/// UK-WHO.
+pub static DEFINITION: Definition = Definition {
+    reference: GrowthReference::UkWho,
+    label: "UK-WHO",
+    select,
+    sds: SdsRules {
+        interpolation: Interpolation::CubicWherePossible,
+        method: SdsMethod::Lms,
+        clamp_at_two_years: true,
+    },
+    correction: Correction::Always,
+    before_term: None,
+    centile_format: cole_nine_centiles,
+    chart: ChartRules {
+        segments: &SEGMENTS,
+        cole_rounding: true,
+        line_sds: LineSds::Hundredths,
+        drops_overflowing_lines: false,
+    },
+    adult_age: 20.0,
+    api: Api {
+        prefix: "uk-who",
+        chart_name: "UK-WHO",
+        fictional_child_name: "UK-WHO",
+        only: None,
+        bone_age: true,
+    },
+};
+
+const fn absent(message: &'static str) -> Absence {
+    Absence {
+        reference: GrowthReference::UkWho,
+        message,
+    }
+}
+
+/// Below 23 weeks gestation.
+pub const BELOW_TWENTY_THREE_WEEKS: Absence =
+    absent("There is no UK90 reference data below 23 weeks gestation");
+/// Above 20 years.
+pub const ABOVE_TWENTY_YEARS: Absence =
+    absent("There is no UK90 reference data above the age of 20 years.");
+/// Length below 25 weeks gestation.
+pub const LENGTH_BELOW_TWENTY_FIVE_WEEKS: Absence =
+    absent("UK-WHO length data does not exist in infants below 25 weeks gestation.");
+/// BMI below 2 weeks of age.
+pub const BMI_BELOW_TWO_WEEKS: Absence =
+    absent("UK-WHO BMI data does not exist below 2 weeks of age.");
+/// Head circumference above 18 years in boys.
+pub const OFC_ABOVE_EIGHTEEN_MALE: Absence =
+    absent("UK-WHO head circumference data does not exist in boys over 18 y of age.");
+/// Head circumference above 17 years in girls.
+pub const OFC_ABOVE_SEVENTEEN_FEMALE: Absence =
+    absent("UK-WHO head circumference data does not exist in girls over 17 y of age.");
+
+/// The table for a measurement at an age: the source table first, then the
+/// absence rules, as upstream checks them.
+fn select(
+    age: f64,
+    method: MeasurementMethod,
+    sex: Sex,
+    youngest_at_boundary: bool,
+) -> Result<TableId, Absence> {
+    let table = table_for_age(age, youngest_at_boundary)?;
+    match data_absent(age, method, sex) {
+        Some(absence) => Err(absence),
+        None => Ok(table),
+    }
 }
 
 /// The source table for `age` (the upstream `uk_who_reference`).
@@ -68,9 +119,13 @@ pub enum UkWhoAbsence {
 /// # Errors
 ///
 /// Below 23 weeks gestation or above 20 years.
-pub fn table_for_age(age: f64, youngest_at_boundary: bool) -> Result<TableId, UkWhoAbsence> {
+#[allow(
+    clippy::float_cmp,
+    reason = "upstream compares the boundary ages exactly"
+)]
+pub fn table_for_age(age: f64, youngest_at_boundary: bool) -> Result<TableId, Absence> {
     if age < TWENTY_THREE_WEEKS_GESTATION {
-        Err(UkWhoAbsence::BelowTwentyThreeWeeks)
+        Err(BELOW_TWENTY_THREE_WEEKS)
     } else if age < FORTY_TWO_WEEKS_GESTATION {
         Ok(TableId::Uk90Preterm)
     } else if age < WHO_CHILD_LOWER_THRESHOLD {
@@ -92,37 +147,59 @@ pub fn table_for_age(age: f64, youngest_at_boundary: bool) -> Result<TableId, Uk
             Ok(TableId::Uk90Child)
         }
     } else {
-        Err(UkWhoAbsence::AboveTwentyYears)
+        Err(ABOVE_TWENTY_YEARS)
     }
 }
 
 /// Whether UK-WHO lacks data for this measurement at this age (the upstream
 /// `reference_data_absent`). Checked after [`table_for_age`], as upstream.
 #[must_use]
-pub fn data_absent(age: f64, method: MeasurementMethod, sex: Sex) -> Option<UkWhoAbsence> {
+pub fn data_absent(age: f64, method: MeasurementMethod, sex: Sex) -> Option<Absence> {
     // The age bounds repeat `table_for_age`, so they are unreachable in
     // sequence but kept so this function is correct on its own.
     if age < TWENTY_THREE_WEEKS_GESTATION {
-        return Some(UkWhoAbsence::BelowTwentyThreeWeeks);
+        return Some(BELOW_TWENTY_THREE_WEEKS);
     }
     if age > UK90_UPPER_THRESHOLD {
-        return Some(UkWhoAbsence::AboveTwentyYears);
+        return Some(ABOVE_TWENTY_YEARS);
     }
     match method {
         MeasurementMethod::Height if age < TWENTY_FIVE_WEEKS_GESTATION => {
-            Some(UkWhoAbsence::LengthBelowTwentyFiveWeeks)
+            Some(LENGTH_BELOW_TWENTY_FIVE_WEEKS)
         }
-        MeasurementMethod::Bmi if age < FORTY_TWO_WEEKS_GESTATION => {
-            Some(UkWhoAbsence::BmiBelowTwoWeeks)
-        }
+        MeasurementMethod::Bmi if age < FORTY_TWO_WEEKS_GESTATION => Some(BMI_BELOW_TWO_WEEKS),
         MeasurementMethod::Ofc => match sex {
-            Sex::Male if age > OFC_UPPER_MALE => Some(UkWhoAbsence::OfcAboveEighteenMale),
-            Sex::Female if age > OFC_UPPER_FEMALE => Some(UkWhoAbsence::OfcAboveSeventeenFemale),
+            Sex::Male if age > OFC_UPPER_MALE => Some(OFC_ABOVE_EIGHTEEN_MALE),
+            Sex::Female if age > OFC_UPPER_FEMALE => Some(OFC_ABOVE_SEVENTEEN_FEMALE),
             _ => None,
         },
         _ => None,
     }
 }
+
+#[allow(clippy::float_cmp, reason = "upstream compares these ages exactly")]
+const SEGMENTS: [Segment; 4] = [
+    Segment {
+        name: "uk90_preterm",
+        ages: |_| &ages::UK_90_PRETERM_AGES,
+        youngest_at: |age| age == 0.038_329_911,
+    },
+    Segment {
+        name: "uk_who_infant",
+        ages: |_| &ages::WHO_2006_UNDER_TWOS_AGES,
+        youngest_at: |age| age == 2.0,
+    },
+    Segment {
+        name: "uk_who_child",
+        ages: |_| &ages::UK_WHO_2006_OVER_TWOS_AGES,
+        youngest_at: |age| age == 4.0,
+    },
+    Segment {
+        name: "uk90_child",
+        ages: |_| &ages::UK90_AGES,
+        youngest_at: |_| false,
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -139,8 +216,8 @@ mod tests {
         assert_eq!(at(3.999), Ok(TableId::Who2006Child));
         assert_eq!(at(4.0), Ok(TableId::Uk90Child));
         assert_eq!(at(20.0), Ok(TableId::Uk90Child));
-        assert_eq!(at(20.001), Err(UkWhoAbsence::AboveTwentyYears));
-        assert_eq!(at(-0.4), Err(UkWhoAbsence::BelowTwentyThreeWeeks));
+        assert_eq!(at(20.001), Err(ABOVE_TWENTY_YEARS));
+        assert_eq!(at(-0.4), Err(BELOW_TWENTY_THREE_WEEKS));
     }
 
     #[test]
@@ -157,21 +234,21 @@ mod tests {
         use MeasurementMethod::{Bmi, Height, Ofc, Weight};
         assert_eq!(
             data_absent(-0.3, Height, Sex::Male),
-            Some(UkWhoAbsence::LengthBelowTwentyFiveWeeks)
+            Some(LENGTH_BELOW_TWENTY_FIVE_WEEKS)
         );
         assert_eq!(data_absent(-0.3, Weight, Sex::Male), None);
         assert_eq!(
             data_absent(0.0, Bmi, Sex::Female),
-            Some(UkWhoAbsence::BmiBelowTwoWeeks)
+            Some(BMI_BELOW_TWO_WEEKS)
         );
         assert_eq!(
             data_absent(17.5, Ofc, Sex::Female),
-            Some(UkWhoAbsence::OfcAboveSeventeenFemale)
+            Some(OFC_ABOVE_SEVENTEEN_FEMALE)
         );
         assert_eq!(data_absent(17.5, Ofc, Sex::Male), None);
         assert_eq!(
             data_absent(18.5, Ofc, Sex::Male),
-            Some(UkWhoAbsence::OfcAboveEighteenMale)
+            Some(OFC_ABOVE_EIGHTEEN_MALE)
         );
     }
 }

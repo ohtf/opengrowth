@@ -5,28 +5,24 @@
 //! SDS and centile for a single measurement at a given decimal age.
 //!
 //! Ported from `rcpchgrowth.global_functions.sds_for_measurement` and
-//! `centile`. UK-WHO and WHO are implemented so far (`R9`); other references
-//! return [`CalcError::ReferenceNotImplemented`] rather than a wrong answer.
+//! `centile`. Each reference's [`Definition`] chooses the table, how lookups
+//! interpolate, and the method:
 //!
-//! WHO differs in two ways, both upstream's: its SDS lookups interpolate
-//! linearly between rows, and beyond 3 SD (for weight and BMI at any age,
-//! and for everything under 5 years) it uses WHO's restricted extension of
-//! the LMS method, which spaces SDS beyond 3 by the 2-to-3 SD distance.
-//!
-//! CDC BMI above the 95th centile uses the CDC extended BMI-for-age method:
-//! the centile is `90 + 10 * Phi((BMI - p95) / sigma)`, with `sigma` from the
-//! table. Its tables carry sigma, so their lookups are always linear.
+//! - **LMS**, for most references.
+//! - **WHO's restricted LMS method**: beyond 3 SD (for weight and BMI at any
+//!   age, and for everything under 5 years), SDS beyond 3 are spaced by the
+//!   2-to-3 SD distance. WHO's SDS lookups also interpolate linearly.
+//! - **The CDC extended BMI-for-age method**: above the 95th centile, the
+//!   centile is `90 + 10 * Phi((BMI - p95) / sigma)`, with `sigma` from the
+//!   table. Its tables carry sigma, so their lookups are always linear.
 
-use crate::cdc::{self, CdcAbsence};
 use crate::data::{DataError, ReferenceData, TableId};
 use crate::lms::{Lms, measurement_from_lms, sds_from_lms};
 use crate::normal;
+use crate::references::{self, Absence, Definition, SdsMethod};
 use crate::round::PyFloat;
-use crate::syndromes::{self, Trisomy21AapAbsence, Trisomy21Absence, TurnerAbsence};
 use crate::table::{Interpolation, LmsTable, Lookup, TableError};
-use crate::uk_who::{self, UkWhoAbsence};
 use crate::vocabulary::{GrowthReference, MeasurementMethod, Sex};
-use crate::who::{self, WhoAbsence};
 
 /// Why an SDS could not be calculated.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -34,22 +30,7 @@ pub enum CalcError {
     /// The reference has no data for this age or measurement. Upstream this
     /// is a `LookupError`, and its message reaches API responses verbatim.
     #[error(transparent)]
-    UkWhoAbsent(#[from] UkWhoAbsence),
-    /// As for UK-WHO, for the WHO reference.
-    #[error(transparent)]
-    WhoAbsent(#[from] WhoAbsence),
-    /// As for UK-WHO, for the CDC reference.
-    #[error(transparent)]
-    CdcAbsent(#[from] CdcAbsence),
-    /// As for UK-WHO, for the Turner syndrome reference.
-    #[error(transparent)]
-    TurnerAbsent(#[from] TurnerAbsence),
-    /// As for UK-WHO, for the UK Trisomy 21 reference.
-    #[error(transparent)]
-    Trisomy21Absent(#[from] Trisomy21Absence),
-    /// As for UK-WHO, for the AAP Trisomy 21 reference.
-    #[error(transparent)]
-    Trisomy21AapAbsent(#[from] Trisomy21AapAbsence),
+    Absent(#[from] Absence),
     /// The LMS transform has no real value here. Upstream computes a complex
     /// number and fails when it rounds it.
     #[error("the LMS transform has no real value at this SDS")]
@@ -69,9 +50,6 @@ pub enum CalcError {
     /// complex number or a crash here (a Category 3 defect, `spec/standard.md` section 6.3).
     #[error("observation value must be a positive number, got {0}")]
     InvalidObservation(f64),
-    /// The reference has not been ported yet.
-    #[error("the {0} reference is not implemented yet")]
-    ReferenceNotImplemented(GrowthReference),
 }
 
 /// An SDS together with the source table it was computed from.
@@ -101,19 +79,15 @@ pub fn sds_for_measurement(
     observation: f64,
     sex: Sex,
 ) -> Result<SdsResult, CalcError> {
-    let interpolation = if reference == GrowthReference::Who {
-        Interpolation::LinearOnly
-    } else {
-        Interpolation::CubicWherePossible
-    };
+    let definition = references::definition(reference);
     let (table, lms, _) = lms_for_age(
         data,
-        reference,
+        definition,
         age,
         method,
         sex,
         false,
-        interpolation,
+        definition.sds.interpolation,
         || {
             // Checked after the age rules so the reported error matches upstream.
             if observation.is_finite() && observation > 0.0 {
@@ -123,7 +97,9 @@ pub fn sds_for_measurement(
             }
         },
     )?;
-    if reference == GrowthReference::Cdc && method == MeasurementMethod::Bmi {
+    let cdc_bmi =
+        definition.sds.method == SdsMethod::CdcExtendedBmi && method == MeasurementMethod::Bmi;
+    if cdc_bmi {
         let sigma = lms.sigma.ok_or(CalcError::MissingSigma)?;
         let p95 = cdc_p95(&lms);
         if observation > p95 {
@@ -133,7 +109,8 @@ pub fn sds_for_measurement(
         }
     }
     let bmi_or_weight = matches!(method, MeasurementMethod::Bmi | MeasurementMethod::Weight);
-    let sds = if reference == GrowthReference::Who && ((bmi_or_weight && age >= 5.0) || age < 5.0) {
+    let restricted = definition.sds.method == SdsMethod::WhoRestricted;
+    let sds = if restricted && ((bmi_or_weight && age >= 5.0) || age < 5.0) {
         who_sds(observation, &lms)
     } else {
         sds_from_lms(observation, &lms)
@@ -190,9 +167,10 @@ pub fn measurement_from_sds(
     age: f64,
     youngest_at_boundary: bool,
 ) -> Result<(Option<PyFloat>, TableId), CalcError> {
+    let definition = references::definition(reference);
     let (table_id, lms, lookup) = lms_for_age(
         data,
-        reference,
+        definition,
         age,
         method,
         sex,
@@ -201,7 +179,7 @@ pub fn measurement_from_sds(
         || Ok(()),
     )?;
     let z = requested_sds.value();
-    if reference == GrowthReference::Cdc && method == MeasurementMethod::Bmi {
+    if definition.sds.method == SdsMethod::CdcExtendedBmi && method == MeasurementMethod::Bmi {
         let sigma = lms.sigma.ok_or(CalcError::MissingSigma)?;
         // Upstream's CDC BMI branch, which does not check for a negative base.
         let value = if z <= 1.645 {
@@ -249,7 +227,7 @@ pub fn percentage_median_bmi(
 ) -> Result<(f64, TableId), CalcError> {
     let (table, lms, _) = lms_for_age(
         data,
-        reference,
+        references::definition(reference),
         age,
         MeasurementMethod::Bmi,
         sex,
@@ -267,7 +245,7 @@ pub fn percentage_median_bmi(
 #[allow(clippy::too_many_arguments, reason = "the upstream lookup's inputs")]
 fn lms_for_age(
     data: &dyn ReferenceData,
-    reference: GrowthReference,
+    definition: &Definition,
     age: f64,
     method: MeasurementMethod,
     sex: Sex,
@@ -275,30 +253,10 @@ fn lms_for_age(
     interpolation: Interpolation,
     before_lookup: impl FnOnce() -> Result<(), CalcError>,
 ) -> Result<(TableId, Lms, Lookup), CalcError> {
-    let table_id = match reference {
-        GrowthReference::UkWho => {
-            let table_id = uk_who::table_for_age(age, youngest_at_boundary)?;
-            if let Some(absence) = uk_who::data_absent(age, method, sex) {
-                return Err(absence.into());
-            }
-            table_id
-        }
-        GrowthReference::Who => {
-            if let Some(absence) = who::data_absent(age, method) {
-                return Err(absence.into());
-            }
-            who::table_for_age(age, youngest_at_boundary)?
-        }
-        GrowthReference::Cdc => cdc::lookup(age, method, youngest_at_boundary)?,
-        GrowthReference::TurnersSyndrome => syndromes::turner(age, method, sex)?,
-        GrowthReference::Trisomy21 => syndromes::trisomy_21(age, method)?,
-        GrowthReference::Trisomy21Aap => {
-            syndromes::trisomy_21_aap(age, method, youngest_at_boundary)?
-        }
-    };
+    let table_id = (definition.select)(age, method, sex, youngest_at_boundary)?;
     before_lookup()?;
     let table = data.table(table_id, method, sex)?;
-    let (lms, lookup) = table.lookup(age_for_lms_lookup(reference, age, table), interpolation)?;
+    let (lms, lookup) = table.lookup(age_for_lms_lookup(definition, age, table), interpolation)?;
     Ok((table_id, lms, lookup))
 }
 
@@ -311,9 +269,8 @@ pub fn centile(sds: f64) -> f64 {
 /// The upstream `_age_for_lms_lookup`: at exactly two years, UK-WHO and WHO
 /// clamp the age into the selected daily table, whose first row is one day
 /// after the second birthday.
-fn age_for_lms_lookup(reference: GrowthReference, age: f64, table: &LmsTable) -> f64 {
-    let applies = matches!(reference, GrowthReference::UkWho | GrowthReference::Who);
-    if !applies || age != 2.0 {
+fn age_for_lms_lookup(definition: &Definition, age: f64, table: &LmsTable) -> f64 {
+    if !definition.sds.clamp_at_two_years || age != 2.0 {
         return age;
     }
     age.max(table.first_age()).min(table.last_age())
@@ -450,9 +407,7 @@ mod tests {
                 90.0,
                 Sex::Male
             ),
-            Err(CalcError::TurnerAbsent(
-                crate::syndromes::TurnerAbsence::Male
-            ))
+            Err(CalcError::Absent(crate::references::turner::MALE))
         ));
     }
 }

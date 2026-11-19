@@ -25,7 +25,6 @@
 #![warn(missing_docs)]
 
 pub mod advice;
-pub mod cdc;
 pub mod chart;
 pub mod data;
 pub mod dates;
@@ -36,13 +35,11 @@ pub mod measurement;
 pub mod mid_parental_height;
 pub mod normal;
 pub mod pyfmt;
+pub mod references;
 pub mod round;
 pub mod sds;
-pub mod syndromes;
 pub mod table;
-pub mod uk_who;
 pub mod vocabulary;
-pub mod who;
 
 pub mod store;
 

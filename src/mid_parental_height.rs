@@ -18,14 +18,11 @@ use crate::vocabulary::GrowthReference;
 pub const EXPECTED_RANGE_SDS: f64 = 1.4;
 
 /// The age at which parents' heights are compared: 19 years for WHO, whose
-/// reference ends there, and 20 otherwise.
+/// reference ends there, and 20 otherwise (each reference's
+/// [`Definition`](crate::references::Definition)).
 #[must_use]
 pub fn adult_age(reference: GrowthReference) -> f64 {
-    if reference == GrowthReference::Who {
-        19.0
-    } else {
-        20.0
-    }
+    crate::references::definition(reference).adult_age
 }
 
 /// The mid-parental SDS from the parents' SDS (upstream `mid_parental_height_z`).

@@ -12,7 +12,8 @@
 use crate::dates::Gestation;
 use crate::normal;
 use crate::pyfmt::python_repr;
-use crate::vocabulary::{GrowthReference, MeasurementMethod};
+use crate::references::Correction;
+use crate::vocabulary::MeasurementMethod;
 
 /// Lay and clinician comments on chronological and corrected age.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,7 +37,7 @@ pub fn prematurity_comments(
     chronological_age: f64,
     corrected_age: f64,
     gestation: Gestation,
-    reference: GrowthReference,
+    correction: Correction,
 ) -> AgeComments {
     let (weeks, days) = (gestation.weeks, gestation.days);
     let all =
@@ -48,8 +49,7 @@ pub fn prematurity_comments(
         };
 
     if chronological_age == corrected_age {
-        let no_correction_reference =
-            matches!(reference, GrowthReference::Cdc | GrowthReference::Who);
+        let no_correction_reference = correction == Correction::TermRule;
         if weeks < 42 && no_correction_reference {
             if weeks < 37 {
                 let lay = format!(

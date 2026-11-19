@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use std::process::ExitCode;
 
 use crate::dates::{chronological_decimal_age, corrected_decimal_age};
+use crate::references;
 use crate::store::ReferenceStore;
 use crate::{
     CalcError, DataError, ENGINE_NAME, ENGINE_VERSION, Gestation, GrowthReference,
@@ -223,22 +224,11 @@ fn unit(method: MeasurementMethod) -> &'static str {
     }
 }
 
-fn reference_label(reference: GrowthReference) -> &'static str {
-    match reference {
-        GrowthReference::UkWho => "UK-WHO",
-        GrowthReference::TurnersSyndrome => "Turner syndrome",
-        GrowthReference::Trisomy21 => "Trisomy 21 (UK)",
-        GrowthReference::Trisomy21Aap => "Trisomy 21 (AAP)",
-        GrowthReference::Cdc => "CDC",
-        GrowthReference::Who => "WHO",
-    }
-}
-
 fn print_text(report: &Report) {
     let input = &report.input;
     println!(
         "{}: {} {} {}, {}, born {} at {} weeks, measured {}",
-        reference_label(report.provenance.growth_reference),
+        references::definition(report.provenance.growth_reference).label,
         input.measurement_method,
         input.observation_value,
         unit(input.measurement_method),
