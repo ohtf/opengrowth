@@ -10,7 +10,7 @@ SPDX-FileCopyrightText = "2026 Open Health Technology Foundation contributors"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
 
 [[annotations]]
-path = [".gitignore", ".editorconfig", "Cargo.lock", "conformance/expected/**"]
+path = [".gitignore", ".editorconfig", "Cargo.lock", "conformance/expected/**", "data/sources/*/SHA256SUMS"]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 Open Health Technology Foundation contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
@@ -74,3 +74,11 @@ path = ["data/trisomy_21_aap_infants.json", "data/trisomy_21_aap_children.json"]
 precedence = "override"
 SPDX-FileCopyrightText = ["Zemel and others 2015, American Academy of Pediatrics (owner not yet recorded, R2)", "Royal College of Paediatrics and Child Health"]
 SPDX-License-Identifier = "LicenseRef-Trisomy-21-AAP"
+
+# CLARITY achondroplasia tables (Hoover-Fong and others 2021), unmodified. The
+# article applies a CC0 waiver to its data. See data/sources/clarity-2021/SOURCE.md.
+[[annotations]]
+path = ["data/sources/clarity-2021/13023_2021_2141_MOESM2_ESM.csv", "data/sources/clarity-2021/13023_2021_2141_MOESM3_ESM.csv"]
+precedence = "override"
+SPDX-FileCopyrightText = "2021 Hoover-Fong JE, Schulze KJ, Alade AY, and others (CLARITY)"
+SPDX-License-Identifier = "CC0-1.0"

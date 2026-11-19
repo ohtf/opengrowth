@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Publication source files are kept byte for byte, as their checksums record.
+data/sources/** -text

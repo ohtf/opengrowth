@@ -341,7 +341,7 @@ A reference can be added from:
 - **LMS parameters** by age, used as published.
 - **A mean and SD** by age, which is the LMS model with L = 1, M = the mean, and S = SD / M. The conversion is recorded as a transformation (section 3.3).
 
-A publication using another model, such as GAMLSS with a distribution other than Box-Cox Cole and Green (which is LMS), is a larger change: that model's SDS is ported from its published description first, with its own evidence. A reference published only as centile curves would need a model fitted to it, which is a re-derivation (section 2), so it is not added unless its authors publish the parameters.
+A publication using another model, such as GAMLSS with a distribution other than Box-Cox Cole and Green (which is LMS), or CLARITY's separate SDs below and above the mean (`R47`), is a larger change: that model's SDS is ported from its published description first, with its own evidence. A reference published only as centile curves would need a model fitted to it, which is a re-derivation (section 2), so it is not added unless its authors publish the parameters.
 
 Adding one takes:
 
