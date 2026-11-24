@@ -22,12 +22,16 @@ RELEASED = "opengrowth"
 
 
 def main() -> int:
-    metadata = json.loads(
-        subprocess.run(
-            ["cargo", "metadata", "--format-version", "1", "--locked", "--offline"],
-            cwd=ROOT, capture_output=True, text=True, check=True,
-        ).stdout
+    cargo = subprocess.run(
+        ["cargo", "metadata", "--format-version", "1", "--locked", "--offline"],
+        cwd=ROOT, capture_output=True, text=True,
     )
+    if cargo.returncode != 0:
+        # Usually a crate for another platform, which a build does not download.
+        sys.stderr.write(cargo.stderr)
+        print("cargo metadata failed; if a crate is missing, run `cargo fetch --locked` and try again", file=sys.stderr)
+        return 1
+    metadata = json.loads(cargo.stdout)
     packages = {p["id"]: p for p in metadata["packages"]}
     workspace = set(metadata["workspace_members"])
     nodes = {n["id"]: n for n in metadata["resolve"]["nodes"]}
