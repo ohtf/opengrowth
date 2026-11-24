@@ -270,3 +270,18 @@ CLARITY's Table S1 (`data/sources/clarity-2021/`) gives, for each sex and month 
 **Decided, 2026-11-19 (maintainer):** the reference is `achondroplasia-clarity`, as `trisomy-21-aap` names its source; ages are chronological, with no correction for gestation, since the cohort was born at about term; and `R46` comes first, so that CLARITY is the first reference added as a self-contained definition.
 
 **Working assumption** until the authors reply: none. The CLARITY reference is not built until these are answered.
+
+---
+
+## Q16 - Should a request body that is not labelled as JSON be refused?
+
+**Resolved by:** the maintainer.
+**Blocks:** nothing; affects `R20`.
+
+The pinned server reads a body as JSON only when its `Content-Type` is absent, `application/json`, or another `application/*+json` type. A JSON body sent as `text/plain` or as a form post gets a 422 (`model_attributes_type`, "Input should be a valid dictionary or object to extract fields from"). This is FastAPI's fix for CVE-2021-32677: a browser sends those types to another site without a CORS preflight, so a server that reads JSON from them lets any web page send it requests that its CORS policy would otherwise stop. opengrowth reads every body as JSON whatever its type, and calculates these requests. Measured 2026-11-22, and for restricted origins 2026-11-24; no golden covers it, because the generator always sends `application/json`.
+
+It cannot be exploited today: the API has no credentials that a browser adds by itself, every operation only calculates, and a page cannot read the answer unless the CORS policy allows its origin. But a deployment that restricts origins (`--cors-allow-origin`) or turns CORS off (`--no-cors`) still calculates these requests from any site, though those sites cannot read the results.
+
+Options: refuse them as upstream does, with the same 422, capturing upstream's responses as conformance cases first. That cannot break a client that works with the RCPCH API, which already refuses them. Or keep accepting them and enumerate the difference.
+
+**Working assumption:** none; opengrowth keeps its current behaviour until this is decided.
