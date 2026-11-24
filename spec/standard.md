@@ -300,8 +300,9 @@ Behaviour that must be preserved exactly:
 
 Behaviour that must be reconsidered rather than copied:
 
-- The current server generates chart assets and rewrites `openapi.json` during module import. A Rust server must not mutate checked-in files at startup. Chart assets become build-time artefacts.
+- The current server generates chart assets during module import. A Rust server must not mutate checked-in files at startup. Chart assets become build-time artefacts.
 - Authorisation is a bearer-token middleware configured by environment variable, exempting only the exact path `/`, and is not represented as an OpenAPI security scheme. Reproduce the behaviour; document it in the schema.
+- `/` returns the server's OpenAPI document, which is also its health check. The document is RCPCH's: titled "RCPCH Digital Growth API", with RCPCH's production gateway as its server and the gateway's subscription key as its security scheme. RCPCH now also publishes it on GitHub Pages, so that no open gateway route has to serve it ([rcpch/digital-growth-charts-server#299](https://github.com/rcpch/digital-growth-charts-server/pull/299)). opengrowth's `/` is only the open health check, so its body differs from the pinned server's, and opengrowth's own OpenAPI document, generated from the code, is published on the documentation site (`R30`), not by the API (maintainer decision, 2026-11-24).
 - CORS is configured with both a wildcard origin and credentials, which the CORS protocol does not allow together, and runs after authorisation, so preflights fail whenever a key is set. opengrowth allows any origin without credentials and answers preflights first; a deployment can restrict origins or turn CORS off (`Q8`).
 - The `/growth/v1` prefix is not implemented in the server; it is applied by the gateway. Do not bake it into the Rust router.
 
