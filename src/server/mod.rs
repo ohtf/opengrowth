@@ -275,13 +275,15 @@ async fn authorise(State(state): State<Arc<AppState>>, request: Request, next: N
     next.run(request).await
 }
 
+/// The open health check. Unlike the pinned server's `/`, it does not return
+/// the OpenAPI document (`spec/standard.md` section 7.4).
 async fn root() -> Response {
     let mut response = json_response(
         StatusCode::OK,
         &json!({
             "name": response::API_SERVER_NAME,
             "version": crate::ENGINE_VERSION,
-            "detail": "The OpenAPI document is not served yet (R15).",
+            "detail": "The API does not serve its OpenAPI document; it will be published with the documentation (R30).",
         }),
     );
     response
