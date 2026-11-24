@@ -41,8 +41,12 @@ jobs:
         run: |
           upstream="$(s/reference-tables)"
           cd data && find . -name '*.json' -print0 | xargs -0 -I{} cmp {} "$upstream/{}"
+      # The register lists every platform's crates, so s/soup needs them all
+      # downloaded, but a Linux build downloads only Linux's.
       - name: SOUP register is current
-        run: s/soup --check
+        run: |
+          cargo fetch --locked
+          s/soup --check
 
   dco:
     name: DCO sign-off
