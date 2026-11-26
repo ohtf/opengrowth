@@ -12,11 +12,12 @@ use std::collections::BTreeMap;
 use std::process::ExitCode;
 
 use crate::dates::{chronological_decimal_age, corrected_decimal_age};
+use crate::provenance::{Provenance, Record};
 use crate::references;
 use crate::store::ReferenceStore;
 use crate::{
-    CalcError, DataError, ENGINE_NAME, ENGINE_VERSION, Gestation, GrowthReference,
-    MeasurementMethod, Sex, TableId, centile, sds_for_measurement,
+    CalcError, DataError, Gestation, GrowthReference, MeasurementMethod, Sex, centile,
+    sds_for_measurement,
 };
 use jiff::civil::Date;
 use serde::Serialize;
@@ -52,33 +53,10 @@ pub struct Args {
 
 #[derive(Debug, Serialize)]
 struct Report {
-    provenance: Provenance,
+    provenance: Record,
     input: Input,
     chronological: AgeResult,
     corrected: AgeResult,
-}
-
-#[derive(Debug, Serialize)]
-struct Provenance {
-    growth_reference: GrowthReference,
-    calculation_engine: Engine,
-    /// The tables actually read, never the tables configured.
-    reference_data: Vec<TableUsed>,
-}
-
-#[derive(Debug, Serialize)]
-struct Engine {
-    name: &'static str,
-    version: &'static str,
-    commit: &'static str,
-}
-
-#[derive(Debug, Serialize)]
-struct TableUsed {
-    table: &'static str,
-    file: &'static str,
-    sha256: &'static str,
-    source: &'static str,
 }
 
 #[derive(Debug, Serialize)]
@@ -100,6 +78,9 @@ struct AgeResult {
     error: Option<String>,
     #[serde(skip)]
     missing_table: bool,
+    /// The reference the engine calculated against, if it calculated.
+    #[serde(skip)]
+    growth_reference: Option<GrowthReference>,
 }
 
 impl AgeResult {
@@ -111,6 +92,7 @@ impl AgeResult {
             source_table: None,
             error: Some(error),
             missing_table: false,
+            growth_reference: None,
         }
     }
 }
@@ -143,6 +125,7 @@ pub fn run(context: &Context, args: &Args) -> anyhow::Result<ExitCode> {
                     source_table: Some(result.table.as_str()),
                     error: None,
                     missing_table: false,
+                    growth_reference: Some(result.growth_reference),
                 }
             }
             Err(error) => AgeResult {
@@ -161,16 +144,20 @@ pub fn run(context: &Context, args: &Args) -> anyhow::Result<ExitCode> {
             .map_err(|e| e.to_string()),
     );
 
+    // Provenance names the reference the engine reports calculating against
+    // (`spec/provenance.md` invariant 3). With no result to take it from,
+    // it is the reference whose definition the engine applied.
+    let growth_reference = match (chronological.growth_reference, corrected.growth_reference) {
+        (Some(a), Some(b)) if a != b => {
+            anyhow::bail!("the engine calculated against {a} at one age and {b} at the other")
+        }
+        (Some(reference), _) | (None, Some(reference)) => reference,
+        (None, None) => references::definition(args.reference).reference,
+    };
+    let provenance = Provenance::new(growth_reference, tables_read);
+
     let report = Report {
-        provenance: Provenance {
-            growth_reference: args.reference,
-            calculation_engine: Engine {
-                name: ENGINE_NAME,
-                version: ENGINE_VERSION,
-                commit: "unknown",
-            },
-            reference_data: tables_used(&store, tables_read),
-        },
+        provenance: Record::new(&provenance, |id| store.table_used(id), None),
         input: Input {
             birth_date: args.birth_date.to_string(),
             observation_date: args.observation_date.to_string(),
@@ -200,20 +187,6 @@ pub fn run(context: &Context, args: &Args) -> anyhow::Result<ExitCode> {
     } else {
         ExitCode::FAILURE
     })
-}
-
-fn tables_used(store: &ReferenceStore, mut read: Vec<TableId>) -> Vec<TableUsed> {
-    read.sort();
-    read.dedup();
-    read.into_iter()
-        .filter_map(|id| store.file_for(id))
-        .map(|file| TableUsed {
-            table: file.source.id.as_str(),
-            file: file.source.file,
-            sha256: file.source.sha256,
-            source: file.origin.label(),
-        })
-        .collect()
 }
 
 fn unit(method: MeasurementMethod) -> &'static str {

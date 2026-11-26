@@ -34,6 +34,7 @@ pub mod lms;
 pub mod measurement;
 pub mod mid_parental_height;
 pub mod normal;
+pub mod provenance;
 pub mod pyfmt;
 pub mod references;
 pub mod round;

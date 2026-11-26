@@ -24,6 +24,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use crate::provenance::TableUsed;
 use crate::{DataError, LmsTable, MeasurementMethod, ReferenceData, Sex, TableId};
 use sha2::{Digest, Sha256};
 
@@ -290,6 +291,19 @@ impl ReferenceStore {
     #[must_use]
     pub fn file_for(&self, id: TableId) -> Option<&LoadedFile> {
         self.loaded.iter().find(|f| f.source.id == id)
+    }
+
+    /// How provenance reports `id`: the file it was loaded from, its
+    /// checksum, and whether it was embedded or imported. `None` if it is
+    /// not loaded.
+    #[must_use]
+    pub fn table_used(&self, id: TableId) -> Option<TableUsed> {
+        self.file_for(id).map(|file| TableUsed {
+            table: file.source.id.as_str(),
+            file: file.source.file,
+            sha256: file.source.sha256,
+            source: file.origin.label(),
+        })
     }
 }
 

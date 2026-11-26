@@ -21,6 +21,7 @@ use crate::dates::{
     self, DateError, Gestation, calendar_age, chronological_decimal_age, corrected_gestational_age,
     estimated_date_delivery, long_date,
 };
+use crate::provenance::Provenance;
 use crate::pyfmt::python_repr;
 use crate::references::{self, Correction};
 use crate::round::python_round;
@@ -112,10 +113,9 @@ pub struct CalculatedValues {
 /// The complete result.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Measurement {
-    /// The reference actually used.
-    pub growth_reference: GrowthReference,
-    /// Every table read, in order, without duplicates.
-    pub tables_read: Vec<TableId>,
+    /// The reference that calculated it, the engine, and the tables read.
+    /// Present whatever was calculated (`spec/provenance.md` invariant 2).
+    pub provenance: Provenance,
     /// Birth details.
     pub birth_data: BirthData,
     /// Ages.
@@ -189,11 +189,11 @@ pub fn measure(
         )?,
     };
 
-    tables_read.sort();
-    tables_read.dedup();
     Ok(Measurement {
-        growth_reference: input.reference,
-        tables_read,
+        provenance: Provenance::new(
+            references::definition(input.reference).reference,
+            tables_read,
+        ),
         birth_data,
         measurement_dates,
         method: input.method,

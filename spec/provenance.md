@@ -67,14 +67,14 @@ This divergence is recorded in the migration notes as an intentional Category 3 
 | Field | Python | Rust |
 |---|---|---|
 | `version` | `importlib.metadata.version("rcpchgrowth")` at runtime, falling back to `"unknown"` when the package is not installed, as in an editable or source checkout | `CARGO_PKG_VERSION` at compile time |
-| `commit` | `"unknown"` in source; the publish workflow overwrites `rcpchgrowth/_build_info.py` with the release SHA immediately before building | Stamped by a build script from the release SHA; `"unknown"` in unstamped builds |
+| `commit` | `"unknown"` in source; the publish workflow overwrites `rcpchgrowth/_build_info.py` with the release SHA immediately before building | Stamped at compile time from `OPENGROWTH_COMMIT`, which must be a full 40-character commit hash or the build fails, as upstream's schema refuses anything else; `"unknown"` in unstamped builds |
 
 Two consequences worth stating explicitly:
 
 - **Rust's `version` can never be `"unknown"`.** It is a compile-time constant. A consumer that special-cases an unknown version will simply never see that case from Rust. This is an improvement rather than a regression, but it is a behavioural difference.
 - **`commit` must remain `"unknown"` in unstamped development builds.** Do not substitute a dirty working-tree hash or a build timestamp. The value's meaning is "this is a released artefact and here is exactly what it was built from"; a value that looks like a commit but identifies no reachable commit is worse than an honest `"unknown"`.
 
-Rust's build-script approach is cleaner than overwriting a checked-in source file, but it must preserve the semantics above rather than merely the mechanism.
+Rust's compile-time stamp is cleaner than overwriting a checked-in source file, but it must preserve the semantics above rather than merely the mechanism.
 
 ## 5. Server layer
 
@@ -89,4 +89,6 @@ Two constraints apply regardless of the final shape:
 
 Provenance is a typed struct with a single serialisation point, so the shape can change in one place when `Q3` closes. Do not construct provenance JSON inline at each surface.
 
-Conformance tests port the Python provenance suite case for case, adapted for the engine-name divergence in section 3, and additionally assert that provenance survives every error path the Rust engine can take, not only the observation-before-birth case the Python suite covers.
+In opengrowth, the engine's `Provenance` (`src/provenance.rs`) travels in each result it returns, `Measurement` and `Chart`, set from the reference definition the engine used; `SdsResult` carries the same reference and table for an SDS on its own. `Record` is the one serialised form. A surface writes the engine's provenance with the file behind each table, which only the store knows, and the server adds its `api_server` identity. A `Record` can list only the tables in the engine's provenance.
+
+Conformance tests (`tests/provenance.rs`) port the Python provenance suite case for case, adapted for the engine-name divergence in section 3, and additionally assert that provenance survives every error path the Rust engine can take, not only the observation-before-birth case the Python suite covers.

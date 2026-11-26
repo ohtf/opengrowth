@@ -36,6 +36,7 @@ pub mod ages;
 use crate::advice::CentileFormat;
 use crate::data::{DataError, ReferenceData, TableId};
 use crate::normal;
+use crate::provenance::Provenance;
 use crate::references::{self, Definition, LineSds, Segment};
 use crate::round::{PyFloat, python_round, python_round_int};
 use crate::sds::{CalcError, measurement_from_sds};
@@ -87,13 +88,13 @@ pub struct ChartSegment {
     pub lines: Vec<ChartLine>,
 }
 
-/// A whole chart: its segments, and every table read to calculate it.
+/// A whole chart: its segments, and its provenance.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Chart {
     /// One per segment of the reference, in upstream order.
     pub segments: Vec<ChartSegment>,
-    /// Tables read, in order, without duplicates.
-    pub tables_read: Vec<TableId>,
+    /// The reference that drew it, the engine, and every table read.
+    pub provenance: Provenance,
 }
 
 /// A chart could not be calculated.
@@ -161,11 +162,9 @@ pub fn chart(
             lines,
         });
     }
-    tables_read.sort();
-    tables_read.dedup();
     Ok(Chart {
         segments: out,
-        tables_read,
+        provenance: Provenance::new(definition.reference, tables_read),
     })
 }
 

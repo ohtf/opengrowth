@@ -31,6 +31,7 @@ use crate::fictional_child::{
 };
 use crate::measurement::{MeasureError, Measurement, MeasurementInput, measure};
 use crate::mid_parental_height::{adult_age, expected_range, mid_parental_sds};
+use crate::provenance::{Provenance, Record};
 use crate::references;
 use crate::round::{PyFloat, numpy_round, python_round};
 use crate::sds::measurement_from_sds;
@@ -51,7 +52,7 @@ use serde_json::{Value, json};
 
 use response::{
     CentileData, ChartResponse, Detail, EchoedGestation, InlineError, MeasurementObject,
-    MidParentalHeightResponse, Provenance, RouteError, TableUsed,
+    MidParentalHeightResponse, RouteError,
 };
 use validate::{BirthFields, CentileFormatRequest, FieldError, LocItem, ObservationFields};
 
@@ -286,9 +287,10 @@ async fn root() -> Response {
             "detail": "The API does not serve its OpenAPI document; it will be published with the documentation (R30).",
         }),
     );
-    response
-        .headers_mut()
-        .insert("x-git-revision", HeaderValue::from_static(response::COMMIT));
+    response.headers_mut().insert(
+        "x-git-revision",
+        HeaderValue::from_static(crate::provenance::COMMIT),
+    );
     response
 }
 
@@ -535,7 +537,6 @@ fn calculate_one(
     };
     Ok(render_measurement(
         &state.store,
-        reference,
         &measurement,
         observation,
         EchoedGestation {
@@ -545,18 +546,13 @@ fn calculate_one(
     ))
 }
 
-/// One `MeasurementObject`, with provenance naming the tables it read.
+/// One `MeasurementObject`, with the provenance the engine recorded.
 fn render_measurement(
     store: &ReferenceStore,
-    reference: GrowthReference,
     measurement: &Measurement,
     observation: &ObservationFields,
     gestation: EchoedGestation,
 ) -> Vec<u8> {
-    let provenance = Provenance::new(
-        reference.as_str(),
-        tables_used(store, &measurement.tables_read),
-    );
     let gestational_age_text = measurement
         .measurement_dates
         .corrected_gestational_age
@@ -566,23 +562,20 @@ fn render_measurement(
         measurement,
         observation,
         gestation,
-        provenance,
+        record(store, &measurement.provenance),
         &gestational_age_text,
     );
     pyjson::to_vec(&object)
 }
 
-fn tables_used(store: &ReferenceStore, tables: &[crate::TableId]) -> Vec<TableUsed> {
-    tables
-        .iter()
-        .filter_map(|&id| store.file_for(id))
-        .map(|file| TableUsed {
-            table: file.source.id.as_str(),
-            file: file.source.file,
-            sha256: file.source.sha256,
-            source: file.origin.label(),
-        })
-        .collect()
+/// The provenance the engine recorded, as the server writes it: with the
+/// file behind each table read, and the server's own identity.
+fn record(store: &ReferenceStore, provenance: &Provenance) -> Record {
+    Record::new(
+        provenance,
+        |id| store.table_used(id),
+        Some(response::API_SERVER),
+    )
 }
 
 fn raw_json(status: StatusCode, bytes: Vec<u8>) -> Response {
@@ -799,7 +792,6 @@ fn fictional_child_response(
         };
         out.extend_from_slice(&render_measurement(
             &state.store,
-            reference,
             measurement,
             &observation,
             gestation,
@@ -846,6 +838,8 @@ fn mid_parental_height_response(
         Rejection::Report(Box::new(RouteError::request(format!("Error: {error}"))))
     };
     let mut tables = Vec::new();
+    // The references the parents' SDS were calculated against.
+    let mut calculated_against = Vec::new();
 
     let mut parent_sds = |height: f64, parent_sex: Sex| match sds_for_measurement(
         &state.store,
@@ -857,6 +851,7 @@ fn mid_parental_height_response(
     ) {
         Ok(result) => {
             tables.push(result.table);
+            calculated_against.push(result.growth_reference);
             Ok(result.sds)
         }
         // At adult age L is 1, so upstream's SDS for a height of zero or
@@ -911,7 +906,7 @@ fn mid_parental_height_response(
         };
         match chart(&state.store, reference, method, sex, spec) {
             Ok(chart) => {
-                tables.extend_from_slice(&chart.tables_read);
+                tables.extend_from_slice(&chart.provenance.tables_read);
                 Ok(CentileData::new(&chart, method, sex))
             }
             Err(ChartError::Data(error)) => Err(unavailable(&error)),
@@ -946,10 +941,12 @@ fn mid_parental_height_response(
     let lower_height = height_at(lower)?;
     let height = height_at(sds)?;
 
-    tables.sort();
-    tables.dedup();
+    // Both parents' SDS are within 8 SD by now, so both were calculated.
+    let Some(&growth_reference) = calculated_against.first() else {
+        return Err(raised(&"no parental SDS was calculated"));
+    };
     let response = MidParentalHeightResponse {
-        provenance: Provenance::new(reference.as_str(), tables_used(&state.store, &tables)),
+        provenance: record(&state.store, &Provenance::new(growth_reference, tables)),
         mid_parental_height: height,
         mid_parental_height_sds: python_round(sds, 3),
         mid_parental_height_centile: centile,
@@ -997,10 +994,7 @@ async fn chart_coordinates(
         .expect("validated literal");
     let render = |spec: CentileSpec<'_>| -> Result<Vec<u8>, ChartError> {
         let chart = chart(&state.store, reference, method, sex, spec)?;
-        let provenance = Provenance::new(
-            reference.as_str(),
-            tables_used(&state.store, &chart.tables_read),
-        );
+        let provenance = record(&state.store, &chart.provenance);
         Ok(pyjson::to_vec(&ChartResponse::new(
             &chart, method, sex, provenance,
         )))
@@ -1089,4 +1083,48 @@ pub fn uk_who_ready(store: &ReferenceStore) -> bool {
             .table(id, MeasurementMethod::Weight, Sex::Male)
             .is_ok()
     })
+}
+
+#[cfg(all(test, feature = "embedded-data"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_measurement_is_written_with_the_provenance_the_engine_recorded() {
+        let store = ReferenceStore::embedded().expect("embedded tables");
+        let input = MeasurementInput {
+            reference: GrowthReference::UkWho,
+            birth_date: jiff::civil::date(2020, 4, 12),
+            observation_date: jiff::civil::date(2028, 6, 12),
+            gestation: Gestation::new(40, 0).expect("term"),
+            sex: Sex::Female,
+            method: MeasurementMethod::Height,
+            observation_value: 115.0,
+        };
+        let mut measurement = measure(&store, &input).expect("a measurement");
+        // A server that named the reference it routed to, rather than the
+        // one the engine used, would still write uk-who here.
+        measurement.provenance.growth_reference = GrowthReference::Who;
+        let observation = ObservationFields {
+            observation_date: input.observation_date,
+            observation_value: input.observation_value,
+            bone_age: None,
+            bone_age_type: None,
+            bone_age_sds: None,
+            bone_age_centile: None,
+            bone_age_text: None,
+            events_text: None,
+        };
+        let gestation = EchoedGestation {
+            weeks: Some(40),
+            days: Some(0),
+        };
+        let body = render_measurement(&store, &measurement, &observation, gestation);
+        let text = String::from_utf8(body).expect("UTF-8");
+        assert!(
+            text.starts_with(r#"{"provenance":{"growth_reference":"who","#),
+            "{}",
+            &text[..120]
+        );
+    }
 }

@@ -12,68 +12,24 @@
 
 use crate::advice::AgeComments;
 use crate::measurement::Measurement;
+use crate::provenance::{COMMIT, Identity, Record};
 use crate::round::python_round;
-use crate::{ENGINE_NAME, ENGINE_VERSION, MeasurementMethod, Sex};
+use crate::{ENGINE_VERSION, MeasurementMethod, Sex};
 use serde::Serialize;
 use serde_json::Value;
 
 use crate::server::validate::{FieldError, LocItem, ObservationFields};
 
-/// The commit stamped into release builds; `"unknown"` otherwise (`spec/provenance.md` section 4).
-pub const COMMIT: &str = match option_env!("OPENGROWTH_COMMIT") {
-    Some(commit) => commit,
-    None => "unknown",
-};
-
-/// The server's own identity in provenance.
+/// The server's own name in provenance.
 pub const API_SERVER_NAME: &str = "opengrowth-server";
 
-/// One table read for a calculation.
-#[derive(Debug, Clone, Serialize)]
-pub struct TableUsed {
-    /// Table name.
-    pub table: &'static str,
-    /// File it was loaded from, relative to the data directory.
-    pub file: &'static str,
-    /// SHA-256 of the verified file.
-    pub sha256: &'static str,
-    /// `embedded` or `imported`.
-    pub source: &'static str,
-}
-
-#[derive(Debug, Serialize)]
-struct Identity {
-    name: &'static str,
-    version: &'static str,
-    commit: &'static str,
-}
-
-/// `Provenance`, plus the additive `reference_data` list.
-#[derive(Debug, Serialize)]
-pub struct Provenance {
-    growth_reference: &'static str,
-    calculation_engine: Identity,
-    api_server: Identity,
-    reference_data: Vec<TableUsed>,
-}
-
-impl Provenance {
-    /// Provenance for a calculation against `growth_reference` that read `tables`.
-    #[must_use]
-    pub fn new(growth_reference: &'static str, tables: Vec<TableUsed>) -> Self {
-        let identity = |name| Identity {
-            name,
-            version: ENGINE_VERSION,
-            commit: COMMIT,
-        };
-        Self {
-            growth_reference,
-            calculation_engine: identity(ENGINE_NAME),
-            api_server: identity(API_SERVER_NAME),
-            reference_data: tables,
-        }
-    }
-}
+/// The server's identity in provenance, which it adds to the engine's
+/// (`spec/provenance.md` section 5).
+pub const API_SERVER: Identity = Identity {
+    name: API_SERVER_NAME,
+    version: ENGINE_VERSION,
+    commit: COMMIT,
+};
 
 #[derive(Debug, Serialize)]
 struct BirthData {
@@ -188,7 +144,7 @@ struct EventsData<'a> {
 /// `MeasurementObject`.
 #[derive(Debug, Serialize)]
 pub struct MeasurementObject<'a> {
-    provenance: Provenance,
+    provenance: Record,
     birth_data: BirthData,
     measurement_dates: MeasurementDates<'a>,
     child_observation_value: ChildObservationValue<'a>,
@@ -228,7 +184,7 @@ impl<'a> MeasurementObject<'a> {
         measurement: &'a Measurement,
         observation: &'a ObservationFields,
         gestation: EchoedGestation,
-        provenance: Provenance,
+        provenance: Record,
         corrected_gestational_age_text: &'a str,
     ) -> Self {
         let dates = &measurement.measurement_dates;
@@ -553,7 +509,7 @@ impl CentileData {
 /// `Centile_Data`, with `provenance` first as on upstream's newer servers.
 #[derive(Debug, Serialize)]
 pub struct ChartResponse {
-    provenance: Provenance,
+    provenance: Record,
     centile_data: CentileData,
 }
 
@@ -564,7 +520,7 @@ impl ChartResponse {
         chart: &crate::chart::Chart,
         method: MeasurementMethod,
         sex: Sex,
-        provenance: Provenance,
+        provenance: Record,
     ) -> Self {
         Self {
             provenance,
@@ -578,7 +534,7 @@ impl ChartResponse {
 #[derive(Debug, Serialize)]
 pub struct MidParentalHeightResponse {
     /// What was calculated, from which tables.
-    pub provenance: Provenance,
+    pub provenance: Record,
     /// Height at the mid-parental SDS, in cm, to one decimal place.
     pub mid_parental_height: f64,
     /// The mid-parental SDS, to three decimal places.

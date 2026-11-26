@@ -52,12 +52,14 @@ pub enum CalcError {
     InvalidObservation(f64),
 }
 
-/// An SDS together with the source table it was computed from.
+/// An SDS, with the reference and the table it was calculated from.
 ///
-/// Carrying the table makes provenance report what was computed rather than
+/// Carrying both makes provenance report what was computed rather than
 /// what was requested (`spec/provenance.md` invariant 3).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SdsResult {
+    /// The reference whose definition chose the table.
+    pub growth_reference: GrowthReference,
     /// The SDS (z-score). Unrounded.
     pub sds: f64,
     /// The source table the LMS values came from.
@@ -105,7 +107,12 @@ pub fn sds_for_measurement(
         if observation > p95 {
             let centile = normal::cdf((observation - p95) / sigma) * 10.0 + 90.0;
             let sds = normal::ppf(centile / 100.0);
-            return Ok(SdsResult { sds, table, lms });
+            return Ok(SdsResult {
+                growth_reference: definition.reference,
+                sds,
+                table,
+                lms,
+            });
         }
     }
     let bmi_or_weight = matches!(method, MeasurementMethod::Bmi | MeasurementMethod::Weight);
@@ -115,7 +122,12 @@ pub fn sds_for_measurement(
     } else {
         sds_from_lms(observation, &lms)
     };
-    Ok(SdsResult { sds, table, lms })
+    Ok(SdsResult {
+        growth_reference: definition.reference,
+        sds,
+        table,
+        lms,
+    })
 }
 
 /// The BMI at the 95th centile, where the CDC extended method takes over.
