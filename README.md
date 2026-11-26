@@ -67,7 +67,7 @@ A hands-on tour of what works today, for maintainers and reviewers. Allow about 
 
 ### 1. Install
 
-You need a stable Rust toolchain, [`uv`](https://docs.astral.sh/uv/) (for the Python reference engine and its tables), and optionally `jq`.
+You need [`rustup`](https://rustup.rs/), which installs the Rust version pinned in `rust-toolchain.toml` the first time you build, [`uv`](https://docs.astral.sh/uv/) (for the Python reference engine and its tables), and optionally `jq`.
 
 ```sh
 git clone git@github.com:ohtf/opengrowth.git && cd opengrowth
