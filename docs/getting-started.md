@@ -11,6 +11,8 @@ cargo install --locked --git https://github.com/ohtf/opengrowth
 opengrowth            # lists the commands
 ```
 
+The [command-line reference](cli/index.md) has every command's help.
+
 The reference tables are compiled in, and each is checked against its recorded checksum when it is first read:
 
 ```sh

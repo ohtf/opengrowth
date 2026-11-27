@@ -97,7 +97,15 @@ nav:
       - Moving from the RCPCH API: integrating/migrating.md
       - Questions from integrators: integrating/questions.md
       - Support: integrating/support.md
-  - API reference: api/reference.md
+  - Reference:
+      - API: api/reference.md
+      - Command line:
+          - cli/index.md
+          - calculate: cli/calculate.md
+          - data: cli/data.md
+          - serve: cli/serve.md
+          - openapi: cli/openapi.md
+          - completions: cli/completions.md
   - Compared with RCPCH:
       - Differences: differences.md
       - Benchmarks: benchmarks.md

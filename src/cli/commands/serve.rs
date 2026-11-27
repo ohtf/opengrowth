@@ -32,7 +32,7 @@ pub struct Args {
     pub workers: Option<usize>,
 
     /// Origins browsers may call the API from: `*` for any, or exact origins
-    /// such as `https://app.example.org`. Repeat the flag, or separate them
+    /// such as `https://app.example.org`. Repeat the option, or separate them
     /// with commas.
     #[arg(
         long = "cors-allow-origin",

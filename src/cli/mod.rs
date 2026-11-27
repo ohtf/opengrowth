@@ -12,6 +12,7 @@
 mod commands;
 mod output;
 mod paths;
+pub mod reference;
 
 use std::ffi::OsString;
 use std::path::PathBuf;

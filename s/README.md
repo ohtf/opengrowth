@@ -16,6 +16,7 @@
 | `s/bench` | Benchmark rounds 0 to 4: the two engines, then the two HTTP servers under `oha`, each server on the same whole cores. About 15 minutes; `--quick` for a smoke run. Writes to `.private/bench/`. |
 | `s/bench-page` | Renders `docs/benchmarks.md` from `docs/benchmarks.json`. Given a `results.json` from `s/bench`, publishes that run first; `--check` fails if the page is out of date, as CI does. |
 | `s/openapi` | Regenerates `docs/api/openapi.json`, the OpenAPI document the documentation publishes, from `opengrowth openapi`. `tests/openapi.rs` fails while it is out of date. |
+| `s/cli-docs` | Regenerates `docs/cli/`, the command-line reference, from the program's own help. `tests/cli_docs.rs` fails while it is out of date. |
 | `s/docs` | Serves the documentation site locally with hot reload, on the first free port from 8000. Needs `.venv` set up from `requirements.txt` once. |
 | `s/build-docs` | Builds the documentation site into `site/`. `--strict` fails on any warning, as CI does. |
 | `s/check-wording` | Fails on a word `qms/intended-purpose.md` reserves, in the documentation site or the README, unless it says what opengrowth does not do. |

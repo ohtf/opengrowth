@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Regenerate docs/cli/, the command-line reference, from the program's own
+# help (R56). tests/cli_docs.rs fails while it is out of date.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+exec cargo run --quiet --example cli_docs "$@"

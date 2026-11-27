@@ -47,7 +47,7 @@ pub struct Args {
 pub enum CompletionCommand {
     /// Install completions for the current user, for both `opengrowth` and `og`.
     Install {
-        /// Shell to install for. Detected from $SHELL when omitted.
+        /// Shell to install for. Read from $SHELL when omitted.
         #[arg(long)]
         shell: Option<Shell>,
 

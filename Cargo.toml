@@ -37,6 +37,10 @@ required-features = ["cli"]
 name = "round0"
 required-features = ["embedded-data"]
 
+[[example]]
+name = "cli_docs"
+required-features = ["cli"]
+
 [dependencies]
 # The engine: always present, and all that `default-features = false` brings in.
 jiff = { version = "1.0.0", default-features = false, features = ["std"] }

@@ -18,6 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 STATEMENT = ROOT / "qms" / "intended-purpose.md"
 FILES = ("README.md", "docs/**/*.md", "docs/api/openapi.json")
+# Pages whose code blocks are prose a user reads: the command-line reference
+# holds each command's help in a code block (R56).
+CODE_IS_PROSE = ("docs/cli/*.md",)
 
 # The forms of each reserved word that carry its meaning. Look-alikes with
 # another meaning are left out: "reference" for refer, "identifier" for
@@ -58,8 +61,9 @@ def reserved_words():
     return [w.strip() for w in listed.split(",")]
 
 
-def prose_lines(path):
-    """(line number, text) for each line of prose, with code removed."""
+def prose_lines(path, code_is_prose=False):
+    """(line number, text) for each line of prose, with code removed unless
+    `code_is_prose`."""
     fence = None
     for number, line in enumerate(path.read_text().splitlines(), 1):
         stripped = line.strip()
@@ -70,7 +74,7 @@ def prose_lines(path):
             elif stripped.startswith(fence):
                 fence = None
             continue
-        if fence is not None:
+        if fence is not None and not code_is_prose:
             continue
         text = re.sub(r"`[^`]*`", " ", line)
         text = re.sub(r"\]\([^)]*\)", "]", text)
@@ -113,7 +117,8 @@ def main():
     findings = []
     for path in paths:
         relative = str(path.relative_to(ROOT))
-        lines = json_prose(path) if path.suffix == ".json" else prose_lines(path)
+        code_is_prose = any(fnmatch.fnmatch(relative, pattern) for pattern in CODE_IS_PROSE)
+        lines = json_prose(path) if path.suffix == ".json" else prose_lines(path, code_is_prose)
         for number, text in lines:
             for sentence in sentences(text):
                 for match in pattern.finditer(sentence):
