@@ -21,6 +21,9 @@ pub struct Case {
     pub path: String,
     pub request_headers: BTreeMap<String, String>,
     pub request_body: String,
+    /// The body, in hex, where it is not UTF-8; `request_body` is then empty.
+    #[serde(default)]
+    pub request_body_hex: Option<String>,
     pub status: u16,
     pub headers: BTreeMap<String, String>,
     pub body_sha256: String,
@@ -36,19 +39,36 @@ pub struct Outcome {
     pub body: String,
 }
 
-/// Sends a case's request to `app`.
+/// Sends a case's request to `app`, as JSON.
 pub async fn replay(app: axum::Router, case: &Case) -> Outcome {
+    send(app, case, Some("application/json")).await
+}
+
+/// Sends a case's request with exactly the headers it records, and no
+/// `Content-Type` unless it records one.
+pub async fn replay_exact(app: axum::Router, case: &Case) -> Outcome {
+    send(app, case, None).await
+}
+
+async fn send(app: axum::Router, case: &Case, content_type: Option<&str>) -> Outcome {
     let mut request = Request::builder()
         .method(case.method.as_str())
         .uri(case.path.as_str())
-        .header("host", "testserver")
-        .header("content-type", "application/json");
+        .header("host", "testserver");
+    if let Some(content_type) = content_type {
+        request = request.header("content-type", content_type);
+    }
     for (name, value) in &case.request_headers {
         request = request.header(name.as_str(), value.as_str());
     }
-    let request = request
-        .body(Body::from(case.request_body.clone()))
-        .expect("request");
+    let body = match &case.request_body_hex {
+        Some(hex) => (0..hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("a hex body"))
+            .collect(),
+        None => case.request_body.clone().into_bytes(),
+    };
+    let request = request.body(Body::from(body)).expect("request");
     let response = app.oneshot(request).await.expect("infallible");
     let status = response.status().as_u16();
     let headers = ["content-type", "allow", "location", "x-git-revision"]

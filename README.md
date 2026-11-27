@@ -156,7 +156,7 @@ curl -s -X POST http://127.0.0.1:8000/uk-who/calculation -H 'content-type: appli
 Things to try:
 
 - Point an existing Digital Growth Charts client or the React chart component at it. It should not notice the difference, apart from `provenance`, which names opengrowth and lists the checksum of each table it read.
-- Send something wrong: a missing field, `"sex": "Male"`, `"gestation_weeks": 50`, a measurement of 300 cm, malformed JSON. The 422 bodies should be exactly the upstream ones.
+- Send something wrong: a missing field, `"sex": "Male"`, `"gestation_weeks": 50`, a measurement of 300 cm, malformed JSON, a body labelled `text/plain`. The 422 bodies should be exactly the upstream ones.
 - `POST /uk-who/bulk-calculation` with up to 200 observations; a bad observation becomes an inline error and the rest still calculate.
 - `GET /uk-who/calculation` (405) and `POST /uk-who/calculation/` (307), answered as upstream answers them.
 - Run a build without tables (`cargo run --no-default-features --features cli -- serve`): calculations return 503 naming the missing table, never an answer from another reference.

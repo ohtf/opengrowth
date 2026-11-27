@@ -284,4 +284,4 @@ It cannot be exploited today: the API has no credentials that a browser adds by 
 
 Options: refuse them as upstream does, with the same 422, capturing upstream's responses as conformance cases first. That cannot break a client that works with the RCPCH API, which already refuses them. Or keep accepting them and enumerate the difference.
 
-**Working assumption:** none; opengrowth keeps its current behaviour until this is decided.
+**Decided, 2026-11-27 (maintainer):** refuse them, as upstream does. opengrowth now reads a body as FastAPI does: as JSON only with no `Content-Type`, an empty one, or a JSON type, decoded as `json.loads` decodes bytes, and any other body is refused with upstream's 422. `conformance/expected/http-request-bodies.json` records upstream's answers to 99 requests, and opengrowth matches all but six, where upstream's 422 for a body that is not UTF-8 escapes as a 500 (`standard.md` section 6.3). Capturing them also showed that opengrowth refused JSON with a byte-order mark, or in UTF-16 or UTF-32, which upstream reads, and answered bytes it cannot decode with a 422 where upstream gives a 400. Both now match too.

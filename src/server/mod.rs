@@ -43,7 +43,7 @@ use crate::{
 use axum::Router;
 use axum::body::{Body, Bytes};
 use axum::extract::{Request, State};
-use axum::http::{HeaderValue, StatusCode, header};
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -174,7 +174,7 @@ impl Operation {
     async fn handle(
         self,
         state: Arc<AppState>,
-        body: Bytes,
+        body: RequestBody,
         reference: GrowthReference,
     ) -> Response {
         match self {
@@ -210,9 +210,11 @@ pub fn router(state: Arc<AppState>) -> Router {
         for operation in Operation::ALL {
             app = app.route(
                 &format!("/{}/{}", definition.api.prefix, operation.path()),
-                post(move |State(state): State<Arc<AppState>>, body: Bytes| {
-                    operation.handle(state, body, reference)
-                })
+                post(
+                    move |State(state): State<Arc<AppState>>, headers: HeaderMap, body: Bytes| {
+                        operation.handle(state, RequestBody::new(&headers, body), reference)
+                    },
+                )
                 .fallback(method_not_allowed),
             );
         }
@@ -349,9 +351,65 @@ fn data_unavailable(error: &DataError) -> Response {
     )
 }
 
-/// FastAPI's body handling: an empty body is a missing body, and JSON is
-/// decoded with CPython's `json` module semantics.
-fn parse_body(bytes: &Bytes) -> Result<Value, Box<Response>> {
+/// A request's body, and the `Content-Type` that says how to read it.
+#[derive(Debug)]
+struct RequestBody {
+    content_type: Option<HeaderValue>,
+    bytes: Bytes,
+}
+
+impl RequestBody {
+    fn new(headers: &HeaderMap, bytes: Bytes) -> Self {
+        Self {
+            content_type: headers.get(header::CONTENT_TYPE).cloned(),
+            bytes,
+        }
+    }
+}
+
+/// Whether FastAPI reads a body with this `Content-Type` as JSON: when it
+/// is absent or empty, or when Python's `email.message` gives it the main
+/// type `application` and a subtype `json` or ending in `+json`. A browser
+/// sends `text/plain`, form posts, and file uploads to another site without
+/// a CORS preflight, so not reading those as JSON keeps every cross-site
+/// call behind the CORS policy: FastAPI's fix for CVE-2021-32677
+/// (`spec/queries.md` Q16).
+fn labelled_json(content_type: Option<&HeaderValue>) -> bool {
+    let Some(value) = content_type else {
+        return true;
+    };
+    // Starlette decodes header values as Latin-1.
+    let value: String = value.as_bytes().iter().copied().map(char::from).collect();
+    if value.is_empty() {
+        return true;
+    }
+    // `get_content_type`: the part before any `;`, stripped as `str.strip`
+    // strips, and lower-cased. Without exactly one `/` it is `text/plain`.
+    let media_type = value
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim_matches(python_space)
+        .to_lowercase();
+    match media_type.split_once('/') {
+        Some((main, sub)) if !sub.contains('/') => {
+            main == "application" && (sub == "json" || sub.ends_with("+json"))
+        }
+        _ => false,
+    }
+}
+
+/// Whether Python's `str.isspace` holds for a Latin-1 character.
+fn python_space(c: char) -> bool {
+    matches!(c, '\t'..='\r' | '\u{1c}'..='\u{1f}' | ' ' | '\u{85}' | '\u{a0}')
+}
+
+/// FastAPI's body handling (`fastapi.routing.get_request_handler`): an
+/// empty body is a missing body; a body not labelled as JSON
+/// ([`labelled_json`]) goes to the request model undecoded, which refuses
+/// it; and a JSON body is decoded and parsed as CPython's `json.loads` does.
+fn parse_body(body: &RequestBody) -> Result<Value, Box<Response>> {
+    let bytes = &body.bytes;
     if bytes.is_empty() {
         return Err(Box::new(validation_failed(vec![FieldError {
             kind: "missing",
@@ -361,8 +419,25 @@ fn parse_body(bytes: &Bytes) -> Result<Value, Box<Response>> {
             ctx: None,
         }])));
     }
-    serde_json::from_slice(bytes).map_err(|serde_error| {
-        let text = String::from_utf8_lossy(bytes);
+    if !labelled_json(body.content_type.as_ref()) {
+        // Upstream shows the body as UTF-8 text, and fails with a 500 where
+        // it is not UTF-8; opengrowth shows it with replacement characters
+        // (`spec/standard.md` section 6.3).
+        return Err(Box::new(validation_failed(vec![FieldError {
+            kind: "model_attributes_type",
+            loc: vec!["body".into()],
+            msg: "Input should be a valid dictionary or object to extract fields from".to_owned(),
+            input: Value::String(String::from_utf8_lossy(bytes).into_owned()),
+            ctx: None,
+        }])));
+    }
+    let Some(text) = pyjson::decode_json_bytes(bytes) else {
+        return Err(Box::new(detail(
+            StatusCode::BAD_REQUEST,
+            "There was an error parsing the body",
+        )));
+    };
+    serde_json::from_str(&text).map_err(|serde_error| {
         let (message, position) = match pyjson::python_decode_error(&text) {
             Some(error) => (error.message, error.position),
             // CPython would accept this (NaN, Infinity, lone surrogates); opengrowth does not.
@@ -588,7 +663,11 @@ fn raw_json(status: StatusCode, bytes: Vec<u8>) -> Response {
     response
 }
 
-async fn calculation(state: Arc<AppState>, body: Bytes, reference: GrowthReference) -> Response {
+async fn calculation(
+    state: Arc<AppState>,
+    body: RequestBody,
+    reference: GrowthReference,
+) -> Response {
     let value = match parse_body(&body) {
         Ok(v) => v,
         Err(response) => return *response,
@@ -606,7 +685,7 @@ async fn calculation(state: Arc<AppState>, body: Bytes, reference: GrowthReferen
 
 async fn bulk_calculation(
     state: Arc<AppState>,
-    body: Bytes,
+    body: RequestBody,
     reference: GrowthReference,
 ) -> Response {
     let value = match parse_body(&body) {
@@ -651,7 +730,7 @@ async fn bulk_calculation(
 
 async fn fictional_child_data(
     state: Arc<AppState>,
-    body: Bytes,
+    body: RequestBody,
     reference: GrowthReference,
 ) -> Response {
     let value = match parse_body(&body) {
@@ -803,9 +882,10 @@ fn fictional_child_response(
 
 async fn utilities_mid_parental_height(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    let value = match parse_body(&body) {
+    let value = match parse_body(&RequestBody::new(&headers, body)) {
         Ok(v) => v,
         Err(response) => return *response,
     };
@@ -970,7 +1050,7 @@ fn python_list(values: &[f64]) -> String {
 
 async fn chart_coordinates(
     state: Arc<AppState>,
-    body: Bytes,
+    body: RequestBody,
     reference: GrowthReference,
 ) -> Response {
     let value = match parse_body(&body) {
@@ -1085,10 +1165,41 @@ pub fn uk_who_ready(store: &ReferenceStore) -> bool {
     })
 }
 
-#[cfg(all(test, feature = "embedded-data"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
+    #[test]
+    fn a_content_type_is_json_as_python_parses_it() {
+        let is_json = |value: &[u8]| {
+            labelled_json(Some(
+                &HeaderValue::from_bytes(value).expect("a header value"),
+            ))
+        };
+        assert!(labelled_json(None));
+        for json in [
+            &b""[..],
+            b"application/json",
+            b"APPLICATION/JSON; charset=utf-8",
+            b"application/json \t; q=1",
+            b"application/json\xa0",
+            b"application/problem+json",
+        ] {
+            assert!(is_json(json), "{}", String::from_utf8_lossy(json));
+        }
+        for other in [
+            &b" "[..],
+            b"text/plain",
+            b"application/json/",
+            b"application /json",
+            b"application/jsonp",
+            b"\xe1pplication/json",
+        ] {
+            assert!(!is_json(other), "{}", String::from_utf8_lossy(other));
+        }
+    }
+
+    #[cfg(feature = "embedded-data")]
     #[test]
     fn a_measurement_is_written_with_the_provenance_the_engine_recorded() {
         let store = ReferenceStore::embedded().expect("embedded tables");

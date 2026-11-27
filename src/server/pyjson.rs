@@ -11,10 +11,13 @@
 //! `\`, `\b`, `\f`, `\n`, `\r`, `\t`, and other control characters as
 //! lowercase `\u00XX`, and leave everything else, including non-ASCII, as is.
 //!
-//! Reading: `serde_json` decides validity. Only when it rejects a body is
-//! [`python_decode_error`] used to find the message and character position
-//! CPython's `json` module would report, which the upstream API returns.
+//! Reading: a body's bytes are decoded as `json.loads` decodes them
+//! ([`decode_json_bytes`]), then `serde_json` decides validity. Only when it
+//! rejects a body is [`python_decode_error`] used to find the message and
+//! character position CPython's `json` module would report, which the
+//! upstream API returns.
 
+use std::borrow::Cow;
 use std::io;
 
 use crate::pyfmt::python_repr;
@@ -57,6 +60,101 @@ pub struct DecodeError {
     pub message: String,
     /// Zero-based character index.
     pub position: usize,
+}
+
+/// The text CPython's `json.loads` reads from `bytes`: UTF-8, UTF-16, or
+/// UTF-32, chosen by a byte-order mark, which is dropped, or else by where
+/// the zero bytes are (`json.detect_encoding`). `None` where CPython cannot
+/// decode them, and also for lone surrogates, which CPython passes through
+/// but a Rust string cannot hold.
+#[must_use]
+pub fn decode_json_bytes(bytes: &[u8]) -> Option<Cow<'_, str>> {
+    let (encoding, bom) = detect_encoding(bytes);
+    let bytes = &bytes[bom..];
+    match encoding {
+        Encoding::Utf8 => std::str::from_utf8(bytes).ok().map(Cow::Borrowed),
+        Encoding::Utf16 { little_endian } => {
+            let (pairs, truncated) = bytes.as_chunks::<2>();
+            if !truncated.is_empty() {
+                return None;
+            }
+            let units = pairs.iter().map(|&pair| {
+                if little_endian {
+                    u16::from_le_bytes(pair)
+                } else {
+                    u16::from_be_bytes(pair)
+                }
+            });
+            char::decode_utf16(units)
+                .collect::<Result<String, _>>()
+                .ok()
+                .map(Cow::Owned)
+        }
+        Encoding::Utf32 { little_endian } => {
+            let (quads, truncated) = bytes.as_chunks::<4>();
+            if !truncated.is_empty() {
+                return None;
+            }
+            quads
+                .iter()
+                .map(|&quad| {
+                    char::from_u32(if little_endian {
+                        u32::from_le_bytes(quad)
+                    } else {
+                        u32::from_be_bytes(quad)
+                    })
+                })
+                .collect::<Option<String>>()
+                .map(Cow::Owned)
+        }
+    }
+}
+
+/// An encoding `json.detect_encoding` can choose.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Encoding {
+    Utf8,
+    Utf16 { little_endian: bool },
+    Utf32 { little_endian: bool },
+}
+
+/// `json.detect_encoding`, with the length of the byte-order mark to skip.
+fn detect_encoding(bytes: &[u8]) -> (Encoding, usize) {
+    const UTF16_LE: Encoding = Encoding::Utf16 {
+        little_endian: true,
+    };
+    const UTF16_BE: Encoding = Encoding::Utf16 {
+        little_endian: false,
+    };
+    const UTF32_LE: Encoding = Encoding::Utf32 {
+        little_endian: true,
+    };
+    const UTF32_BE: Encoding = Encoding::Utf32 {
+        little_endian: false,
+    };
+    if bytes.starts_with(&[0x00, 0x00, 0xFE, 0xFF]) {
+        return (UTF32_BE, 4);
+    }
+    if bytes.starts_with(&[0xFF, 0xFE, 0x00, 0x00]) {
+        return (UTF32_LE, 4);
+    }
+    if bytes.starts_with(&[0xFE, 0xFF]) {
+        return (UTF16_BE, 2);
+    }
+    if bytes.starts_with(&[0xFF, 0xFE]) {
+        return (UTF16_LE, 2);
+    }
+    if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        return (Encoding::Utf8, 3);
+    }
+    let encoding = match bytes {
+        [0, 0, _, _, ..] => UTF32_BE,
+        [0, _, _, _, ..] | [0, _] => UTF16_BE,
+        [_, 0, 0, 0, ..] => UTF32_LE,
+        [_, 0, _, _, ..] | [_, 0] => UTF16_LE,
+        _ => Encoding::Utf8,
+    };
+    (encoding, 0)
 }
 
 /// The error CPython 3.13's `json.loads` reports for `text`, or `None` if
@@ -254,6 +352,50 @@ impl Decoder<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bodies_are_decoded_as_json_loads_decodes_bytes() {
+        let text = "{\"a\": \"caf\u{e9}\"}";
+        let utf16_le: Vec<u8> = text.encode_utf16().flat_map(u16::to_le_bytes).collect();
+        let utf16_be: Vec<u8> = text.encode_utf16().flat_map(u16::to_be_bytes).collect();
+        let utf32_le: Vec<u8> = text
+            .chars()
+            .flat_map(|c| u32::from(c).to_le_bytes())
+            .collect();
+        let marked = |bom: &[u8], body: &[u8]| [bom, body].concat();
+        for bytes in [
+            text.as_bytes().to_vec(),
+            marked(&[0xEF, 0xBB, 0xBF], text.as_bytes()),
+            utf16_le.clone(),
+            utf16_be.clone(),
+            marked(&[0xFF, 0xFE], &utf16_le),
+            marked(&[0xFE, 0xFF], &utf16_be),
+            utf32_le.clone(),
+            marked(&[0xFF, 0xFE, 0, 0], &utf32_le),
+        ] {
+            assert_eq!(
+                decode_json_bytes(&bytes).as_deref(),
+                Some(text),
+                "{bytes:02x?}"
+            );
+        }
+        // Two bytes, one of them zero, are one UTF-16 character.
+        assert_eq!(decode_json_bytes(b"1\0").as_deref(), Some("1"));
+        assert_eq!(decode_json_bytes(b"\x001").as_deref(), Some("1"));
+        // Only the first byte-order mark is dropped.
+        assert_eq!(
+            decode_json_bytes("\u{feff}\u{feff}1".as_bytes()).as_deref(),
+            Some("\u{feff}1")
+        );
+        // What CPython cannot decode: a truncated code unit, a code point
+        // beyond Unicode, and bytes that are not UTF-8.
+        assert_eq!(decode_json_bytes(&utf16_le[..utf16_le.len() - 1]), None);
+        assert_eq!(
+            decode_json_bytes(&marked(&[0xFF, 0xFE, 0, 0], &0x0011_0000_u32.to_le_bytes())),
+            None
+        );
+        assert_eq!(decode_json_bytes(b"{\"a\": \"caf\xe9\"}"), None);
+    }
 
     #[test]
     fn floats_use_python_spelling() {

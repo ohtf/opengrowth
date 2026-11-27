@@ -61,6 +61,7 @@ async fn random_noise_stays_within_its_range() {
         request_body: format!(
             r#"{{"measurement_method": "weight", "sex": "female", "noise": {noise}, "noise_range": 0.05}}"#
         ),
+        request_body_hex: None,
         status: 200,
         headers: std::collections::BTreeMap::new(),
         body_sha256: String::new(),
