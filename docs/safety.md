@@ -21,6 +21,10 @@ opengrowth is pre-alpha:
 - Every reference table is verified against its recorded checksum before use. A table that does not match is refused, and opengrowth never substitutes another reference.
 - Every result names the reference it was calculated against, so that a chart can confirm it is drawn from the same one.
 
+## If you deploy opengrowth
+
+Once opengrowth can be used clinically, an organisation that deploys it will be responsible for its own deployment: its configuration and security, independent technical and clinical assurance, and clinical safety under DCB0160, with a clinical safety officer. Its safety case is its own; opengrowth's covers only opengrowth.
+
 ## Reporting a problem
 
 If anything could affect a calculated value, open an [issue](https://github.com/ohtf/opengrowth/issues) and label it `hazard`. [SAFETY.md](https://github.com/ohtf/opengrowth/blob/main/SAFETY.md) describes how hazards are handled.

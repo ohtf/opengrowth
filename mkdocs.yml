@@ -77,3 +77,7 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - Safety: safety.md
+  - About:
+      - Acknowledgements: about/acknowledgements.md
+      - Licences: about/licences.md
+      - Contributing: about/contributing.md

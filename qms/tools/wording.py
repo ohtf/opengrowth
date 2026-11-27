@@ -44,7 +44,9 @@ NEGATION = re.compile(r"\b(not|no|never|nor|neither|without|cannot|rather than|i
 
 # Uses allowed for a stated reason: (files, pattern in the sentence, reason).
 # Each must match something, so the list cannot go stale.
-EXCEPTIONS = []
+EXCEPTIONS = [
+    ("docs/about/contributing.md", r"reserves some words", "Names some of the reserved words in order to explain the rule."),
+]
 
 
 def reserved_words():
