@@ -5,6 +5,10 @@
 # Python (golden generators)
 __pycache__/
 
+# Documentation site: its build and its Python environment
+/site
+/.venv
+
 # Disposable agent and browser-automation artefacts
 /.claude
 /.playwright-mcp

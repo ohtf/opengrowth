@@ -1,0 +1,55 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+ * SPDX-License-Identifier: CC-BY-SA-4.0
+ *
+ * OHTF palette on top of the Zensical modern variant, taken from the OHTF
+ * website (openhealthtechnology.org-website, docs/stylesheets/extra.css).
+ * Colour tokens live here only; change the brand by editing :root below.
+ *
+ * Brand: Surgical Green (#0D4A3B) and its tint scale, mixed with white in
+ * sRGB. No accent colours have been chosen yet, so do not add any; use the
+ * tints, white, and black at low opacity for depth.
+ */
+
+:root {
+  --ohtf-surgical-green: #0d4a3b;
+  --ohtf-surgical-green-100: #0d4a3b;
+  --ohtf-surgical-green-80: #3d6e62;
+  --ohtf-surgical-green-60: #6e9289;
+  --ohtf-surgical-green-40: #9eb7b1;
+  --ohtf-surgical-green-20: #cfdbd8;
+  --ohtf-surgical-green-10: #e7edeb;
+}
+
+/* Zensical palette hooks for `primary: custom` / `accent: custom`. */
+[data-md-color-scheme="default"][data-md-color-primary="custom"] {
+  --md-primary-fg-color: var(--ohtf-surgical-green);
+  --md-primary-fg-color--light: var(--ohtf-surgical-green-80);
+  --md-primary-fg-color--dark: var(--ohtf-surgical-green);
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+  --md-typeset-a-color: var(--ohtf-surgical-green);
+}
+
+[data-md-color-scheme="default"][data-md-color-accent="custom"] {
+  --md-accent-fg-color: var(--ohtf-surgical-green-80);
+  --md-accent-fg-color--transparent: rgba(13, 74, 59, 0.1);
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: rgba(255, 255, 255, 0.7);
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="custom"] {
+  --md-primary-fg-color: var(--ohtf-surgical-green);
+  --md-primary-fg-color--light: var(--ohtf-surgical-green-80);
+  --md-primary-fg-color--dark: var(--ohtf-surgical-green);
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+  --md-typeset-a-color: var(--ohtf-surgical-green-40);
+}
+
+[data-md-color-scheme="slate"][data-md-color-accent="custom"] {
+  --md-accent-fg-color: var(--ohtf-surgical-green-20);
+  --md-accent-fg-color--transparent: rgba(158, 183, 177, 0.12);
+  --md-accent-bg-color: var(--ohtf-surgical-green);
+  --md-accent-bg-color--light: rgba(13, 74, 59, 0.7);
+}

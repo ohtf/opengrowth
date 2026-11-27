@@ -1,0 +1,79 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: CC-BY-SA-4.0
+#
+# The opengrowth documentation site, built by Zensical and deployed to GitHub
+# Pages by .github/workflows/docs.yml. Branded as the Open Health Technology
+# Foundation, from its website's theme, and never as RCPCH.
+
+site_name: opengrowth
+site_url: https://ohtf.github.io/opengrowth/
+site_description: >-
+  Growth calculations for children: SDS, centiles, and chart coordinates
+  against published growth references, as a library, a command-line tool, and
+  an HTTP API.
+site_author: Open Health Technology Foundation contributors
+
+repo_url: https://github.com/ohtf/opengrowth
+repo_name: ohtf/opengrowth
+edit_uri: edit/main/docs/
+
+copyright: >-
+  opengrowth is an <a href="https://openhealthtechnology.org">Open Health Technology Foundation</a> project,
+  not affiliated with or endorsed by RCPCH.<br>
+  Content &copy; 2026 Open Health Technology Foundation contributors, licensed
+  <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
+  Pages adapted from the RCPCH Digital Growth Charts documentation say so and credit its authors.
+
+theme:
+  variant: modern
+  language: en
+  logo: assets/ohtf-avatar.svg
+  favicon: assets/ohtf-avatar.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - content.action.edit
+    - content.code.copy
+    - navigation.footer
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: lucide/moon
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: lucide/sun
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ohtf/opengrowth
+      name: opengrowth on GitHub
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Safety: safety.md

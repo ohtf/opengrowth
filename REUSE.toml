@@ -82,3 +82,10 @@ path = ["data/sources/clarity-2021/13023_2021_2141_MOESM2_ESM.csv", "data/source
 precedence = "override"
 SPDX-FileCopyrightText = "2021 Hoover-Fong JE, Schulze KJ, Alade AY, and others (CLARITY)"
 SPDX-License-Identifier = "CC0-1.0"
+
+# The OHTF logo, from the OHTF website (ohtf/openhealthtechnology.org-website).
+[[annotations]]
+path = "docs/assets/ohtf-avatar.svg"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 Open Health Technology Foundation contributors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
