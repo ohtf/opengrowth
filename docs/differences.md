@@ -14,6 +14,10 @@ Every result's `provenance` names the engine and server that produced it: `calcu
 
 `provenance.reference_data` lists every reference table the calculation read: its name, the file it came from, the file's SHA-256 checksum, and whether it was compiled in or imported. Tables can be imported at run time, so a result records exactly which data it used. A client that does not know the field ignores it.
 
+### Charts and mid-parental height carry provenance
+
+The RCPCH server's `chart-coordinates` and `utilities/mid-parental-height` responses have no `provenance`. opengrowth's have it first, as its measurement results do, so a chart's lines name the reference they were calculated from, and a client can confirm that a chart and the results plotted on it come from the same reference. A client that does not know the field ignores it.
+
 ### `/` is a health check
 
 The RCPCH server answers `/` with its OpenAPI document. opengrowth answers with its name and version, and publishes its document with this documentation instead ([API reference](api/reference.md)).

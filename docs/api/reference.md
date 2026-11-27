@@ -1,6 +1,6 @@
 # API reference
 
-Every operation of the opengrowth API, with its requests, responses, and schemas, from the OpenAPI document [openapi.json](openapi.json). The document is generated from opengrowth's own code by `opengrowth openapi`, so it lists exactly the operations the server has, and a test checks that it differs from the RCPCH Digital Growth Charts API's document only in opengrowth's name, its provenance, and its token. The API's own [differences](../differences.md) from the RCPCH server are listed separately.
+Every operation of the opengrowth API, with its requests, responses, and schemas, from the OpenAPI document [openapi.json](openapi.json). The document is generated from opengrowth's own code by `opengrowth openapi`, so it lists exactly the operations the server has, and a test checks that it differs from the RCPCH Digital Growth Charts API's document only in opengrowth's name, its provenance, its token, and one correction: upstream's document declares each sex's chart lines as an object, where both servers send `null` for the sex not asked for. Another test replays every successful request captured from the RCPCH server and checks that opengrowth's response matches the document. The API's own [differences](../differences.md) from the RCPCH server are listed separately.
 
 To publish the document with your own server's address, generate it with that address:
 

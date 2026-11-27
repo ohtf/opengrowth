@@ -287,6 +287,34 @@ fn schemas(upstream: &Value) -> Value {
         required.push(json!("reference_data"));
     }
 
+    // Upstream's chart and mid-parental height responses carry no
+    // provenance; opengrowth's carry it first, as its measurements do.
+    for name in ["Centile_Data", "MidParentalHeightResponse"] {
+        let schema = &mut schemas[name];
+        let mut properties = Map::new();
+        properties.insert(
+            "provenance".to_owned(),
+            json!({ "$ref": "#/components/schemas/Provenance" }),
+        );
+        if let Some(own) = schema["properties"].as_object() {
+            properties.extend(own.clone());
+        }
+        schema["properties"] = Value::Object(properties);
+        let mut required = vec![json!("provenance")];
+        if let Some(own) = schema["required"].as_array() {
+            required.extend(own.iter().cloned());
+        }
+        schema["required"] = Value::Array(required);
+    }
+
+    // Upstream declares each sex's lines as an object, but both servers send
+    // `null` for the sex not asked for.
+    for sex in ["male", "female"] {
+        schemas["Sex"]["properties"][sex] = json!({
+            "anyOf": [{ "$ref": "#/components/schemas/MeasurementMethod" }, { "type": "null" }],
+        });
+    }
+
     // Upstream calls it a "Boolean flag ... referring to centile_format".
     schemas["ChartCoordinateRequest"]["properties"]["is_sds"]["description"] = json!(
         "Whether the custom values in centile_format are SDS rather than centiles. Defaults to false."

@@ -1746,6 +1746,9 @@
       },
       "Centile_Data": {
         "properties": {
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          },
           "centile_data": {
             "items": {
               "$ref": "#/components/schemas/ReferenceCreate"
@@ -1756,6 +1759,7 @@
         },
         "type": "object",
         "required": [
+          "provenance",
           "centile_data"
         ],
         "title": "Centile_Data"
@@ -3050,6 +3054,9 @@
       },
       "MidParentalHeightResponse": {
         "properties": {
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          },
           "mid_parental_height": {
             "type": "number",
             "title": "Mid Parental Height"
@@ -3108,6 +3115,7 @@
         },
         "type": "object",
         "required": [
+          "provenance",
           "mid_parental_height",
           "mid_parental_height_sds",
           "mid_parental_height_centile",
@@ -3309,10 +3317,24 @@
       "Sex": {
         "properties": {
           "male": {
-            "$ref": "#/components/schemas/MeasurementMethod"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasurementMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "female": {
-            "$ref": "#/components/schemas/MeasurementMethod"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasurementMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
