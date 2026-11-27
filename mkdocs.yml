@@ -85,6 +85,18 @@ nav:
       - Growth charts: background/charts.md
       - Growth chart papers: background/papers.md
       - Questions from clinicians: background/questions.md
+  - Integrating:
+      - integrating/index.md
+      - Making calls: integrating/making-calls.md
+      - Persisting results: integrating/persisting-results.md
+      - Client specification: integrating/client-specification.md
+      - Chart component: integrating/chart-component.md
+      - SNOMED CT codes: integrating/snomed-codes.md
+      - Security: integrating/security.md
+      - Research: integrating/research.md
+      - Moving from the RCPCH API: integrating/migrating.md
+      - Questions from integrators: integrating/questions.md
+      - Support: integrating/support.md
   - API reference: api/reference.md
   - Compared with RCPCH:
       - Differences: differences.md

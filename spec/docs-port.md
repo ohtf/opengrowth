@@ -22,7 +22,7 @@ The documentation site (`docs/`) adapts the RCPCH Digital Growth Charts document
 
 ## Inventory
 
-32 pages are adapted, 2 replaced by generated pages, and 57 dropped, of 91.
+32 pages are adapted, 2 replaced by generated pages, and 57 dropped, of 91. As of 27 November 2026 every adapted page is on the site, at its destination (`R50` to `R52`), with one page added that has no upstream source, `integrating/migrating.md`. Of the two replaced, the API reference is published (`R49`), and the CLI pages are `R56`.
 
 | Upstream page | Decision | Destination | Reason |
 | --- | --- | --- | --- |

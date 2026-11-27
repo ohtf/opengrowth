@@ -26,7 +26,7 @@ The lines step where one source meets the next. The steps are deliberate: smooth
 - **The points.** Every calculation result includes `plottable_data`: for a centile chart, the age and the measurement, and for an SDS chart, the age and the SDS, each at chronological and at corrected age, with the calendar age and the comments on correction for a tooltip.
 - **The reference.** Both name the reference they come from, in `provenance.growth_reference`, so a client can confirm that a chart and the results on it come from the same reference.
 
-An SDS chart plots SDS against age, and so can show every kind of measurement on the same axes. Plot its points at corrected age.
+An SDS chart plots SDS against age, and so can show every kind of measurement on the same axes. The client specification plots the SDS calculated at corrected age against chronological age, labelled with how many weeks early the child was born ([Client specification](../integrating/client-specification.md#sds-charts)).
 
 ## BMI and percentage median BMI
 
