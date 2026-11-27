@@ -18,6 +18,7 @@ Every result carries provenance: the reference it was calculated against, the en
 ## Where to start
 
 - [Getting started](getting-started.md): install opengrowth, calculate a measurement, and run the API.
+- [Growth references](background/growth-references.md) and [how the calculations work](background/how-it-works.md): what opengrowth compares a measurement with, and how.
 - [Differences from the RCPCH server](differences.md) and [benchmarks](benchmarks.md): how opengrowth compares with the server it reimplements.
 - [Safety](safety.md): what opengrowth is for, and what it is not.
 

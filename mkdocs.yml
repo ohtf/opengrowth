@@ -76,6 +76,15 @@ plugins:
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - Background:
+      - Growth references: background/growth-references.md
+      - Syndrome-specific references: background/syndrome-references.md
+      - Ages and gestation: background/ages.md
+      - How the calculations work: background/how-it-works.md
+      - The WHO reference: background/who.md
+      - Growth charts: background/charts.md
+      - Growth chart papers: background/papers.md
+      - Questions from clinicians: background/questions.md
   - API reference: api/reference.md
   - Compared with RCPCH:
       - Differences: differences.md

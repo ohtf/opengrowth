@@ -46,6 +46,7 @@ NEGATION = re.compile(r"\b(not|no|never|nor|neither|without|cannot|rather than|i
 # Each must match something, so the list cannot go stale.
 EXCEPTIONS = [
     ("docs/about/contributing.md", r"reserves some words", "Names some of the reserved words in order to explain the rule."),
+    ("docs/background/papers.md", r"^\|", "The titles of published papers, in the tables, quoted as published: they describe the papers, not opengrowth."),
 ]
 
 
