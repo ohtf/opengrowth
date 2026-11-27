@@ -43,7 +43,7 @@ use crate::{
 };
 use axum::Router;
 use axum::body::{Body, Bytes};
-use axum::extract::{Request, State};
+use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -191,6 +191,13 @@ impl Operation {
 /// reference.
 const MID_PARENTAL_HEIGHT: &str = "/utilities/mid-parental-height";
 
+/// The largest request body the server reads: 2 MiB, axum's default, made
+/// explicit so that an upgrade cannot change it. A bulk request of 200
+/// observations is about 12 KB. A larger body gets `413 Payload Too Large`,
+/// where the RCPCH server reads a body of any size (`spec/standard.md`
+/// section 7.4).
+pub const MAX_REQUEST_BODY_BYTES: usize = 2 * 1024 * 1024;
+
 /// Whether `path` is one of upstream's operations.
 fn is_operation(path: &str) -> bool {
     if path == MID_PARENTAL_HEIGHT {
@@ -224,7 +231,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         MID_PARENTAL_HEIGHT,
         post(utilities_mid_parental_height).fallback(method_not_allowed),
     );
-    let api = app.fallback(not_found).with_state(state.clone());
+    let api = app
+        .fallback(not_found)
+        .layer(DefaultBodyLimit::max(MAX_REQUEST_BODY_BYTES))
+        .with_state(state.clone());
     // The middleware wraps the whole router, as upstream's wraps its app, so
     // that method routing cannot add `Allow` to what the middleware returns.
     // CORS is outermost, so preflights are answered before authorisation.

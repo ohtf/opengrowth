@@ -22,6 +22,10 @@ The RCPCH server's `chart-coordinates` and `utilities/mid-parental-height` respo
 
 The RCPCH server answers `/` with its OpenAPI document. opengrowth answers with its name and version, and publishes its document with this documentation instead ([API reference](api/reference.md)).
 
+### Request bodies are limited to 2 MiB
+
+The RCPCH server reads a request body of any size. opengrowth reads at most 2 MiB, and answers a larger body with `413 Payload Too Large`, so that no client can make it hold an unbounded body in memory. The largest valid request, a bulk calculation of 200 observations, is about 12 KB. Case: `a request body over 2 MiB`.
+
 ### Browsers can call it when a token is set
 
 CORS controls which websites' pages may call the API from a browser. The RCPCH server allows every site together with credentials, which browsers do not accept together, and it checks the token before it answers a browser's preflight request, so while a token is set no page on another site can call it. opengrowth allows every site without credentials, and answers preflights before it checks the token, so a browser client works with a token set. In detail, opengrowth never sends `access-control-allow-credentials`, answers preflights with `*` rather than repeating the caller's origin, and, with a token set, answers preflights and adds `access-control-allow-origin: *` to its 403 responses. `--cors-allow-origin` limits the sites allowed, and `--no-cors` stops calls from other sites' pages. `tests/http_cors.rs` checks the RCPCH server differs in exactly these ways.
