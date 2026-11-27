@@ -68,6 +68,8 @@ jobs:
         run: s/check-docs-nav
       - name: Wording follows the intended purpose
         run: s/check-wording
+      - name: Every difference the tests allow is documented
+        run: s/check-differences
 
   dco:
     name: DCO sign-off

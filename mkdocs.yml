@@ -77,6 +77,8 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - API reference: api/reference.md
+  - Compared with RCPCH:
+      - Differences: differences.md
   - Safety: safety.md
   - About:
       - Acknowledgements: about/acknowledgements.md

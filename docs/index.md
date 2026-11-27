@@ -1,6 +1,6 @@
 # opengrowth
 
-opengrowth calculates the standard deviation score (SDS) and centile of a child's height or length, weight, head circumference, or body mass index against a published growth reference, and the coordinates of that reference's centile lines for drawing a growth chart. It is one program: a Rust library, a command-line tool, and an HTTP API that answers byte for byte as the RCPCH Digital Growth Charts API does, apart from a few listed differences.
+opengrowth calculates the standard deviation score (SDS) and centile of a child's height or length, weight, head circumference, or body mass index against a published growth reference, and the coordinates of that reference's centile lines for drawing a growth chart. It is one program: a Rust library, a command-line tool, and an HTTP API that answers byte for byte as the RCPCH Digital Growth Charts API does, apart from a few [listed differences](differences.md).
 
 !!! warning "Experimental: not for clinical use"
 
