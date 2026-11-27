@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Benchmark round 0: Rust and Python engines in-process on the R-vector children (spec/benchmark.md).
+# Benchmark round 0: the Rust and Python engines in-process on the R-vector
+# children (spec/benchmark.md), each pinned to the same CPU on the fastest
+# core. --json prints JSON lines instead. s/bench runs this round too.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 venv="${OPENGROWTH_REFERENCE_VENV:-$HOME/.cache/opengrowth/reference-python}"
 [[ -x "$venv/bin/python" ]] || { echo "No reference environment at $venv; run s/reference-python" >&2; exit 1; }
-cargo run --quiet --release --example round0
-exec "$venv/bin/python" "$root/bench/round0/python.py"
+command -v taskset >/dev/null || { echo "taskset not found; it is part of util-linux" >&2; exit 1; }
+cargo build --quiet --release --example round0
+cpu="$(python3 -I "$root/bench/cpus.py" 1 | head -n 1)"
+taskset -c "$cpu" "$root/target/release/examples/round0" "$@"
+exec taskset -c "$cpu" "$venv/bin/python" -I "$root/bench/round0/python.py" "$@"

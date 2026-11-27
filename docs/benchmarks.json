@@ -1,0 +1,1826 @@
+{
+ "format": 2,
+ "environment": {
+  "date": "2026-11-27T12:35:09+00:00",
+  "processor": "Intel(R) Core(TM) Ultra 9 185H",
+  "os": "Linux-7.3.5-2-cachyos-x86_64-with-glibc2.44",
+  "cpus_total": 22,
+  "governor": "powersave",
+  "server_cpus": "CPUs 1-4: 2 cores, 2 threads each, maximum 5.1 GHz",
+  "load_cpus": "CPUs 0,5-21: 14 cores, 1 or 2 threads each, maximum 2.5 to 4.8 GHz",
+  "load_average": [
+   4.34,
+   4.22,
+   4.35
+  ],
+  "oha": "oha 1.14.0",
+  "opengrowth": "opengrowth 0.1.0",
+  "opengrowth_commit": "c3cd1ad3e60802bf9302ab122675d7304a8984e4",
+  "opengrowth_modified": false,
+  "python_server_commit": "29bb4e9e9d93a850a63d5233b927472f808fb9a8",
+  "python_versions": {
+   "python": "3.13.7",
+   "rcpchgrowth": "4.6.5",
+   "fastapi": "0.116.1",
+   "pydantic": "2.11.7",
+   "gunicorn": "23.0.0",
+   "uvicorn": "0.35.0",
+   "uvloop": "0.23.0",
+   "httptools": "0.9.0"
+  },
+  "quick": false,
+  "workers": 4,
+  "warm_up_seconds": 5,
+  "round1_seconds": 30,
+  "step_seconds": 15
+ },
+ "commands": {
+  "pinning": [
+   "taskset",
+   "-c",
+   "1-4"
+  ],
+  "Python": [
+   "gunicorn",
+   "-w",
+   "4",
+   "-b",
+   "127.0.0.1:{port}",
+   "-k",
+   "uvicorn.workers.UvicornWorker",
+   "main:app"
+  ],
+  "Rust": [
+   "opengrowth",
+   "serve",
+   "--bind",
+   "127.0.0.1:{port}",
+   "--workers",
+   "4"
+  ],
+  "oha": [
+   "taskset",
+   "-c",
+   "0,5-21",
+   "oha",
+   "--no-tui",
+   "--output-format",
+   "json",
+   "-w",
+   "-m",
+   "POST",
+   "-T",
+   "application/json",
+   "-D",
+   "BODY.json"
+  ],
+  "round1": [
+   "-c",
+   "1",
+   "-z",
+   "30s"
+  ],
+  "round2": [
+   "-q",
+   "{rate}",
+   "-z",
+   "15s",
+   "-c",
+   "{connections}",
+   "--latency-correction"
+  ],
+  "round3": [
+   "-c",
+   "{connections}",
+   "-z",
+   "15s"
+  ],
+  "round0": [
+   [
+    "target/release/examples/round0",
+    "--json"
+   ],
+   [
+    "python",
+    "-I",
+    "bench/round0/python.py",
+    "--json"
+   ]
+  ]
+ },
+ "requests": {
+  "One calculation, 8 years": {
+   "path": "/uk-who/calculation",
+   "body": {
+    "birth_date": "2020-04-12",
+    "observation_date": "2028-06-12",
+    "observation_value": 115,
+    "sex": "female",
+    "gestation_weeks": 40,
+    "gestation_days": 0,
+    "measurement_method": "height"
+   }
+  },
+  "One calculation, preterm, 6 weeks": {
+   "path": "/uk-who/calculation",
+   "body": {
+    "birth_date": "2026-10-06",
+    "observation_date": "2026-11-17",
+    "observation_value": 1.42,
+    "sex": "female",
+    "gestation_weeks": 27,
+    "gestation_days": 3,
+    "measurement_method": "weight"
+   }
+  },
+  "Bulk, 1 observation": {
+   "path": "/uk-who/bulk-calculation",
+   "body": {
+    "measurement_method": "height",
+    "birth_date": "2020-04-12",
+    "sex": "female",
+    "observations": [
+     {
+      "observation_date": "2021-01-01",
+      "observation_value": 80.0
+     }
+    ]
+   }
+  },
+  "Bulk, 200 observations": {
+   "path": "/uk-who/bulk-calculation",
+   "body": {
+    "measurement_method": "height",
+    "birth_date": "2020-04-12",
+    "sex": "female",
+    "observations": [
+     {
+      "observation_date": "2021-01-01",
+      "observation_value": 80.0
+     },
+     {
+      "observation_date": "2021-01-31",
+      "observation_value": 80.2
+     },
+     {
+      "observation_date": "2021-03-02",
+      "observation_value": 80.4
+     },
+     {
+      "observation_date": "2021-04-01",
+      "observation_value": 80.6
+     },
+     {
+      "observation_date": "2021-05-01",
+      "observation_value": 80.8
+     },
+     {
+      "observation_date": "2021-05-31",
+      "observation_value": 81.0
+     },
+     {
+      "observation_date": "2021-06-30",
+      "observation_value": 81.2
+     },
+     {
+      "observation_date": "2021-07-30",
+      "observation_value": 81.4
+     },
+     {
+      "observation_date": "2021-08-29",
+      "observation_value": 81.6
+     },
+     {
+      "observation_date": "2021-09-28",
+      "observation_value": 81.8
+     },
+     {
+      "observation_date": "2021-10-28",
+      "observation_value": 82.0
+     },
+     {
+      "observation_date": "2021-11-27",
+      "observation_value": 82.2
+     },
+     {
+      "observation_date": "2021-12-27",
+      "observation_value": 82.4
+     },
+     {
+      "observation_date": "2022-01-26",
+      "observation_value": 82.6
+     },
+     {
+      "observation_date": "2022-02-25",
+      "observation_value": 82.8
+     },
+     {
+      "observation_date": "2022-03-27",
+      "observation_value": 83.0
+     },
+     {
+      "observation_date": "2022-04-26",
+      "observation_value": 83.2
+     },
+     {
+      "observation_date": "2022-05-26",
+      "observation_value": 83.4
+     },
+     {
+      "observation_date": "2022-06-25",
+      "observation_value": 83.6
+     },
+     {
+      "observation_date": "2022-07-25",
+      "observation_value": 83.8
+     },
+     {
+      "observation_date": "2022-08-24",
+      "observation_value": 84.0
+     },
+     {
+      "observation_date": "2022-09-23",
+      "observation_value": 84.2
+     },
+     {
+      "observation_date": "2022-10-23",
+      "observation_value": 84.4
+     },
+     {
+      "observation_date": "2022-11-22",
+      "observation_value": 84.6
+     },
+     {
+      "observation_date": "2022-12-22",
+      "observation_value": 84.8
+     },
+     {
+      "observation_date": "2023-01-21",
+      "observation_value": 85.0
+     },
+     {
+      "observation_date": "2023-02-20",
+      "observation_value": 85.2
+     },
+     {
+      "observation_date": "2023-03-22",
+      "observation_value": 85.4
+     },
+     {
+      "observation_date": "2023-04-21",
+      "observation_value": 85.6
+     },
+     {
+      "observation_date": "2023-05-21",
+      "observation_value": 85.8
+     },
+     {
+      "observation_date": "2023-06-20",
+      "observation_value": 86.0
+     },
+     {
+      "observation_date": "2023-07-20",
+      "observation_value": 86.2
+     },
+     {
+      "observation_date": "2023-08-19",
+      "observation_value": 86.4
+     },
+     {
+      "observation_date": "2023-09-18",
+      "observation_value": 86.6
+     },
+     {
+      "observation_date": "2023-10-18",
+      "observation_value": 86.8
+     },
+     {
+      "observation_date": "2023-11-17",
+      "observation_value": 87.0
+     },
+     {
+      "observation_date": "2023-12-17",
+      "observation_value": 87.2
+     },
+     {
+      "observation_date": "2024-01-16",
+      "observation_value": 87.4
+     },
+     {
+      "observation_date": "2024-02-15",
+      "observation_value": 87.6
+     },
+     {
+      "observation_date": "2024-03-16",
+      "observation_value": 87.8
+     },
+     {
+      "observation_date": "2024-04-15",
+      "observation_value": 88.0
+     },
+     {
+      "observation_date": "2024-05-15",
+      "observation_value": 88.2
+     },
+     {
+      "observation_date": "2024-06-14",
+      "observation_value": 88.4
+     },
+     {
+      "observation_date": "2024-07-14",
+      "observation_value": 88.6
+     },
+     {
+      "observation_date": "2024-08-13",
+      "observation_value": 88.8
+     },
+     {
+      "observation_date": "2024-09-12",
+      "observation_value": 89.0
+     },
+     {
+      "observation_date": "2024-10-12",
+      "observation_value": 89.2
+     },
+     {
+      "observation_date": "2024-11-11",
+      "observation_value": 89.4
+     },
+     {
+      "observation_date": "2024-12-11",
+      "observation_value": 89.6
+     },
+     {
+      "observation_date": "2025-01-10",
+      "observation_value": 89.8
+     },
+     {
+      "observation_date": "2025-02-09",
+      "observation_value": 90.0
+     },
+     {
+      "observation_date": "2025-03-11",
+      "observation_value": 90.2
+     },
+     {
+      "observation_date": "2025-04-10",
+      "observation_value": 90.4
+     },
+     {
+      "observation_date": "2025-05-10",
+      "observation_value": 90.6
+     },
+     {
+      "observation_date": "2025-06-09",
+      "observation_value": 90.8
+     },
+     {
+      "observation_date": "2025-07-09",
+      "observation_value": 91.0
+     },
+     {
+      "observation_date": "2025-08-08",
+      "observation_value": 91.2
+     },
+     {
+      "observation_date": "2025-09-07",
+      "observation_value": 91.4
+     },
+     {
+      "observation_date": "2025-10-07",
+      "observation_value": 91.6
+     },
+     {
+      "observation_date": "2025-11-06",
+      "observation_value": 91.8
+     },
+     {
+      "observation_date": "2025-12-06",
+      "observation_value": 92.0
+     },
+     {
+      "observation_date": "2026-01-05",
+      "observation_value": 92.2
+     },
+     {
+      "observation_date": "2026-02-04",
+      "observation_value": 92.4
+     },
+     {
+      "observation_date": "2026-03-06",
+      "observation_value": 92.6
+     },
+     {
+      "observation_date": "2026-04-05",
+      "observation_value": 92.8
+     },
+     {
+      "observation_date": "2026-05-05",
+      "observation_value": 93.0
+     },
+     {
+      "observation_date": "2026-06-04",
+      "observation_value": 93.2
+     },
+     {
+      "observation_date": "2026-07-04",
+      "observation_value": 93.4
+     },
+     {
+      "observation_date": "2026-08-03",
+      "observation_value": 93.6
+     },
+     {
+      "observation_date": "2026-09-02",
+      "observation_value": 93.8
+     },
+     {
+      "observation_date": "2026-10-02",
+      "observation_value": 94.0
+     },
+     {
+      "observation_date": "2026-11-01",
+      "observation_value": 94.2
+     },
+     {
+      "observation_date": "2026-12-01",
+      "observation_value": 94.4
+     },
+     {
+      "observation_date": "2026-12-31",
+      "observation_value": 94.6
+     },
+     {
+      "observation_date": "2027-01-30",
+      "observation_value": 94.8
+     },
+     {
+      "observation_date": "2027-03-01",
+      "observation_value": 95.0
+     },
+     {
+      "observation_date": "2027-03-31",
+      "observation_value": 95.2
+     },
+     {
+      "observation_date": "2027-04-30",
+      "observation_value": 95.4
+     },
+     {
+      "observation_date": "2027-05-30",
+      "observation_value": 95.6
+     },
+     {
+      "observation_date": "2027-06-29",
+      "observation_value": 95.8
+     },
+     {
+      "observation_date": "2027-07-29",
+      "observation_value": 96.0
+     },
+     {
+      "observation_date": "2027-08-28",
+      "observation_value": 96.2
+     },
+     {
+      "observation_date": "2027-09-27",
+      "observation_value": 96.4
+     },
+     {
+      "observation_date": "2027-10-27",
+      "observation_value": 96.6
+     },
+     {
+      "observation_date": "2027-11-26",
+      "observation_value": 96.8
+     },
+     {
+      "observation_date": "2027-12-26",
+      "observation_value": 97.0
+     },
+     {
+      "observation_date": "2028-01-25",
+      "observation_value": 97.2
+     },
+     {
+      "observation_date": "2028-02-24",
+      "observation_value": 97.4
+     },
+     {
+      "observation_date": "2028-03-25",
+      "observation_value": 97.6
+     },
+     {
+      "observation_date": "2028-04-24",
+      "observation_value": 97.8
+     },
+     {
+      "observation_date": "2028-05-24",
+      "observation_value": 98.0
+     },
+     {
+      "observation_date": "2028-06-23",
+      "observation_value": 98.2
+     },
+     {
+      "observation_date": "2028-07-23",
+      "observation_value": 98.4
+     },
+     {
+      "observation_date": "2028-08-22",
+      "observation_value": 98.6
+     },
+     {
+      "observation_date": "2028-09-21",
+      "observation_value": 98.8
+     },
+     {
+      "observation_date": "2028-10-21",
+      "observation_value": 99.0
+     },
+     {
+      "observation_date": "2028-11-20",
+      "observation_value": 99.2
+     },
+     {
+      "observation_date": "2028-12-20",
+      "observation_value": 99.4
+     },
+     {
+      "observation_date": "2029-01-19",
+      "observation_value": 99.6
+     },
+     {
+      "observation_date": "2029-02-18",
+      "observation_value": 99.8
+     },
+     {
+      "observation_date": "2029-03-20",
+      "observation_value": 100.0
+     },
+     {
+      "observation_date": "2029-04-19",
+      "observation_value": 100.2
+     },
+     {
+      "observation_date": "2029-05-19",
+      "observation_value": 100.4
+     },
+     {
+      "observation_date": "2029-06-18",
+      "observation_value": 100.6
+     },
+     {
+      "observation_date": "2029-07-18",
+      "observation_value": 100.8
+     },
+     {
+      "observation_date": "2029-08-17",
+      "observation_value": 101.0
+     },
+     {
+      "observation_date": "2029-09-16",
+      "observation_value": 101.2
+     },
+     {
+      "observation_date": "2029-10-16",
+      "observation_value": 101.4
+     },
+     {
+      "observation_date": "2029-11-15",
+      "observation_value": 101.6
+     },
+     {
+      "observation_date": "2029-12-15",
+      "observation_value": 101.8
+     },
+     {
+      "observation_date": "2030-01-14",
+      "observation_value": 102.0
+     },
+     {
+      "observation_date": "2030-02-13",
+      "observation_value": 102.2
+     },
+     {
+      "observation_date": "2030-03-15",
+      "observation_value": 102.4
+     },
+     {
+      "observation_date": "2030-04-14",
+      "observation_value": 102.6
+     },
+     {
+      "observation_date": "2030-05-14",
+      "observation_value": 102.8
+     },
+     {
+      "observation_date": "2030-06-13",
+      "observation_value": 103.0
+     },
+     {
+      "observation_date": "2030-07-13",
+      "observation_value": 103.2
+     },
+     {
+      "observation_date": "2030-08-12",
+      "observation_value": 103.4
+     },
+     {
+      "observation_date": "2030-09-11",
+      "observation_value": 103.6
+     },
+     {
+      "observation_date": "2030-10-11",
+      "observation_value": 103.8
+     },
+     {
+      "observation_date": "2030-11-10",
+      "observation_value": 104.0
+     },
+     {
+      "observation_date": "2030-12-10",
+      "observation_value": 104.2
+     },
+     {
+      "observation_date": "2031-01-09",
+      "observation_value": 104.4
+     },
+     {
+      "observation_date": "2031-02-08",
+      "observation_value": 104.6
+     },
+     {
+      "observation_date": "2031-03-10",
+      "observation_value": 104.8
+     },
+     {
+      "observation_date": "2031-04-09",
+      "observation_value": 105.0
+     },
+     {
+      "observation_date": "2031-05-09",
+      "observation_value": 105.2
+     },
+     {
+      "observation_date": "2031-06-08",
+      "observation_value": 105.4
+     },
+     {
+      "observation_date": "2031-07-08",
+      "observation_value": 105.6
+     },
+     {
+      "observation_date": "2031-08-07",
+      "observation_value": 105.8
+     },
+     {
+      "observation_date": "2031-09-06",
+      "observation_value": 106.0
+     },
+     {
+      "observation_date": "2031-10-06",
+      "observation_value": 106.2
+     },
+     {
+      "observation_date": "2031-11-05",
+      "observation_value": 106.4
+     },
+     {
+      "observation_date": "2031-12-05",
+      "observation_value": 106.6
+     },
+     {
+      "observation_date": "2032-01-04",
+      "observation_value": 106.8
+     },
+     {
+      "observation_date": "2032-02-03",
+      "observation_value": 107.0
+     },
+     {
+      "observation_date": "2032-03-04",
+      "observation_value": 107.2
+     },
+     {
+      "observation_date": "2032-04-03",
+      "observation_value": 107.4
+     },
+     {
+      "observation_date": "2032-05-03",
+      "observation_value": 107.6
+     },
+     {
+      "observation_date": "2032-06-02",
+      "observation_value": 107.8
+     },
+     {
+      "observation_date": "2032-07-02",
+      "observation_value": 108.0
+     },
+     {
+      "observation_date": "2032-08-01",
+      "observation_value": 108.2
+     },
+     {
+      "observation_date": "2032-08-31",
+      "observation_value": 108.4
+     },
+     {
+      "observation_date": "2032-09-30",
+      "observation_value": 108.6
+     },
+     {
+      "observation_date": "2032-10-30",
+      "observation_value": 108.8
+     },
+     {
+      "observation_date": "2032-11-29",
+      "observation_value": 109.0
+     },
+     {
+      "observation_date": "2032-12-29",
+      "observation_value": 109.2
+     },
+     {
+      "observation_date": "2033-01-28",
+      "observation_value": 109.4
+     },
+     {
+      "observation_date": "2033-02-27",
+      "observation_value": 109.6
+     },
+     {
+      "observation_date": "2033-03-29",
+      "observation_value": 109.8
+     },
+     {
+      "observation_date": "2033-04-28",
+      "observation_value": 110.0
+     },
+     {
+      "observation_date": "2033-05-28",
+      "observation_value": 110.2
+     },
+     {
+      "observation_date": "2033-06-27",
+      "observation_value": 110.4
+     },
+     {
+      "observation_date": "2033-07-27",
+      "observation_value": 110.6
+     },
+     {
+      "observation_date": "2033-08-26",
+      "observation_value": 110.8
+     },
+     {
+      "observation_date": "2033-09-25",
+      "observation_value": 111.0
+     },
+     {
+      "observation_date": "2033-10-25",
+      "observation_value": 111.2
+     },
+     {
+      "observation_date": "2033-11-24",
+      "observation_value": 111.4
+     },
+     {
+      "observation_date": "2033-12-24",
+      "observation_value": 111.6
+     },
+     {
+      "observation_date": "2034-01-23",
+      "observation_value": 111.8
+     },
+     {
+      "observation_date": "2034-02-22",
+      "observation_value": 112.0
+     },
+     {
+      "observation_date": "2034-03-24",
+      "observation_value": 112.2
+     },
+     {
+      "observation_date": "2034-04-23",
+      "observation_value": 112.4
+     },
+     {
+      "observation_date": "2034-05-23",
+      "observation_value": 112.6
+     },
+     {
+      "observation_date": "2034-06-22",
+      "observation_value": 112.80000000000001
+     },
+     {
+      "observation_date": "2034-07-22",
+      "observation_value": 113.0
+     },
+     {
+      "observation_date": "2034-08-21",
+      "observation_value": 113.2
+     },
+     {
+      "observation_date": "2034-09-20",
+      "observation_value": 113.4
+     },
+     {
+      "observation_date": "2034-10-20",
+      "observation_value": 113.6
+     },
+     {
+      "observation_date": "2034-11-19",
+      "observation_value": 113.80000000000001
+     },
+     {
+      "observation_date": "2034-12-19",
+      "observation_value": 114.0
+     },
+     {
+      "observation_date": "2035-01-18",
+      "observation_value": 114.2
+     },
+     {
+      "observation_date": "2035-02-17",
+      "observation_value": 114.4
+     },
+     {
+      "observation_date": "2035-03-19",
+      "observation_value": 114.6
+     },
+     {
+      "observation_date": "2035-04-18",
+      "observation_value": 114.80000000000001
+     },
+     {
+      "observation_date": "2035-05-18",
+      "observation_value": 115.0
+     },
+     {
+      "observation_date": "2035-06-17",
+      "observation_value": 115.2
+     },
+     {
+      "observation_date": "2035-07-17",
+      "observation_value": 115.4
+     },
+     {
+      "observation_date": "2035-08-16",
+      "observation_value": 115.6
+     },
+     {
+      "observation_date": "2035-09-15",
+      "observation_value": 115.80000000000001
+     },
+     {
+      "observation_date": "2035-10-15",
+      "observation_value": 116.0
+     },
+     {
+      "observation_date": "2035-11-14",
+      "observation_value": 116.2
+     },
+     {
+      "observation_date": "2035-12-14",
+      "observation_value": 116.4
+     },
+     {
+      "observation_date": "2036-01-13",
+      "observation_value": 116.6
+     },
+     {
+      "observation_date": "2036-02-12",
+      "observation_value": 116.80000000000001
+     },
+     {
+      "observation_date": "2036-03-13",
+      "observation_value": 117.0
+     },
+     {
+      "observation_date": "2036-04-12",
+      "observation_value": 117.2
+     },
+     {
+      "observation_date": "2036-05-12",
+      "observation_value": 117.4
+     },
+     {
+      "observation_date": "2036-06-11",
+      "observation_value": 117.6
+     },
+     {
+      "observation_date": "2036-07-11",
+      "observation_value": 117.80000000000001
+     },
+     {
+      "observation_date": "2036-08-10",
+      "observation_value": 118.0
+     },
+     {
+      "observation_date": "2036-09-09",
+      "observation_value": 118.2
+     },
+     {
+      "observation_date": "2036-10-09",
+      "observation_value": 118.4
+     },
+     {
+      "observation_date": "2036-11-08",
+      "observation_value": 118.6
+     },
+     {
+      "observation_date": "2036-12-08",
+      "observation_value": 118.80000000000001
+     },
+     {
+      "observation_date": "2037-01-07",
+      "observation_value": 119.0
+     },
+     {
+      "observation_date": "2037-02-06",
+      "observation_value": 119.2
+     },
+     {
+      "observation_date": "2037-03-08",
+      "observation_value": 119.4
+     },
+     {
+      "observation_date": "2037-04-07",
+      "observation_value": 119.6
+     },
+     {
+      "observation_date": "2037-05-07",
+      "observation_value": 119.80000000000001
+     }
+    ]
+   }
+  },
+  "Chart coordinates, 9 centiles": {
+   "path": "/uk-who/chart-coordinates",
+   "body": {
+    "sex": "female",
+    "measurement_method": "height",
+    "centile_format": [
+     0.4,
+     2,
+     9,
+     25,
+     50,
+     75,
+     91,
+     98,
+     99.6
+    ]
+   }
+  },
+  "Mid-parental height": {
+   "path": "/utilities/mid-parental-height",
+   "body": {
+    "height_paternal": 180,
+    "height_maternal": 165,
+    "sex": "male"
+   }
+  }
+ },
+ "headline": [
+  "One calculation, 8 years",
+  "Bulk, 200 observations",
+  "Chart coordinates, 9 centiles"
+ ],
+ "round0": {
+  "cpu": 1,
+  "Rust": {
+   "engine": "opengrowth",
+   "version": "0.1.0",
+   "children": 3984,
+   "sds_ns": 421.33276794678716,
+   "measurement_ns": 3182.035642570281
+  },
+  "Python": {
+   "engine": "rcpchgrowth",
+   "version": "4.6.5",
+   "python": "3.13.7",
+   "children": 3984,
+   "sds_ns": 80834.30170754802,
+   "measurement_ns": 934728.9904611219
+  }
+ },
+ "servers": {
+  "Python": {
+   "cold_start_s": 1.062977170018712,
+   "memory_idle": {
+    "rss_kib": 538904,
+    "pss_kib": 371098
+   },
+   "load_average_before": [
+    5.41,
+    4.49,
+    4.44
+   ],
+   "answers": {
+    "One calculation, 8 years": {
+     "status": 200,
+     "bytes": 4153,
+     "sha256": "444d8131e08763efc07739302537ed9142caae8098e1a59abec9de0caf0c8951"
+    },
+    "One calculation, preterm, 6 weeks": {
+     "status": 200,
+     "bytes": 4477,
+     "sha256": "503fbaf4857e52de7c8d61b4155adb119508e2f5befaefc4a1131573784682bd"
+    },
+    "Bulk, 1 observation": {
+     "status": 200,
+     "bytes": 4350,
+     "sha256": "81bf8be3f9f4e1e1995c8091b03a49e2c95bfe6c22d7a4584ab5858052970627"
+    },
+    "Bulk, 200 observations": {
+     "status": 200,
+     "bytes": 862259,
+     "sha256": "0336b1cd2cfde71cac7e004ced4f25f844ef7d810ed56e9d8522a93b92d1ecfc"
+    },
+    "Chart coordinates, 9 centiles": {
+     "status": 200,
+     "bytes": 83258,
+     "sha256": "da8467b741785bc77d61467f34dfe67618cd47ad7dcdec62d97e958e2344f752"
+    },
+    "Mid-parental height": {
+     "status": 200,
+     "bytes": 30584,
+     "sha256": "b2d1ccba2bdf3f5a79e3219a0accae9743fa46adb25b4029b2d713ff358cc9d1"
+    }
+   },
+   "memory_after_ramp": {
+    "rss_kib": 644032,
+    "pss_kib": 473037
+   },
+   "memory_after_sweep": {
+    "rss_kib": 707192,
+    "pss_kib": 536203
+   },
+   "load_average_after": [
+    7.43,
+    5.55,
+    4.86
+   ]
+  },
+  "Rust": {
+   "cold_start_s": 0.05154599400702864,
+   "memory_idle": {
+    "rss_kib": 22008,
+    "pss_kib": 19404
+   },
+   "load_average_before": [
+    7.63,
+    5.62,
+    4.89
+   ],
+   "answers": {
+    "One calculation, 8 years": {
+     "status": 200,
+     "bytes": 4153,
+     "sha256": "444d8131e08763efc07739302537ed9142caae8098e1a59abec9de0caf0c8951"
+    },
+    "One calculation, preterm, 6 weeks": {
+     "status": 200,
+     "bytes": 4477,
+     "sha256": "503fbaf4857e52de7c8d61b4155adb119508e2f5befaefc4a1131573784682bd"
+    },
+    "Bulk, 1 observation": {
+     "status": 200,
+     "bytes": 4350,
+     "sha256": "81bf8be3f9f4e1e1995c8091b03a49e2c95bfe6c22d7a4584ab5858052970627"
+    },
+    "Bulk, 200 observations": {
+     "status": 200,
+     "bytes": 862259,
+     "sha256": "0336b1cd2cfde71cac7e004ced4f25f844ef7d810ed56e9d8522a93b92d1ecfc"
+    },
+    "Chart coordinates, 9 centiles": {
+     "status": 200,
+     "bytes": 83258,
+     "sha256": "da8467b741785bc77d61467f34dfe67618cd47ad7dcdec62d97e958e2344f752"
+    },
+    "Mid-parental height": {
+     "status": 200,
+     "bytes": 30584,
+     "sha256": "b2d1ccba2bdf3f5a79e3219a0accae9743fa46adb25b4029b2d713ff358cc9d1"
+    }
+   },
+   "memory_after_ramp": {
+    "rss_kib": 41020,
+    "pss_kib": 38416
+   },
+   "memory_after_sweep": {
+    "rss_kib": 49264,
+    "pss_kib": 46660
+   },
+   "load_average_after": [
+    6.74,
+    5.15,
+    4.89
+   ]
+  }
+ },
+ "round1": {
+  "One calculation, 8 years": {
+   "Python": {
+    "requests": 18411,
+    "seconds": 30.001474582,
+    "rps": 613.6698364501742,
+    "success": 1.0,
+    "p50_ms": 1.557954,
+    "p90_ms": 1.817048,
+    "p99_ms": 2.563943,
+    "p99.9_ms": 3.887713,
+    "server_cpu_s": 29.469999999999985,
+    "errors": {}
+   },
+   "Rust": {
+    "requests": 780812,
+    "seconds": 30.001224788,
+    "rps": 26026.00412208211,
+    "success": 1.0,
+    "p50_ms": 0.034009,
+    "p90_ms": 0.046495999999999996,
+    "p99_ms": 0.0875,
+    "p99.9_ms": 0.261774,
+    "server_cpu_s": 19.220000000000013,
+    "errors": {}
+   }
+  },
+  "One calculation, preterm, 6 weeks": {
+   "Python": {
+    "requests": 21819,
+    "seconds": 30.00077485,
+    "rps": 727.2812155383381,
+    "success": 1.0,
+    "p50_ms": 1.307881,
+    "p90_ms": 1.531242,
+    "p99_ms": 2.1449809999999996,
+    "p99.9_ms": 2.867278,
+    "server_cpu_s": 29.470000000000027,
+    "errors": {}
+   },
+   "Rust": {
+    "requests": 558426,
+    "seconds": 30.001642195,
+    "rps": 18613.181117567823,
+    "success": 1.0,
+    "p50_ms": 0.035974,
+    "p90_ms": 0.05725,
+    "p99_ms": 0.251191,
+    "p99.9_ms": 2.294448,
+    "server_cpu_s": 15.889999999999986,
+    "errors": {}
+   }
+  },
+  "Bulk, 1 observation": {
+   "Python": {
+    "requests": 17469,
+    "seconds": 30.002800616,
+    "rps": 582.2456451176785,
+    "success": 1.0,
+    "p50_ms": 1.635008,
+    "p90_ms": 1.9163400000000002,
+    "p99_ms": 2.774003,
+    "p99.9_ms": 3.808643,
+    "server_cpu_s": 29.539999999999992,
+    "errors": {}
+   },
+   "Rust": {
+    "requests": 770799,
+    "seconds": 30.002013476,
+    "rps": 25691.575687631695,
+    "success": 1.0,
+    "p50_ms": 0.034653,
+    "p90_ms": 0.047509,
+    "p99_ms": 0.084324,
+    "p99.9_ms": 0.251966,
+    "server_cpu_s": 19.200000000000017,
+    "errors": {}
+   }
+  },
+  "Bulk, 200 observations": {
+   "Python": {
+    "requests": 141,
+    "seconds": 30.166040229,
+    "rps": 4.674130211642767,
+    "success": 1.0,
+    "p50_ms": 209.871626,
+    "p90_ms": 226.755661,
+    "p99_ms": 254.67631200000002,
+    "p99.9_ms": 284.518506,
+    "server_cpu_s": 30.060000000000002,
+    "errors": {}
+   },
+   "Rust": {
+    "requests": 12671,
+    "seconds": 30.002513766,
+    "rps": 422.331278599704,
+    "success": 1.0,
+    "p50_ms": 2.304928,
+    "p90_ms": 2.4815620000000003,
+    "p99_ms": 3.738608,
+    "p99.9_ms": 4.890225,
+    "server_cpu_s": 28.439999999999998,
+    "errors": {}
+   }
+  },
+  "Chart coordinates, 9 centiles": {
+   "Python": {
+    "requests": 110,
+    "seconds": 30.12932821,
+    "rps": 3.650927735039599,
+    "success": 1.0,
+    "p50_ms": 271.209947,
+    "p90_ms": 282.70239200000003,
+    "p99_ms": 320.862369,
+    "p99.9_ms": 361.915919,
+    "server_cpu_s": 30.080000000000013,
+    "errors": {}
+   },
+   "Rust": {
+    "requests": 13564,
+    "seconds": 30.002557132,
+    "rps": 452.0947977975173,
+    "success": 1.0,
+    "p50_ms": 2.144465,
+    "p90_ms": 2.317209,
+    "p99_ms": 3.385355,
+    "p99.9_ms": 4.3414150000000005,
+    "server_cpu_s": 28.70999999999998,
+    "errors": {}
+   }
+  },
+  "Mid-parental height": {
+   "Python": {
+    "requests": 345,
+    "seconds": 30.032553508,
+    "rps": 11.487534681594747,
+    "success": 1.0,
+    "p50_ms": 86.250297,
+    "p90_ms": 89.69593400000001,
+    "p99_ms": 107.739311,
+    "p99.9_ms": 124.316986,
+    "server_cpu_s": 29.94999999999999,
+    "errors": {}
+   },
+   "Rust": {
+    "requests": 30027,
+    "seconds": 30.00114274,
+    "rps": 1000.861875836667,
+    "success": 1.0,
+    "p50_ms": 0.938504,
+    "p90_ms": 1.091919,
+    "p99_ms": 1.717096,
+    "p99.9_ms": 2.584686,
+    "server_cpu_s": 28.480000000000018,
+    "errors": {}
+   }
+  }
+ },
+ "round2": {
+  "Python": {
+   "ramp": [
+    {
+     "requests": 1500,
+     "seconds": 15.001325327,
+     "rps": 99.99116526726066,
+     "success": 1.0,
+     "p50_ms": 2.304473,
+     "p90_ms": 3.206957,
+     "p99_ms": 4.683228000000001,
+     "p99.9_ms": 5.546576999999999,
+     "server_cpu_s": 3.670000000000016,
+     "errors": {},
+     "offered": 100,
+     "connections": 20
+    },
+    {
+     "requests": 2250,
+     "seconds": 15.001089166,
+     "rps": 149.98910913079763,
+     "success": 1.0,
+     "p50_ms": 2.26127,
+     "p90_ms": 3.269768,
+     "p99_ms": 4.150887,
+     "p99.9_ms": 37.26583599999999,
+     "server_cpu_s": 5.419999999999959,
+     "errors": {},
+     "offered": 150,
+     "connections": 30
+    },
+    {
+     "requests": 3375,
+     "seconds": 15.000714774,
+     "rps": 224.9892789008775,
+     "success": 1.0,
+     "p50_ms": 2.017557,
+     "p90_ms": 2.777319,
+     "p99_ms": 4.535661,
+     "p99.9_ms": 8.574168,
+     "server_cpu_s": 7.080000000000041,
+     "errors": {},
+     "offered": 225,
+     "connections": 45
+    },
+    {
+     "requests": 5055,
+     "seconds": 15.001267257,
+     "rps": 336.9715313645385,
+     "success": 1.0,
+     "p50_ms": 1.9682039999999998,
+     "p90_ms": 2.5714,
+     "p99_ms": 3.740554,
+     "p99.9_ms": 10.081041,
+     "server_cpu_s": 10.079999999999984,
+     "errors": {},
+     "offered": 337,
+     "connections": 68
+    },
+    {
+     "requests": 7590,
+     "seconds": 15.000899512,
+     "rps": 505.96965828138264,
+     "success": 1.0,
+     "p50_ms": 1.807727,
+     "p90_ms": 2.514788,
+     "p99_ms": 4.7202779999999995,
+     "p99.9_ms": 9.828656,
+     "server_cpu_s": 13.769999999999982,
+     "errors": {},
+     "offered": 506,
+     "connections": 101
+    },
+    {
+     "requests": 11385,
+     "seconds": 15.002627507,
+     "rps": 758.8670714305165,
+     "success": 1.0,
+     "p50_ms": 2.2747129999999998,
+     "p90_ms": 4.059416,
+     "p99_ms": 12.67695,
+     "p99.9_ms": 51.321256000000005,
+     "server_cpu_s": 23.160000000000025,
+     "errors": {},
+     "offered": 759,
+     "connections": 152
+    },
+    {
+     "requests": 17085,
+     "seconds": 15.003631715,
+     "rps": 1138.724298525612,
+     "success": 1.0,
+     "p50_ms": 2.998929,
+     "p90_ms": 7.076237,
+     "p99_ms": 17.130868,
+     "p99.9_ms": 54.077192000000004,
+     "server_cpu_s": 37.379999999999995,
+     "errors": {},
+     "offered": 1139,
+     "connections": 228
+    },
+    {
+     "requests": 22415,
+     "seconds": 15.151068045,
+     "rps": 1479.4336566521572,
+     "success": 1.0,
+     "p50_ms": 1106.284789,
+     "p90_ms": 1905.370553,
+     "p99_ms": 2078.3639009999997,
+     "p99.9_ms": 2103.2675090000002,
+     "server_cpu_s": 59.889999999999986,
+     "errors": {},
+     "offered": 1708,
+     "connections": 342
+    }
+   ],
+   "max_sustained": 1139
+  },
+  "Rust": {
+   "ramp": [
+    {
+     "requests": 1500,
+     "seconds": 15.000663309,
+     "rps": 99.9955781355375,
+     "success": 1.0,
+     "p50_ms": 0.23579,
+     "p90_ms": 0.353889,
+     "p99_ms": 0.517885,
+     "p99.9_ms": 0.8875810000000001,
+     "server_cpu_s": 0.22999999999998977,
+     "errors": {},
+     "offered": 100,
+     "connections": 20
+    },
+    {
+     "requests": 2250,
+     "seconds": 15.001120567,
+     "rps": 149.98879516705108,
+     "success": 1.0,
+     "p50_ms": 0.211387,
+     "p90_ms": 0.338537,
+     "p99_ms": 0.479595,
+     "p99.9_ms": 0.7672059999999999,
+     "server_cpu_s": 0.30000000000001137,
+     "errors": {},
+     "offered": 150,
+     "connections": 30
+    },
+    {
+     "requests": 3375,
+     "seconds": 15.001593705,
+     "rps": 224.9760969646258,
+     "success": 1.0,
+     "p50_ms": 0.16636499999999999,
+     "p90_ms": 0.279025,
+     "p99_ms": 0.422885,
+     "p99.9_ms": 0.7119230000000001,
+     "server_cpu_s": 0.38999999999998636,
+     "errors": {},
+     "offered": 225,
+     "connections": 45
+    },
+    {
+     "requests": 5055,
+     "seconds": 15.000991604,
+     "rps": 336.977723436102,
+     "success": 1.0,
+     "p50_ms": 0.130388,
+     "p90_ms": 0.241082,
+     "p99_ms": 0.41431999999999997,
+     "p99.9_ms": 1.031469,
+     "server_cpu_s": 0.46999999999999886,
+     "errors": {},
+     "offered": 337,
+     "connections": 68
+    },
+    {
+     "requests": 7590,
+     "seconds": 15.002029954,
+     "rps": 505.93153215083896,
+     "success": 1.0,
+     "p50_ms": 0.127218,
+     "p90_ms": 0.21085700000000002,
+     "p99_ms": 0.37351300000000004,
+     "p99.9_ms": 0.581655,
+     "server_cpu_s": 0.6800000000000068,
+     "errors": {},
+     "offered": 506,
+     "connections": 101
+    },
+    {
+     "requests": 11385,
+     "seconds": 15.001713516,
+     "rps": 758.9133059938378,
+     "success": 1.0,
+     "p50_ms": 0.118902,
+     "p90_ms": 0.18821,
+     "p99_ms": 0.345252,
+     "p99.9_ms": 1.544321,
+     "server_cpu_s": 0.8899999999999864,
+     "errors": {},
+     "offered": 759,
+     "connections": 152
+    },
+    {
+     "requests": 17084,
+     "seconds": 15.001580698,
+     "rps": 1138.813325336951,
+     "success": 1.0,
+     "p50_ms": 0.12546700000000002,
+     "p90_ms": 0.205621,
+     "p99_ms": 0.349573,
+     "p99.9_ms": 0.638132,
+     "server_cpu_s": 1.3400000000000318,
+     "errors": {},
+     "offered": 1139,
+     "connections": 228
+    },
+    {
+     "requests": 25619,
+     "seconds": 15.002122772,
+     "rps": 1707.6916639967355,
+     "success": 1.0,
+     "p50_ms": 0.14230600000000002,
+     "p90_ms": 0.211186,
+     "p99_ms": 0.335082,
+     "p99.9_ms": 0.786648,
+     "server_cpu_s": 1.8799999999999955,
+     "errors": {},
+     "offered": 1708,
+     "connections": 342
+    },
+    {
+     "requests": 38428,
+     "seconds": 15.002330724,
+     "rps": 2561.4686615676824,
+     "success": 1.0,
+     "p50_ms": 0.151952,
+     "p90_ms": 0.221555,
+     "p99_ms": 0.353464,
+     "p99.9_ms": 3.099733,
+     "server_cpu_s": 2.7099999999999795,
+     "errors": {},
+     "offered": 2562,
+     "connections": 512
+    },
+    {
+     "requests": 57658,
+     "seconds": 15.00177243,
+     "rps": 3843.412521356318,
+     "success": 1.0,
+     "p50_ms": 0.158116,
+     "p90_ms": 0.22956,
+     "p99_ms": 0.36331800000000003,
+     "p99.9_ms": 4.035920999999999,
+     "server_cpu_s": 3.6899999999999977,
+     "errors": {},
+     "offered": 3844,
+     "connections": 512
+    },
+    {
+     "requests": 86485,
+     "seconds": 15.001619939,
+     "rps": 5765.044065352122,
+     "success": 1.0,
+     "p50_ms": 0.17116399999999998,
+     "p90_ms": 0.249532,
+     "p99_ms": 0.374029,
+     "p99.9_ms": 2.268752,
+     "server_cpu_s": 4.829999999999984,
+     "errors": {},
+     "offered": 5766,
+     "connections": 512
+    },
+    {
+     "requests": 129724,
+     "seconds": 15.002041717,
+     "rps": 8647.089672667653,
+     "success": 1.0,
+     "p50_ms": 0.18791200000000002,
+     "p90_ms": 0.261495,
+     "p99_ms": 0.376166,
+     "p99.9_ms": 3.635396,
+     "server_cpu_s": 6.390000000000043,
+     "errors": {},
+     "offered": 8649,
+     "connections": 512
+    },
+    {
+     "requests": 194605,
+     "seconds": 15.002519775,
+     "rps": 12971.48765131356,
+     "success": 1.0,
+     "p50_ms": 0.214055,
+     "p90_ms": 0.318408,
+     "p99_ms": 0.703264,
+     "p99.9_ms": 12.015156000000001,
+     "server_cpu_s": 8.399999999999977,
+     "errors": {},
+     "offered": 12974,
+     "connections": 512
+    },
+    {
+     "requests": 291898,
+     "seconds": 15.002622486,
+     "rps": 19456.465046187124,
+     "success": 1.0,
+     "p50_ms": 0.254521,
+     "p90_ms": 0.404344,
+     "p99_ms": 0.8475159999999999,
+     "p99.9_ms": 4.444598999999999,
+     "server_cpu_s": 11.810000000000002,
+     "errors": {},
+     "offered": 19461,
+     "connections": 512
+    },
+    {
+     "requests": 437847,
+     "seconds": 15.001986615,
+     "rps": 29185.934585637544,
+     "success": 1.0,
+     "p50_ms": 0.320918,
+     "p90_ms": 0.545627,
+     "p99_ms": 1.039369,
+     "p99.9_ms": 10.381587,
+     "server_cpu_s": 16.560000000000002,
+     "errors": {},
+     "offered": 29192,
+     "connections": 512
+    },
+    {
+     "requests": 656773,
+     "seconds": 15.001536602,
+     "rps": 43780.38179851784,
+     "success": 1.0,
+     "p50_ms": 0.49913599999999997,
+     "p90_ms": 0.883675,
+     "p99_ms": 1.7250320000000001,
+     "p99.9_ms": 7.628277,
+     "server_cpu_s": 23.379999999999995,
+     "errors": {},
+     "offered": 43789,
+     "connections": 512
+    },
+    {
+     "requests": 985189,
+     "seconds": 15.00220525,
+     "rps": 65669.61213918867,
+     "success": 1.0,
+     "p50_ms": 0.6767960000000001,
+     "p90_ms": 1.212226,
+     "p99_ms": 2.4001959999999998,
+     "p99.9_ms": 16.050255,
+     "server_cpu_s": 34.69999999999999,
+     "errors": {},
+     "offered": 65684,
+     "connections": 512
+    },
+    {
+     "requests": 1477829,
+     "seconds": 15.001701325,
+     "rps": 98510.7600787406,
+     "success": 1.0,
+     "p50_ms": 1.131407,
+     "p90_ms": 12.251677,
+     "p99_ms": 37.594635000000004,
+     "p99.9_ms": 42.816378,
+     "server_cpu_s": 52.94,
+     "errors": {},
+     "offered": 98526,
+     "connections": 512
+    },
+    {
+     "requests": 1619075,
+     "seconds": 15.007395087,
+     "rps": 107885.14533095133,
+     "success": 1.0,
+     "p50_ms": 2096.959258,
+     "p90_ms": 3682.0940760000003,
+     "p99_ms": 4012.7386300000003,
+     "p99.9_ms": 4045.840084,
+     "server_cpu_s": 55.30000000000001,
+     "errors": {},
+     "offered": 147789,
+     "connections": 512
+    }
+   ],
+   "max_sustained": 98526
+  }
+ },
+ "round3": {
+  "Python": {
+   "1": {
+    "requests": 9410,
+    "seconds": 15.001749875,
+    "rps": 627.2601582087103,
+    "success": 1.0,
+    "p50_ms": 1.5283309999999999,
+    "p90_ms": 1.732515,
+    "p99_ms": 2.391223,
+    "p99.9_ms": 3.222169,
+    "server_cpu_s": 14.769999999999982,
+    "errors": {}
+   },
+   "4": {
+    "requests": 22486,
+    "seconds": 15.002972552,
+    "rps": 1498.769655284243,
+    "success": 1.0,
+    "p50_ms": 2.610093,
+    "p90_ms": 2.8648749999999996,
+    "p99_ms": 3.412795,
+    "p99.9_ms": 6.490737,
+    "server_cpu_s": 59.05000000000001,
+    "errors": {}
+   },
+   "16": {
+    "requests": 21025,
+    "seconds": 15.007641787,
+    "rps": 1400.9529477317608,
+    "success": 1.0,
+    "p50_ms": 10.704001,
+    "p90_ms": 15.92263,
+    "p99_ms": 17.294322,
+    "p99.9_ms": 48.212101,
+    "server_cpu_s": 44.48000000000002,
+    "errors": {}
+   },
+   "64": {
+    "requests": 21087,
+    "seconds": 15.027913902,
+    "rps": 1403.188768415397,
+    "success": 1.0,
+    "p50_ms": 44.980389,
+    "p90_ms": 49.236056,
+    "p99_ms": 54.700669,
+    "p99.9_ms": 99.467369,
+    "server_cpu_s": 59.299999999999955,
+    "errors": {}
+   },
+   "256": {
+    "requests": 21798,
+    "seconds": 15.166922034,
+    "rps": 1437.2065703993846,
+    "success": 1.0,
+    "p50_ms": 179.06714200000002,
+    "p90_ms": 196.08725299999998,
+    "p99_ms": 263.213295,
+    "p99.9_ms": 320.893796,
+    "server_cpu_s": 59.680000000000064,
+    "errors": {}
+   },
+   "1024": {
+    "requests": 20383,
+    "seconds": 15.619503708,
+    "rps": 1304.9710401208351,
+    "success": 1.0,
+    "p50_ms": 771.382123,
+    "p90_ms": 857.9759270000001,
+    "p99_ms": 2795.84202,
+    "p99.9_ms": 4805.949888,
+    "server_cpu_s": 61.10000000000002,
+    "errors": {}
+   }
+  },
+  "Rust": {
+   "1": {
+    "requests": 409844,
+    "seconds": 15.001927857,
+    "rps": 27319.42213738643,
+    "success": 1.0,
+    "p50_ms": 0.032526,
+    "p90_ms": 0.043119,
+    "p99_ms": 0.07935299999999999,
+    "p99.9_ms": 0.253983,
+    "server_cpu_s": 9.730000000000018,
+    "errors": {}
+   },
+   "4": {
+    "requests": 1189076,
+    "seconds": 15.001567591,
+    "rps": 79263.449821962,
+    "success": 1.0,
+    "p50_ms": 0.047045000000000003,
+    "p90_ms": 0.060191,
+    "p99_ms": 0.089422,
+    "p99.9_ms": 0.219157,
+    "server_cpu_s": 39.15999999999997,
+    "errors": {}
+   },
+   "16": {
+    "requests": 1573128,
+    "seconds": 15.001518622,
+    "rps": 104864.58335577967,
+    "success": 1.0,
+    "p50_ms": 0.151342,
+    "p90_ms": 0.213003,
+    "p99_ms": 0.26125600000000004,
+    "p99.9_ms": 0.457186,
+    "server_cpu_s": 54.89999999999998,
+    "errors": {}
+   },
+   "64": {
+    "requests": 1633179,
+    "seconds": 15.002892096,
+    "rps": 108857.61155580332,
+    "success": 1.0,
+    "p50_ms": 0.560382,
+    "p90_ms": 0.8762530000000001,
+    "p99_ms": 1.163293,
+    "p99.9_ms": 1.4018760000000001,
+    "server_cpu_s": 55.389999999999986,
+    "errors": {}
+   },
+   "256": {
+    "requests": 1635384,
+    "seconds": 15.00482694,
+    "rps": 108990.52728428203,
+    "success": 1.0,
+    "p50_ms": 2.277172,
+    "p90_ms": 3.341774,
+    "p99_ms": 4.660723,
+    "p99.9_ms": 5.4219610000000005,
+    "server_cpu_s": 55.370000000000005,
+    "errors": {}
+   },
+   "1024": {
+    "requests": 1526433,
+    "seconds": 15.014293956,
+    "rps": 101665.32002592158,
+    "success": 1.0,
+    "p50_ms": 9.211586,
+    "p90_ms": 14.831344,
+    "p99_ms": 20.677495,
+    "p99.9_ms": 23.184372000000003,
+    "server_cpu_s": 54.84000000000003,
+    "errors": {}
+   }
+  }
+ },
+ "mismatched": [],
+ "correct": true
+}

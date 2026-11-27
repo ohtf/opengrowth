@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Render the results on docs/benchmarks.md from docs/benchmarks.json (R54).
+# Pass a results.json from s/bench to publish that run first, or --check to
+# fail if the page is out of date, as CI does.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec python3 -I "$root/bench/http/report.py" "$@"

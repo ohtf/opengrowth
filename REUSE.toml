@@ -97,3 +97,11 @@ path = "docs/api/openapi.json"
 precedence = "override"
 SPDX-FileCopyrightText = ["2026 Open Health Technology Foundation contributors", "Royal College of Paediatrics and Child Health"]
 SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# The benchmark run the documentation publishes, written by s/bench-page from
+# s/bench's results.
+[[annotations]]
+path = "docs/benchmarks.json"
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Open Health Technology Foundation contributors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"

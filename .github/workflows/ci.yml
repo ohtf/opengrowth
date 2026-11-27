@@ -70,6 +70,8 @@ jobs:
         run: s/check-wording
       - name: Every difference the tests allow is documented
         run: s/check-differences
+      - name: The benchmarks page matches its published results
+        run: s/bench-page --check
 
   dco:
     name: DCO sign-off

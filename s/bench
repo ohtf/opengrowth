@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Benchmark rounds 1 to 4: the FastAPI server against `opengrowth serve` (spec/benchmark.md).
-# Needs oha and s/reference-server. Results go to .private/bench/.
+# Benchmark rounds 0 to 4: the RCPCH server against `opengrowth serve`
+# (spec/benchmark.md). About 15 minutes; --quick for a smoke run of about 5.
+# Needs oha, taskset, and s/reference-server. Results go to .private/bench/;
+# s/bench-page publishes a run on the documentation site.
 # Extra arguments go to bench/http/run.py, for example --quick or --cpus 2.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 server="${OPENGROWTH_REFERENCE_SERVER:-$HOME/.cache/opengrowth/reference-server}"
 command -v oha >/dev/null || { echo "oha not found; cargo install oha" >&2; exit 1; }
+command -v taskset >/dev/null || { echo "taskset not found; it is part of util-linux" >&2; exit 1; }
 [[ -x "$server/venv/bin/gunicorn" ]] || { echo "No reference server at $server; run s/reference-server" >&2; exit 1; }
-cargo build --quiet --release
+cargo build --quiet --release --bin opengrowth --example round0
 out="$root/.private/bench/$(date -u +%Y-%m-%dT%H%M%SZ)"
 exec python3 -I "$root/bench/http/run.py" --opengrowth "$root/target/release/opengrowth" \
+  --round0 "$root/target/release/examples/round0" \
   --python-server "$server/src" --python-venv "$server/venv" \
   --out "$out" "$@"

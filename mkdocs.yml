@@ -79,6 +79,7 @@ nav:
   - API reference: api/reference.md
   - Compared with RCPCH:
       - Differences: differences.md
+      - Benchmarks: benchmarks.md
   - Safety: safety.md
   - About:
       - Acknowledgements: about/acknowledgements.md

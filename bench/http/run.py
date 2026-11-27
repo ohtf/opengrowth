@@ -1,21 +1,29 @@
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Benchmark rounds 1 to 4 (spec/benchmark.md): the FastAPI server against opengrowth.
+"""Benchmark rounds 0 to 4 (spec/benchmark.md): the RCPCH server against opengrowth.
 
 Standard library only. Run through s/bench, which supplies the paths:
 
-    python3 -I bench/http/run.py --opengrowth BIN --python-server SRC --python-venv VENV \
-        --out DIR [--data-dir DIR] [--cpus 4] [--quick]
+    python3 -I bench/http/run.py --opengrowth BIN --round0 BIN \\
+        --python-server SRC --python-venv VENV --out DIR \\
+        [--data-dir DIR] [--cpus 4] [--quick]
 
-Each server gets the same pinned CPU set; oha runs on a disjoint set. The
-Python contestant runs its production configuration (gunicorn with one
-uvicorn worker per CPU, as s/start-prod-server does), not `uvicorn --reload`.
-Before any timing, both servers answer the same requests and the answers are
-compared outside provenance; a fast wrong answer scores zero.
+Each server in turn gets the same whole physical cores, the fastest first
+(bench/cpus.py), and oha runs on the other cores. The Python contestant runs
+its production configuration (gunicorn with one uvicorn worker per CPU, as
+s/start-prod-server does), not `uvicorn --reload`. Before any timing, both
+servers answer the same requests and the answers are compared outside
+provenance: a fast wrong answer scores zero, and report.py will not publish
+a run where they differ.
+
+Writes results.json, which s/bench-page publishes and which holds no local
+paths; answers.json, every response body, for looking into a mismatch; and
+report.md.
 """
 
 import argparse
 import datetime
+import hashlib
 import json
 import os
 import platform
@@ -26,10 +34,18 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
+sys.path[:0] = [str(HERE), str(HERE.parent)]
+
+import cpus  # noqa: E402
+import report  # noqa: E402
+
+TICKS = os.sysconf("SC_CLK_TCK")
 
 SINGLE = {
     "birth_date": "2020-04-12",
@@ -49,6 +65,8 @@ PRETERM = {
     "gestation_days": 3,
     "measurement_method": "weight",
 }
+CHART = {"sex": "female", "measurement_method": "height", "centile_format": [0.4, 2, 9, 25, 50, 75, 91, 98, 99.6]}
+MID_PARENTAL = {"height_paternal": 180, "height_maternal": 165, "sex": "male"}
 
 
 def bulk(n):
@@ -64,11 +82,15 @@ def bulk(n):
 
 
 ENDPOINTS = {
-    "calculation, term 8 y": ("/uk-who/calculation", SINGLE),
-    "calculation, preterm 6 wk": ("/uk-who/calculation", PRETERM),
-    "bulk, 1 observation": ("/uk-who/bulk-calculation", bulk(1)),
-    "bulk, 200 observations": ("/uk-who/bulk-calculation", bulk(200)),
+    "One calculation, 8 years": ("/uk-who/calculation", SINGLE),
+    "One calculation, preterm, 6 weeks": ("/uk-who/calculation", PRETERM),
+    "Bulk, 1 observation": ("/uk-who/bulk-calculation", bulk(1)),
+    "Bulk, 200 observations": ("/uk-who/bulk-calculation", bulk(200)),
+    "Chart coordinates, 9 centiles": ("/uk-who/chart-coordinates", CHART),
+    "Mid-parental height": ("/utilities/mid-parental-height", MID_PARENTAL),
 }
+LOAD_ENDPOINT = "One calculation, 8 years"
+HEADLINE = [LOAD_ENDPOINT, "Bulk, 200 observations", "Chart coordinates, 9 centiles"]
 
 
 def free_port():
@@ -100,38 +122,30 @@ def mask_provenance(body):
     return body
 
 
-def rss_kib(pids):
-    total = 0
-    for pid in pids:
-        try:
-            for line in Path(f"/proc/{pid}/status").read_text().splitlines():
-                if line.startswith("VmRSS:"):
-                    total += int(line.split()[1])
-        except FileNotFoundError:
-            pass
-    return total
+def stat(pid):
+    """The fields of /proc/PID/stat after the command name."""
+    return Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
 
 
 def process_tree(pid):
+    """The process and its children, such as gunicorn's workers."""
     pids = [pid]
     for child in Path("/proc").iterdir():
         if child.name.isdigit():
             try:
-                if int(Path(child, "stat").read_text().split(") ")[1].split()[1]) == pid:
+                if int(stat(child.name)[1]) == pid:
                     pids.append(int(child.name))
-            except (FileNotFoundError, IndexError, ValueError):
+            except (FileNotFoundError, ProcessLookupError, IndexError, ValueError):
                 pass
     return pids
 
 
 class Server:
-    def __init__(self, name, command, cwd, env, cpus):
+    def __init__(self, name, command, cwd, env, server_cpus):
         self.name = name
         self.port = free_port()
         self.url = f"http://127.0.0.1:{self.port}"
-        command = [c.replace("{port}", str(self.port)) for c in command]
-        if shutil.which("taskset"):
-            command = ["taskset", "-c", cpus, *command]
+        command = ["taskset", "-c", server_cpus, *(c.replace("{port}", str(self.port)) for c in command)]
         started = time.perf_counter()
         self.process = subprocess.Popen(command, cwd=cwd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         deadline = started + 120
@@ -147,8 +161,30 @@ class Server:
             raise SystemExit(f"{name} did not start")
         self.cold_start = time.perf_counter() - started
 
-    def rss(self):
-        return rss_kib(process_tree(self.process.pid))
+    def cpu_seconds(self):
+        """User and system CPU time used so far by the server's processes."""
+        ticks = 0
+        for pid in process_tree(self.process.pid):
+            try:
+                fields = stat(pid)
+                ticks += int(fields[11]) + int(fields[12])
+            except (FileNotFoundError, ProcessLookupError, IndexError, ValueError):
+                pass
+        return ticks / TICKS
+
+    def memory(self):
+        """Resident memory in KiB: RSS, and PSS, which shares out the pages
+        the processes have in common, such as those of forked workers."""
+        totals = {"rss_kib": 0, "pss_kib": 0}
+        for pid in process_tree(self.process.pid):
+            try:
+                for line in Path(f"/proc/{pid}/smaps_rollup").read_text().splitlines():
+                    field = line.split(":")[0]
+                    if field in ("Rss", "Pss"):
+                        totals[f"{field.lower()}_kib"] += int(line.split()[1])
+            except (FileNotFoundError, ProcessLookupError, PermissionError):
+                pass
+        return totals
 
     def stop(self):
         try:
@@ -158,39 +194,102 @@ class Server:
             os.killpg(self.process.pid, signal.SIGKILL)
 
 
-def oha(url, body, load_cpus, args):
+OHA = ["oha", "--no-tui", "--output-format", "json", "-w", "-m", "POST", "-T", "application/json"]
+
+
+def oha(server, path, body, load_cpus, args):
+    """One oha run against the server, with the CPU time the server used."""
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
         json.dump(body, f)
         body_path = f.name
-    command = ["oha", "--no-tui", "--output-format", "json", "-w", "-m", "POST", "-T", "application/json", "-D", body_path, *args, url]
-    if shutil.which("taskset"):
-        command = ["taskset", "-c", load_cpus, *command]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
-    os.unlink(body_path)
+    command = ["taskset", "-c", load_cpus, *OHA, "-D", body_path, *args, server.url + path]
+    before = server.cpu_seconds()
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+    finally:
+        os.unlink(body_path)
+    used = server.cpu_seconds() - before
     data = json.loads(result.stdout)
     codes = data.get("statusCodeDistribution", {})
-    total = sum(codes.values()) + sum(data.get("errorDistribution", {}).values())
-    ok = codes.get("200", 0)
+    errors = data.get("errorDistribution", {})
+    requests = sum(codes.values()) + sum(errors.values())
     p = data["latencyPercentiles"]
     ms = lambda v: None if v is None else v * 1000  # noqa: E731
     return {
+        "requests": requests,
+        "seconds": data["summary"]["total"],
         "rps": data["summary"]["requestsPerSec"],
-        "success": ok / total if total else 0.0,
-        "p50": ms(p.get("p50")),
-        "p90": ms(p.get("p90")),
-        "p99": ms(p.get("p99")),
-        "p99.9": ms(p.get("p99.9")),
-        "errors": data.get("errorDistribution", {}),
+        "success": codes.get("200", 0) / requests if requests else 0.0,
+        "p50_ms": ms(p.get("p50")),
+        "p90_ms": ms(p.get("p90")),
+        "p99_ms": ms(p.get("p99")),
+        "p99.9_ms": ms(p.get("p99.9")),
+        "server_cpu_s": used,
+        "errors": errors,
     }
 
 
-def fmt(v, unit=""):
-    return "-" if v is None else f"{v:,.1f}{unit}" if isinstance(v, float) else f"{v}{unit}"
+def ramp_connections(rate):
+    """Connections for an open-loop step: twice the concurrency the rate needs
+    at the 100 ms limit, from 16 to 512. More, at a low rate, leave most
+    requests the first on their connection, which inflates p99."""
+    return min(512, max(16, round(rate * 0.2)))
+
+
+def run(*command, **kwargs):
+    return subprocess.run(command, capture_output=True, text=True, **kwargs).stdout.strip()
+
+
+def processor():
+    for line in Path("/proc/cpuinfo").read_text().splitlines():
+        if line.startswith("model name"):
+            return line.split(":", 1)[1].strip()
+    return platform.processor() or platform.machine()
+
+
+def environment(args, server, load, settings):
+    """Where and with what the run was made. No local paths."""
+    python = f"{args.python_venv}/bin/python"
+    versions = run(python, "-I", "-c", "import importlib.metadata as m, json, sys; print(json.dumps({'python': sys.version.split()[0], **{p: m.version(p) for p in ('rcpchgrowth', 'fastapi', 'pydantic', 'gunicorn', 'uvicorn', 'uvloop', 'httptools')}}))")
+    governor = Path(f"/sys/devices/system/cpu/cpu{server[0]}/cpufreq/scaling_governor")
+    built_from = ("src", "build.rs", "Cargo.toml", "Cargo.lock", "data")
+    return {
+        "date": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+        "processor": processor(),
+        "os": platform.platform(),
+        "cpus_total": os.cpu_count(),
+        "governor": governor.read_text().strip() if governor.exists() else None,
+        "server_cpus": cpus.describe(server),
+        "load_cpus": cpus.describe(load),
+        "load_average": [round(x, 2) for x in os.getloadavg()],
+        "oha": run("oha", "--version"),
+        "opengrowth": run(args.opengrowth, "--version"),
+        "opengrowth_commit": run("git", "-C", str(ROOT), "rev-parse", "HEAD"),
+        "opengrowth_modified": bool(run("git", "-C", str(ROOT), "status", "--porcelain", "--", *built_from)),
+        "python_server_commit": run("git", "-C", args.python_server, "rev-parse", "HEAD"),
+        "python_versions": json.loads(versions),
+        **settings,
+    }
+
+
+def round0(args, cpu, env):
+    """The engines alone, in-process, each on the same CPU."""
+    commands = {
+        "Rust": [args.round0, "--json"],
+        "Python": [f"{args.python_venv}/bin/python", "-I", str(ROOT / "bench" / "round0" / "python.py"), "--json"],
+    }
+    results = {}
+    for name, command in commands.items():
+        print(f"== round 0: {name}", file=sys.stderr)
+        output = subprocess.run(["taskset", "-c", str(cpu), *command], capture_output=True, text=True, check=True, cwd=ROOT, env=env).stdout
+        results[name] = json.loads(output.strip().splitlines()[-1])
+    return {"cpu": cpu, **results}
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--opengrowth", required=True)
+    parser.add_argument("--round0", help="the round0 example binary; without it, round 0 is left out")
     parser.add_argument("--python-server", required=True)
     parser.add_argument("--python-venv", required=True)
     parser.add_argument("--data-dir", help="imported tables to layer over the embedded ones (optional)")
@@ -199,13 +298,19 @@ def main():
     parser.add_argument("--quick", action="store_true", help="short durations, for a smoke run")
     args = parser.parse_args()
 
-    total_cpus = os.cpu_count() or 2
-    if total_cpus < args.cpus * 2:
-        raise SystemExit(f"need at least {args.cpus * 2} CPUs to separate server and load generator")
-    server_cpus = f"0-{args.cpus - 1}"
-    load_cpus = f"{args.cpus}-{total_cpus - 1}"
-    seconds = 5 if args.quick else 30
-    step_seconds = 4 if args.quick else 15
+    if not shutil.which("taskset"):
+        raise SystemExit("needs taskset (util-linux), to give each server its CPUs")
+    server, load = cpus.split(args.cpus)
+    if len(load) < args.cpus:
+        raise SystemExit(f"need at least {args.cpus} CPUs on other cores for the load generator")
+    server_cpus, load_cpus = cpus.ranges(server), cpus.ranges(load)
+    settings = {
+        "quick": args.quick,
+        "workers": args.cpus,
+        "warm_up_seconds": 2 if args.quick else 5,
+        "round1_seconds": 5 if args.quick else 30,
+        "step_seconds": 4 if args.quick else 15,
+    }
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -213,94 +318,100 @@ def main():
     if args.data_dir:
         env["OPENGROWTH_REFERENCE_DATA_DIR"] = args.data_dir
     env.pop("AUTHORIZATION_KEY", None)
+    workers = str(args.cpus)
     contestants = {
-        "Python": (
-            [f"{args.python_venv}/bin/gunicorn", "-w", str(args.cpus), "-b", "127.0.0.1:{port}", "-k", "uvicorn.workers.UvicornWorker", "main:app"],
-            args.python_server,
-        ),
-        "Rust": ([args.opengrowth, "serve", "--bind", "127.0.0.1:{port}", "--workers", str(args.cpus)], str(ROOT)),
+        "Python": (["gunicorn", "-w", workers, "-b", "127.0.0.1:{port}", "-k", "uvicorn.workers.UvicornWorker", "main:app"], args.python_server, f"{args.python_venv}/bin/gunicorn"),
+        "Rust": (["opengrowth", "serve", "--bind", "127.0.0.1:{port}", "--workers", workers], str(ROOT), args.opengrowth),
     }
-    results = {"environment": {}, "servers": {}, "round1": {}, "round2": {}, "round3": {}}
-    results["environment"] = {
-        "date": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-        "host": platform.platform(),
-        "processor": platform.processor() or platform.machine(),
-        "cpus_total": total_cpus,
-        "server_cpus": server_cpus,
-        "load_cpus": load_cpus,
-        "oha": subprocess.run(["oha", "--version"], capture_output=True, text=True).stdout.strip(),
-        "opengrowth": subprocess.run([args.opengrowth, "--version"], capture_output=True, text=True).stdout.strip(),
-        "python_server_commit": subprocess.run(["git", "-C", args.python_server, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip(),
-        "quick": args.quick,
+    rounds = {
+        "round1": ["-c", "1", "-z", f"{settings['round1_seconds']}s"],
+        "round2": ["-q", "{rate}", "-z", f"{settings['step_seconds']}s", "-c", "{connections}", "--latency-correction"],
+        "round3": ["-c", "{connections}", "-z", f"{settings['step_seconds']}s"],
+    }
+    results = {
+        "format": report.FORMAT,
+        "environment": environment(args, server, load, settings),
+        "commands": {
+            "pinning": ["taskset", "-c", server_cpus],
+            "Python": contestants["Python"][0],
+            "Rust": contestants["Rust"][0],
+            "oha": ["taskset", "-c", load_cpus, *OHA, "-D", "BODY.json"],
+            **rounds,
+            "round0": [["target/release/examples/round0", "--json"], ["python", "-I", "bench/round0/python.py", "--json"]],
+        },
+        "requests": {label: {"path": path, "body": body} for label, (path, body) in ENDPOINTS.items()},
+        "headline": HEADLINE,
+        "round0": round0(args, server[0], env) if args.round0 else None,
+        "servers": {},
+        "round1": {},
+        "round2": {},
+        "round3": {},
     }
 
-    for name, (command, cwd) in contestants.items():
+    bodies = {}
+    for name, (command, cwd, executable) in contestants.items():
         print(f"== {name}", file=sys.stderr)
-        server = Server(name, command, cwd, env, server_cpus)
+        live = Server(name, [executable, *command[1:]], cwd, env, server_cpus)
         try:
-            info = {"cold_start_s": server.cold_start, "rss_idle_kib": server.rss()}
+            info = {"cold_start_s": live.cold_start, "memory_idle": live.memory(), "load_average_before": [round(x, 2) for x in os.getloadavg()]}
 
-            # Correctness first: same answers outside provenance.
-            answers = {}
-            for label, (path, body) in ENDPOINTS.items():
-                answers[label] = post(server.url + path, body)
-            info["answers"] = {k: [s, mask_provenance(b)] for k, (s, b) in answers.items()}
+            # Correctness first: the same answers outside provenance.
+            bodies[name] = {label: post(live.url + path, body) for label, (path, body) in ENDPOINTS.items()}
+            info["answers"] = {}
+            for label, (status, body) in bodies[name].items():
+                masked = mask_provenance(body).encode()
+                info["answers"][label] = {"status": status, "bytes": len(masked), "sha256": hashlib.sha256(masked).hexdigest()}
 
-            print("  round 1: idle latency", file=sys.stderr)
+            print("  warm-up", file=sys.stderr)
+            for path, body in ENDPOINTS.values():
+                oha(live, path, body, load_cpus, ["-c", "8", "-z", f"{settings['warm_up_seconds']}s"])
+
+            print("  round 1: one request at a time", file=sys.stderr)
             for label, (path, body) in ENDPOINTS.items():
-                results["round1"].setdefault(label, {})[name] = oha(server.url + path, body, load_cpus, ["-q", "10", "-z", f"{seconds}s", "-c", "4", "--latency-correction"])
+                results["round1"].setdefault(label, {})[name] = oha(live, path, body, load_cpus, rounds["round1"])
 
             print("  round 2: open-loop ramp", file=sys.stderr)
+            path, body = ENDPOINTS[LOAD_ENDPOINT]
             rate, ramp, best = 100.0, [], None
             while True:
-                r = oha(server.url + "/uk-who/calculation", SINGLE, load_cpus, ["-q", str(int(rate)), "-z", f"{step_seconds}s", "-c", "512", "--latency-correction"])
-                r["offered"] = rate
-                ramp.append(r)
-                print(f"    {int(rate)}/s: p99 {fmt(r['p99'], ' ms')}, success {r['success']:.4f}", file=sys.stderr)
-                if r["p99"] is None or r["p99"] > 100 or r["success"] < 0.999:
+                connections = ramp_connections(rate)
+                step = oha(live, path, body, load_cpus, [a.replace("{rate}", str(int(rate))).replace("{connections}", str(connections)) for a in rounds["round2"]])
+                step["offered"] = int(rate)
+                step["connections"] = connections
+                ramp.append(step)
+                print(f"    {int(rate)}/s: p99 {report.number(step['p99_ms'])} ms, success {step['success']:.4f}", file=sys.stderr)
+                if step["p99_ms"] is None or step["p99_ms"] > 100 or step["success"] < 0.999:
                     break
-                best = rate
+                best = int(rate)
                 rate *= 1.5
                 if rate > 2_000_000:
                     break
             results["round2"][name] = {"ramp": ramp, "max_sustained": best}
-            info["rss_loaded_kib"] = server.rss()
+            info["memory_after_ramp"] = live.memory()
 
             print("  round 3: concurrency sweep", file=sys.stderr)
             sweep = {}
             for connections in (1, 4, 16, 64, 256, 1024):
-                sweep[connections] = oha(server.url + "/uk-who/calculation", SINGLE, load_cpus, ["-c", str(connections), "-z", f"{step_seconds}s"])
-                print(f"    {connections} connections: {sweep[connections]['rps']:,.0f}/s, p99 {fmt(sweep[connections]['p99'], ' ms')}", file=sys.stderr)
+                sweep[str(connections)] = step = oha(live, path, body, load_cpus, [a.replace("{connections}", str(connections)) for a in rounds["round3"]])
+                print(f"    {connections} connections: {step['rps']:,.0f}/s, p99 {report.number(step['p99_ms'])} ms", file=sys.stderr)
             results["round3"][name] = sweep
-            info["rss_after_kib"] = server.rss()
+            info["memory_after_sweep"] = live.memory()
+            info["load_average_after"] = [round(x, 2) for x in os.getloadavg()]
             results["servers"][name] = info
         finally:
-            server.stop()
+            live.stop()
 
-    py, rs = (results["servers"][n]["answers"] for n in ("Python", "Rust"))
-    mismatched = [k for k in py if py[k] != rs[k]]
-    results["correct"] = not mismatched
-    (out / "results.json").write_text(json.dumps(results, indent=1))
-
-    lines = [f"# opengrowth vs FastAPI benchmark, {results['environment']['date']}", ""]
-    lines += [f"- {k}: `{v}`" for k, v in results["environment"].items()]
-    lines += ["", "## Correctness", "", "Identical answers outside provenance for every endpoint." if not mismatched else f"**MISMATCH** for: {', '.join(mismatched)}. Timings below do not count."]
-    lines += ["", "## Round 1: one request at a time (10 requests/s)", "", "| Endpoint | Python p50 | Python p99 | Rust p50 | Rust p99 |", "| --- | ---: | ---: | ---: | ---: |"]
-    for label, by in results["round1"].items():
-        lines.append(f"| {label} | {fmt(by['Python']['p50'], ' ms')} | {fmt(by['Python']['p99'], ' ms')} | {fmt(by['Rust']['p50'], ' ms')} | {fmt(by['Rust']['p99'], ' ms')} |")
-    lines += ["", "## Round 2: highest rate with p99 under 100 ms and 99.9% success", ""]
-    for name in ("Python", "Rust"):
-        lines.append(f"- {name}: {fmt(results['round2'][name]['max_sustained'])} requests/s")
-    lines += ["", "## Round 3: concurrency sweep (closed loop)", "", "| Connections | Python req/s | Python p99 | Rust req/s | Rust p99 |", "| ---: | ---: | ---: | ---: | ---: |"]
-    for c in results["round3"]["Python"]:
-        p, r = results["round3"]["Python"][c], results["round3"]["Rust"][c]
-        lines.append(f"| {c} | {p['rps']:,.0f} | {fmt(p['p99'], ' ms')} | {r['rps']:,.0f} | {fmt(r['p99'], ' ms')} |")
-    lines += ["", "## Round 4 (partial): resources", "", "| | Python | Rust |", "| --- | ---: | ---: |"]
-    for key, label in [("cold_start_s", "start to first 200 (s)"), ("rss_idle_kib", "RSS idle (KiB)"), ("rss_loaded_kib", "RSS after ramp (KiB)"), ("rss_after_kib", "RSS after sweep (KiB)")]:
-        lines.append(f"| {label} | {fmt(results['servers']['Python'][key])} | {fmt(results['servers']['Rust'][key])} |")
-    (out / "report.md").write_text("\n".join(lines) + "\n")
-    print(out / "report.md")
-    sys.exit(0 if not mismatched else 1)
+    answers = {name: results["servers"][name]["answers"] for name in contestants}
+    results["mismatched"] = [label for label in ENDPOINTS if answers["Python"][label] != answers["Rust"][label]]
+    results["correct"] = not results["mismatched"]
+    (out / "results.json").write_text(json.dumps(results, indent=1) + "\n")
+    (out / "answers.json").write_text(json.dumps(bodies, indent=1) + "\n")
+    if results["correct"]:
+        (out / "report.md").write_text(report.render(results, "results.json"))
+        print(out / "report.md")
+    else:
+        print(f"MISMATCH for: {', '.join(results['mismatched'])}; see {out / 'answers.json'}", file=sys.stderr)
+    sys.exit(0 if results["correct"] else 1)
 
 
 if __name__ == "__main__":
