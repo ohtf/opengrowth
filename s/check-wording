@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Fail on a word qms/intended-purpose.md reserves, in the documentation site or
+# the README, unless it says what opengrowth does not do (R44, R55).
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec python3 -I "$root/qms/tools/wording.py" "$@"

@@ -16,5 +16,6 @@
 | `s/bench` | Benchmark rounds 1 to 4: the two HTTP servers under `oha`. Writes to `.private/bench/`. `--quick` for a smoke run. |
 | `s/docs` | Serves the documentation site locally with hot reload, on the first free port from 8000. Needs `.venv` set up from `requirements.txt` once. |
 | `s/build-docs` | Builds the documentation site into `site/`. `--strict` fails on any warning, as CI does. |
+| `s/check-wording` | Fails on a word `qms/intended-purpose.md` reserves, in the documentation site or the README, unless it says what opengrowth does not do. |
 | `s/check-docs-nav` | Fails if a page in `docs/` is missing from the nav in `mkdocs.yml`, or the nav names a page that does not exist. |
 

@@ -66,6 +66,8 @@ jobs:
         run: s/build-docs --strict
       - name: Every page is in the nav
         run: s/check-docs-nav
+      - name: Wording follows the intended purpose
+        run: s/check-wording
 
   dco:
     name: DCO sign-off
