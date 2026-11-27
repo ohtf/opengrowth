@@ -14,6 +14,7 @@
 | `s/reference-server` | Checks out the upstream FastAPI server at a pinned commit and installs its dependencies, in `~/.cache/opengrowth/reference-server` or `$OPENGROWTH_REFERENCE_SERVER`. Used by `s/goldens http_uk_who` and `s/bench`. |
 | `s/bench-round0` | Benchmark round 0: the two engines in-process. |
 | `s/bench` | Benchmark rounds 1 to 4: the two HTTP servers under `oha`. Writes to `.private/bench/`. `--quick` for a smoke run. |
+| `s/openapi` | Regenerates `docs/api/openapi.json`, the OpenAPI document the documentation publishes, from `opengrowth openapi`. `tests/openapi.rs` fails while it is out of date. |
 | `s/docs` | Serves the documentation site locally with hot reload, on the first free port from 8000. Needs `.venv` set up from `requirements.txt` once. |
 | `s/build-docs` | Builds the documentation site into `site/`. `--strict` fails on any warning, as CI does. |
 | `s/check-wording` | Fails on a word `qms/intended-purpose.md` reserves, in the documentation site or the README, unless it says what opengrowth does not do. |

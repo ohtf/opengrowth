@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Regenerate docs/api/openapi.json, the OpenAPI document the documentation site
+# publishes, from `opengrowth openapi`. tests/openapi.rs fails while it is stale.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+mkdir -p docs/api
+cargo run --quiet --bin opengrowth -- openapi > docs/api/openapi.json.new
+mv docs/api/openapi.json.new docs/api/openapi.json
+echo "wrote docs/api/openapi.json" >&2

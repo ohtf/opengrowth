@@ -56,6 +56,8 @@ pub enum Command {
     Data(commands::data::DataCommand),
     /// Serve the HTTP API, compatible with the RCPCH Digital Growth Charts API.
     Serve(commands::serve::Args),
+    /// Print the OpenAPI document describing the HTTP API.
+    Openapi(commands::openapi::Args),
     /// Print a shell completion script.
     Completions(commands::completions::Args),
 }
@@ -79,6 +81,7 @@ where
         Command::Calculate(args) => commands::calculate::run(&context, &args),
         Command::Data(command) => commands::data::run(&context, &command),
         Command::Serve(args) => commands::serve::run(&context, &args),
+        Command::Openapi(args) => commands::openapi::run(&args),
         Command::Completions(args) => commands::completions::run(&args),
     }
 }

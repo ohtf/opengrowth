@@ -17,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 STATEMENT = ROOT / "qms" / "intended-purpose.md"
-FILES = ("README.md", "docs/**/*.md")
+FILES = ("README.md", "docs/**/*.md", "docs/api/openapi.json")
 
 # The forms of each reserved word that carry its meaning. Look-alikes with
 # another meaning are left out: "reference" for refer, "identifier" for
@@ -78,6 +78,24 @@ def prose_lines(path):
         yield number, text
 
 
+def json_prose(path):
+    """(location, text) for each description, summary, and title in a JSON
+    document such as the OpenAPI document."""
+    import json
+
+    def walk(node, where):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in ("description", "summary", "title") and isinstance(value, str):
+                    yield f"{where}/{key}", value
+                yield from walk(value, f"{where}/{key}")
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                yield from walk(value, f"{where}/{index}")
+
+    yield from walk(json.loads(path.read_text()), "")
+
+
 def sentences(text):
     return re.split(r"(?<=[.!?])\s+", text)
 
@@ -94,7 +112,8 @@ def main():
     findings = []
     for path in paths:
         relative = str(path.relative_to(ROOT))
-        for number, text in prose_lines(path):
+        lines = json_prose(path) if path.suffix == ".json" else prose_lines(path)
+        for number, text in lines:
             for sentence in sentences(text):
                 for match in pattern.finditer(sentence):
                     if NEGATION.search(sentence[: match.start()]):

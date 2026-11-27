@@ -14,6 +14,7 @@
 //! The `/growth/v1` prefix belongs to the gateway, not this router.
 
 pub mod cors;
+pub mod openapi;
 pub mod pyjson;
 pub mod response;
 pub mod validate;
@@ -145,7 +146,7 @@ impl NoiseSource {
 
 /// The operations upstream serves for every reference, each at
 /// `/{prefix}/{path}`, where the prefix is the reference definition's.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Operation {
     Calculation,
     BulkCalculation,

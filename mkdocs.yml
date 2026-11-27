@@ -76,6 +76,7 @@ plugins:
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - API reference: api/reference.md
   - Safety: safety.md
   - About:
       - Acknowledgements: about/acknowledgements.md

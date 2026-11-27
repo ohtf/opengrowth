@@ -35,7 +35,7 @@ The LMS method, which opengrowth uses to turn a measurement into an SDS and back
 
 - opengrowth's normal distribution functions are translated from SciPy, under the BSD 3-clause licence; [NOTICE.md](https://github.com/ohtf/opengrowth/blob/main/NOTICE.md) gives the notice.
 - Every Rust library compiled into opengrowth is listed, with its licence, in the [SOUP register](https://github.com/ohtf/opengrowth/blob/main/qms/soup.md). CI checks their licences are compatible with the AGPL.
-- [Zensical](https://zensical.org/), under the MIT licence, builds this site.
+- [Zensical](https://zensical.org/), under the MIT licence, builds this site, and the [API reference](../api/reference.md) is drawn by [Swagger UI](https://github.com/swagger-api/swagger-ui), under the Apache 2.0 licence, loaded from a pinned version.
 
 ## No warranty
 
