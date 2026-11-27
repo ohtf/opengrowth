@@ -281,12 +281,26 @@ async fn authorise(State(state): State<Arc<AppState>>, request: Request, next: N
         let sent = request
             .headers()
             .get(header::AUTHORIZATION)
-            .map(HeaderValue::as_bytes);
-        if sent != Some(expected.as_bytes()) {
+            .map_or(&[][..], HeaderValue::as_bytes);
+        if !same_secret(sent, expected.as_bytes()) {
             return detail(StatusCode::FORBIDDEN, "Forbidden");
         }
     }
     next.run(request).await
+}
+
+/// Whether two byte strings are equal, in a time that depends only on their
+/// lengths, so that how long a refusal takes does not reveal how much of a
+/// key was right.
+fn same_secret(sent: &[u8], expected: &[u8]) -> bool {
+    if sent.len() != expected.len() {
+        return false;
+    }
+    let difference = sent
+        .iter()
+        .zip(expected)
+        .fold(0_u8, |difference, (a, b)| difference | (a ^ b));
+    std::hint::black_box(difference) == 0
 }
 
 /// The open health check. Unlike the pinned server's `/`, it does not return
@@ -1248,5 +1262,14 @@ mod tests {
             "{}",
             &text[..120]
         );
+    }
+
+    #[test]
+    fn secrets_compare_only_when_equal() {
+        assert!(same_secret(b"Bearer key", b"Bearer key"));
+        assert!(!same_secret(b"Bearer kez", b"Bearer key"));
+        assert!(!same_secret(b"Bearer ke", b"Bearer key"));
+        assert!(!same_secret(b"", b"Bearer key"));
+        assert!(same_secret(b"", b""));
     }
 }
