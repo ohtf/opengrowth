@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Keeps the Dockerfile's base images, pinned by digest, current, so that the
+# image picks up their security fixes. CI builds and checks each update.
+version: 2
+
+updates:
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    groups:
+      base-images:
+        applies-to: version-updates
+        patterns:
+          - "*"

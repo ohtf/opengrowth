@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Smoke-test an opengrowth container image, `opengrowth` from s/container
+# unless you name another: it starts, answers `/`, refuses a calculation
+# without the key it was given, calculates one with it as the documentation
+# says, and stops cleanly within 5 s of `docker stop`. CI runs it on every
+# change.
+set -euo pipefail
+image="${1:-opengrowth}"
+command -v docker >/dev/null || { echo "docker not found: install Docker Engine, https://docs.docker.com/engine/install/" >&2; exit 1; }
+docker info >/dev/null 2>&1 || { echo "the Docker daemon is not running: sudo systemctl start docker" >&2; exit 1; }
+command -v curl >/dev/null || { echo "curl not found: install it with your package manager" >&2; exit 1; }
+
+key="check-${RANDOM}${RANDOM}"
+container="$(docker run --detach --publish 127.0.0.1::8000 --env AUTHORIZATION_KEY="$key" "$image")"
+trap 'docker rm --force "$container" >/dev/null 2>&1 || true' EXIT
+address="$(docker port "$container" 8000/tcp | head -n 1)"
+fail() {
+  echo "container check failed: $*" >&2
+  docker logs "$container" >&2 || true
+  exit 1
+}
+
+for _ in $(seq 100); do
+  curl --silent --output /dev/null "http://$address/" && break
+  sleep 0.1
+done
+status="$(curl --silent --output /dev/null --write-out '%{http_code}' "http://$address/")"
+[[ "$status" == 200 ]] || fail "/ answered $status, not 200"
+
+# A stamped image's label and the binary's own record of its commit agree.
+revision="$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")"
+served="$(curl --silent --head "http://$address/" | tr -d '\r' | sed -n 's/^x-git-revision: //p')"
+if [[ -n "$revision" ]]; then
+  [[ "$served" == "$revision" ]] || fail "the image is labelled $revision but its binary reports $served"
+else
+  [[ "$served" == unknown ]] || fail "the image has no revision label but its binary reports $served"
+fi
+
+request='{"birth_date": "2020-04-12", "observation_date": "2028-06-12", "observation_value": 115, "sex": "female", "gestation_weeks": 40, "gestation_days": 0, "measurement_method": "height"}'
+status="$(curl --silent --output /dev/null --write-out '%{http_code}' --request POST "http://$address/uk-who/calculation" \
+  --header 'content-type: application/json' --data "$request")"
+[[ "$status" == 403 ]] || fail "a calculation without the key answered $status, not 403"
+response="$(curl --silent --request POST "http://$address/uk-who/calculation" --header "authorization: Bearer $key" \
+  --header 'content-type: application/json' --data "$request")"
+grep --quiet '"corrected_sds":-2.406593606646068,' <<<"$response" || fail "the calculation did not give the documented SDS: ${response:0:300}"
+
+docker stop --time 5 "$container" >/dev/null
+code="$(docker inspect --format '{{.State.ExitCode}}' "$container")"
+[[ "$code" == 0 ]] || fail "it exited with code $code on docker stop, not 0, so it did not stop cleanly"
+echo "container OK: $image, commit ${served}"

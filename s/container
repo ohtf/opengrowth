@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Build the opengrowth container image from the Dockerfile, tagged
+# `opengrowth`. Results record the commit when the code the binary is built
+# from is committed; otherwise the image is built unstamped, with a warning.
+# Extra arguments go to `docker build`, for example `--tag opengrowth:demo`.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+command -v docker >/dev/null || { echo "docker not found: install Docker Engine, https://docs.docker.com/engine/install/" >&2; exit 1; }
+docker info >/dev/null 2>&1 || { echo "the Docker daemon is not running: sudo systemctl start docker" >&2; exit 1; }
+stamp=()
+if [[ -z "$(git status --porcelain --untracked-files=no -- src data Cargo.toml Cargo.lock rust-toolchain.toml)" ]]; then
+  stamp=(--build-arg "OPENGROWTH_COMMIT=$(git rev-parse HEAD)")
+else
+  echo "warning: the code has uncommitted changes, so the image will report its commit as unknown" >&2
+fi
+exec docker build ${stamp[@]+"${stamp[@]}"} --tag opengrowth "$@" .

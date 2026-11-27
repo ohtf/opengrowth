@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Only what the image needs enters the build context, so local files such as
+# .private/ and .venv/ never do. Add a path here when the build needs it.
+*
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!src
+!data
+!examples
+!conformance/expected/http-openapi.json
+!LICENSE
+!LICENSES
+!NOTICE.md

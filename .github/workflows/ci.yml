@@ -75,6 +75,18 @@ jobs:
       - name: The benchmarks page matches its published results
         run: s/bench-page --check
 
+  container:
+    name: container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: s/container
+      - name: Check that it starts, calculates, and stops cleanly
+        run: s/check-container
+
   dco:
     name: DCO sign-off
     runs-on: ubuntu-latest

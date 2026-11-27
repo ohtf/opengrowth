@@ -40,6 +40,18 @@ The tables are compiled into the program, and each is checked against its record
 
     Anyone who has the key can call the server as if they were you. Keep it out of source code and version control: give it to the server and its clients through environment variables or a secret store. If a key is exposed, replace it at once, on the server and in every client.
 
+## In a container
+
+The repository's `Dockerfile` builds an image that runs `opengrowth serve` on port 8000, as an unprivileged user, with the tables compiled in and nothing else beside them, not even a shell. Every option above can be set through its environment variable.
+
+```sh
+s/container                 # builds the image, tagged opengrowth
+s/check-container           # checks that it starts, calculates, and stops cleanly
+docker run --rm -p 8000:8000 -e AUTHORIZATION_KEY="..." opengrowth
+```
+
+`docker stop` ends it cleanly: it stops accepting connections and finishes the requests it has, as it does on SIGTERM under systemd or Kubernetes.
+
 ## Build it so that results name their code
 
 Each result's provenance includes the commit the engine and server were built from. A build records it only when `OPENGROWTH_COMMIT` holds the full 40-character commit hash at compile time; otherwise it reports `unknown`, and stored results could not be traced to their exact code. Build what you deploy from a checkout:
@@ -47,6 +59,8 @@ Each result's provenance includes the commit the engine and server were built fr
 ```sh
 OPENGROWTH_COMMIT="$(git rev-parse HEAD)" cargo build --release --locked
 ```
+
+`s/container` does this for the image whenever the code is committed, and labels the image with the same commit.
 
 ## In this section
 
