@@ -2,7 +2,9 @@
 
 An open-source growth calculation engine for children: SDS, centiles, centile bands, and chart coordinates against the UK-WHO, WHO, CDC, Trisomy 21, and Turner syndrome growth references. One Rust binary provides the library, CLI, HTTP API, and MCP server.
 
-> **Status: Experimental.** All six references work in the CLI and the HTTP API. All 25 API operations return the same bytes as the RCPCH FastAPI server, outside provenance, for every captured request apart from the differences listed in [spec/standard.md](spec/standard.md) section 6.3, most of them requests where upstream fails with a 500. The MCP server is not built yet. Do not use this for anything clinical.
+> **Status: Experimental.** All six references work in the CLI and the HTTP API. All 25 API operations return the same bytes as the RCPCH FastAPI server, outside provenance, for every captured request apart from the [listed differences](https://ohtf.github.io/opengrowth/differences/), most of them requests where upstream fails with a 500. The MCP server is not built yet. Do not use this for anything clinical.
+
+**Documentation: [ohtf.github.io/opengrowth](https://ohtf.github.io/opengrowth/)**: getting started, how the calculations work, integrating with the API, the API and command-line references, and how opengrowth compares with the RCPCH server, in [differences](https://ohtf.github.io/opengrowth/differences/) and [benchmarks](https://ohtf.github.io/opengrowth/benchmarks/).
 
 opengrowth is an [Open Health Technology Foundation](https://openhealthtechnology.org) project, hosted at [github.com/ohtf/opengrowth](https://github.com/ohtf/opengrowth). Its OHTF lifecycle status is **Experimental**.
 

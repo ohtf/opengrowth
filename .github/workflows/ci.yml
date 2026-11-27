@@ -66,6 +66,8 @@ jobs:
         run: s/build-docs --strict
       - name: Every page is in the nav
         run: s/check-docs-nav
+      - name: Every internal link and anchor resolves
+        run: s/check-docs-links
       - name: Wording follows the intended purpose
         run: s/check-wording
       - name: Every difference the tests allow is documented

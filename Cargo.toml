@@ -9,6 +9,7 @@ edition = "2024"
 license = "AGPL-3.0-or-later"
 authors = ["Open Health Technology Foundation contributors"]
 repository = "https://github.com/ohtf/opengrowth"
+homepage = "https://ohtf.github.io/opengrowth/"
 # Not published while the embedded UK90 tables await a UKRI licence (spec/queries.md Q1).
 publish = false
 

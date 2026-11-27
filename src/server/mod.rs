@@ -311,7 +311,7 @@ async fn root() -> Response {
         &json!({
             "name": response::API_SERVER_NAME,
             "version": crate::ENGINE_VERSION,
-            "detail": "The API does not serve its OpenAPI document; it will be published with the documentation (R30).",
+            "detail": "The API does not serve its OpenAPI document: `opengrowth openapi` prints it, and https://ohtf.github.io/opengrowth/api/reference/ publishes it.",
         }),
     );
     response.headers_mut().insert(

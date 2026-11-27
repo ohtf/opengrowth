@@ -21,5 +21,6 @@
 | `s/build-docs` | Builds the documentation site into `site/`. `--strict` fails on any warning, as CI does. |
 | `s/check-wording` | Fails on a word `qms/intended-purpose.md` reserves, in the documentation site or the README, unless it says what opengrowth does not do. |
 | `s/check-differences` | Fails if `docs/differences.md` does not name every difference from the upstream server that a conformance test allows. `--list` prints them. |
+| `s/check-docs-links` | Fails if the built site links to a page, file, or anchor of its own that does not exist. Run `s/build-docs` first. |
 | `s/check-docs-nav` | Fails if a page in `docs/` is missing from the nav in `mkdocs.yml`, or the nav names a page that does not exist. |
 

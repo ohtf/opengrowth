@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Fail if the built site (site/, from s/build-docs) links to a page, file, or
+# heading anchor of its own that does not exist (R57). Links to other sites
+# are not followed. Zensical's strict build checks the links written in
+# Markdown, anchors included, but not those in raw HTML or in the pages the
+# theme generates, such as 404.html; this checks every link in the built site.
+#
+# Dependency-free: the standard library's HTML parser.
+
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+[[ -d site ]] || { echo "no site/: run s/build-docs first" >&2; exit 1; }
+
+exec python3 -I - "$@" <<'EOF'
+import html.parser
+import pathlib
+import re
+import sys
+import urllib.parse
+
+SITE = pathlib.Path("site").resolve()
+# Pages such as 404.html link from the site's own path, as site_url gives it.
+SITE_URL = re.search(r"^site_url:\s*(\S+)", pathlib.Path("mkdocs.yml").read_text(), re.M).group(1)
+BASE = urllib.parse.urlsplit(SITE_URL).path
+EXTERNAL = ("http:", "https:", "mailto:", "tel:", "data:", "javascript:", "//")
+
+
+class Page(html.parser.HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.ids, self.links = set(), []
+
+    def handle_starttag(self, tag, attrs):
+        for name, value in attrs:
+            if name in ("id", "name") and value:
+                self.ids.add(value)
+            if name in ("href", "src") and value:
+                self.links.append(value)
+
+
+def target(page, link):
+    """The file a relative link from `page` leads to, and its fragment."""
+    base = BASE + page.relative_to(SITE).as_posix()
+    url = urllib.parse.urlsplit(urllib.parse.urljoin(base, link))
+    if not url.path.startswith(BASE):
+        return None, ""
+    path = SITE / urllib.parse.unquote(url.path[len(BASE):])
+    if url.path.endswith("/") or path.is_dir():
+        path = path / "index.html"
+    return path, urllib.parse.unquote(url.fragment)
+
+
+pages = {}
+for path in sorted(SITE.rglob("*.html")):
+    parsed = Page()
+    parsed.feed(path.read_text(errors="replace"))
+    pages[path] = parsed
+
+broken = []
+checked = 0
+for path, parsed in pages.items():
+    for link in parsed.links:
+        if link.startswith(EXTERNAL):
+            continue
+        checked += 1
+        destination, fragment = target(path, link)
+        where = path.relative_to(SITE)
+        if destination is None:
+            broken.append(f"{where}: {link}: outside the site")
+        elif not destination.exists():
+            broken.append(f"{where}: {link}: no such file")
+        elif fragment and destination.suffix == ".html" and fragment not in pages[destination].ids:
+            broken.append(f"{where}: {link}: no #{fragment} on that page")
+
+for problem in sorted(set(broken)):
+    print(problem)
+if broken:
+    print(f"\n{len(set(broken))} broken internal links", file=sys.stderr)
+    sys.exit(1)
+print(f"links OK: {checked} internal links in {len(pages)} pages")
+EOF
