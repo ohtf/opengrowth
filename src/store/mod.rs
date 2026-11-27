@@ -498,6 +498,34 @@ mod tests {
         );
     }
 
+    /// The route for a user who holds their own licence: `data/` has the
+    /// layout of `rcpchgrowth`'s `data_tables`, as an import source does.
+    #[test]
+    fn an_import_copies_every_table_and_loads_it_as_imported() {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("data");
+        let dest = scratch("import");
+        let outcomes = import(&source, &dest).unwrap();
+        assert_eq!(outcomes.len(), MANIFEST.len());
+        let store = ReferenceStore::load_dir(&dest).unwrap();
+        assert_eq!(store.loaded().len(), MANIFEST.len());
+        assert!(
+            store
+                .loaded()
+                .iter()
+                .all(|f| matches!(f.origin, Origin::Imported(_)))
+        );
+        assert!(
+            store
+                .table(TableId::Uk90Child, MeasurementMethod::Height, Sex::Female)
+                .is_ok()
+        );
+        assert!(
+            inspect(&dest)
+                .iter()
+                .all(|s| s.state == FileState::Verified)
+        );
+    }
+
     #[cfg(feature = "embedded-data")]
     #[test]
     fn embedded_tables_verify_and_cover_every_manifest_entry() {

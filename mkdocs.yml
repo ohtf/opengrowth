@@ -78,6 +78,7 @@ nav:
   - Getting started: getting-started.md
   - Background:
       - Growth references: background/growth-references.md
+      - Reference tables: background/reference-data.md
       - Syndrome-specific references: background/syndrome-references.md
       - Ages and gestation: background/ages.md
       - How the calculations work: background/how-it-works.md
