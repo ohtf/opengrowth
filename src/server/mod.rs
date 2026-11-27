@@ -252,10 +252,34 @@ pub fn router(state: Arc<AppState>) -> Router {
 pub async fn serve(address: SocketAddr, state: Arc<AppState>) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind(address).await?;
     axum::serve(listener, router(state))
-        .with_graceful_shutdown(async {
-            let _ = tokio::signal::ctrl_c().await;
-        })
+        .with_graceful_shutdown(shutdown_signal())
         .await
+}
+
+/// Resolves on Ctrl-C, or on SIGTERM, which `docker stop`, systemd, and
+/// Kubernetes send. The server then stops accepting connections and finishes
+/// the requests in flight. A process that runs as PID 1 in a container has no
+/// default action for SIGTERM, so without this `docker stop` would wait, then
+/// kill it.
+async fn shutdown_signal() {
+    let interrupt = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut signal) => {
+                signal.recv().await;
+            }
+            Err(_) => std::future::pending::<()>().await,
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+    tokio::select! {
+        () = interrupt => {}
+        () = terminate => {}
+    }
 }
 
 fn json_response<T: Serialize + ?Sized>(status: StatusCode, body: &T) -> Response {
