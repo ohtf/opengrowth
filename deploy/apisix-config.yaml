@@ -22,7 +22,9 @@ apisix:
   dns_resolver_valid: 5
 
 nginx_config:
-  error_log_level: warn
+  # A warning names the client of every request a plugin refuses, such as
+  # one over the rate limit; errors are only failures.
+  error_log_level: error
   http:
     # No request is recorded.
     enable_access_log: false

@@ -40,7 +40,7 @@ docker compose ps
 docker compose logs --tail 100
 ```
 
-opengrowth logs one line when it starts, and Caddy keeps no access log, so no request is recorded.
+opengrowth logs one line when it starts. Neither Caddy nor APISIX keeps an access log, or logs the requests the rate limit refuses, so the requests the server receives leave no record. Only a request that fails on the server, for example while a deploy restarts opengrowth, can leave a line in Caddy's or APISIX's error log, naming the client's address and the path, never what the request contained.
 
 ## Setting up a server
 
