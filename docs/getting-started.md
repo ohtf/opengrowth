@@ -70,4 +70,6 @@ curl -s -X POST http://127.0.0.1:8000/uk-who/calculation \
 }
 ```
 
+With nothing installed, you can send the same request to the public [demo server](integrating/index.md#try-the-demo-server): use `https://api.openhealthtechnology.org/growth/v1` in place of `http://127.0.0.1:8000`, and send it made-up children only.
+
 To require a token, set `AUTHORIZATION_KEY` before starting the server: every request except `/` must then send `Authorization: Bearer <key>`. Browsers on any site can call the API unless you name the sites allowed with `--cors-allow-origin`, or turn browser access off with `--no-cors`.

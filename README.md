@@ -63,6 +63,14 @@ corrected            -0.1259    -1.6745      4.70  uk90-preterm
 
 Add `--format json` for full-precision output with provenance: the engine version and the checksum of every table read.
 
+Or call the public [demo server](https://ohtf.github.io/opengrowth/integrating/#try-the-demo-server), with nothing to install. It is pre-alpha, so send it made-up children only:
+
+```sh
+curl -s -X POST https://api.openhealthtechnology.org/growth/v1/uk-who/calculation -H 'content-type: application/json' -d '{
+  "birth_date": "2020-04-12", "observation_date": "2028-06-12", "observation_value": 115,
+  "sex": "female", "gestation_weeks": 40, "gestation_days": 0, "measurement_method": "height"}' | jq .measurement_calculated_values
+```
+
 ## Playtesting
 
 A hands-on tour of what works today, for maintainers and reviewers. Allow about 20 minutes. Everything here runs locally and touches nothing outside `~/.local/share/opengrowth` and `~/.cache/opengrowth`.

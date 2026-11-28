@@ -14,6 +14,14 @@ opengrowth's HTTP API takes the same requests as the RCPCH Digital Growth Charts
 
     Before building an integration, make sure your data model can store the complete `provenance` object with every calculated result. It names the reference, the engine and server versions and the commits they were built from, and every table read, and it is how affected results would be found if a calculation were ever found to be wrong. Read [Persisting results](persisting-results.md) before you design how to store responses.
 
+## Try the demo server
+
+To try the API without running a server, call the public demo server at `https://api.openhealthtechnology.org/growth/v1`. It needs no token, and its paths follow the RCPCH API's, so `https://api.openhealthtechnology.org/growth/v1/uk-who/calculation` calculates a UK-WHO measurement, and a client built for the RCPCH API needs only the new address. Pages on any website can call it from a browser. Each client address can make 600 requests a minute, and gets 429 beyond that. It runs a published commit, named in the `x-git-revision` header and in each result's provenance. It keeps no log of requests, except a line naming the client's address when one fails on the server, and never records the measurements it is sent.
+
+!!! warning "Made-up children only"
+
+    Send the demo server only measurements you have made up, never a real patient's. Like the rest of opengrowth it is pre-alpha and not for clinical use, and it may change or stop without notice.
+
 ## Run a server
 
 `opengrowth serve` runs the API. [Getting started](../getting-started.md) shows how to install opengrowth.

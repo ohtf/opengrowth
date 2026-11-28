@@ -37,14 +37,24 @@ pub struct Server {
     pub description: Option<String>,
 }
 
-/// The servers the published document lists: `opengrowth serve` on the
-/// reader's own computer, with its default address.
+/// The servers the published document lists: the public demo server first,
+/// so that the documentation's "Try it out" works without installing
+/// anything, then `opengrowth serve` on the reader's own computer, with its
+/// default address.
 #[must_use]
 pub fn default_servers() -> Vec<Server> {
-    vec![Server {
-        url: "http://127.0.0.1:8000".to_owned(),
-        description: Some("opengrowth serve, on this computer".to_owned()),
-    }]
+    vec![
+        Server {
+            url: "https://api.openhealthtechnology.org/growth/v1".to_owned(),
+            description: Some(
+                "The public demo server: pre-alpha, for made-up children only".to_owned(),
+            ),
+        },
+        Server {
+            url: "http://127.0.0.1:8000".to_owned(),
+            description: Some("opengrowth serve, on this computer".to_owned()),
+        },
+    ]
 }
 
 /// The pinned server's OpenAPI document.
