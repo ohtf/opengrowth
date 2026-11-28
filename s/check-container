@@ -27,7 +27,7 @@ for _ in $(seq 100); do
   curl --silent --output /dev/null "http://$address/" && break
   sleep 0.1
 done
-status="$(curl --silent --output /dev/null --write-out '%{http_code}' "http://$address/")"
+status="$(curl --silent --output /dev/null --write-out '%{http_code}' "http://$address/" || true)"
 [[ "$status" == 200 ]] || fail "/ answered $status, not 200"
 
 # A stamped image's label and the binary's own record of its commit agree.

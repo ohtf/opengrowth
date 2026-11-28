@@ -49,10 +49,12 @@ remote "cd /srv/opengrowth && printf 'OPENGROWTH_COMMIT=%s\nCADDYFILE_SHA256=%s\
 # running image cannot be removed, so a rollback to an older one is safe.
 remote "docker image ls opengrowth --format '{{.CreatedAt}}|{{.Repository}}:{{.Tag}}' | sort --reverse | tail -n +4 | cut -d'|' -f2 | xargs --no-run-if-empty docker image rm >/dev/null 2>&1 || true"
 
+# Until the stack is up, and Caddy has its certificate, curl fails; that is
+# a reason to try again, not to stop.
 echo "waiting for $url to answer as $commit" >&2
 served=""
 for _ in $(seq 60); do
-  served="$(curl --silent --head "$url" | tr -d '\r' | sed -n 's/^x-git-revision: //p')"
+  served="$(curl --silent --head "$url" | tr -d '\r' | sed -n 's/^x-git-revision: //p' || true)"
   [[ "$served" == "$commit" ]] && break
   sleep 2
 done
