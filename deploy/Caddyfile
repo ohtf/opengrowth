@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# TLS for the demo server, and the /growth/v1 prefix that the RCPCH API uses,
+# so that an RCPCH client needs only a new host and key header. opengrowth
+# serves its own paths at the root, and the prefix is stripped before it.
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+
+	redir /growth/v1 /growth/v1/ 308
+
+	handle_path /growth/v1/* {
+		reverse_proxy opengrowth:8000 {
+			# opengrowth redirects a path with a trailing slash as the RCPCH
+			# server does, to http:// and without the prefix; send the client
+			# to the public address instead.
+			header_down Location "^http://[^/]+/" "https://{host}/growth/v1/"
+		}
+	}
+
+	handle {
+		header Content-Type application/json
+		respond `{"detail":"Not Found"}` 404
+	}
+}

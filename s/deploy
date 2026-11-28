@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Deploy the current commit to the demo server (R58): build the image with
+# s/container and check it with s/check-container, copy it to the server over
+# SSH, and start the stack in deploy/ there with that image. Then check that
+# the public address answers as that commit. The deploy workflow runs this
+# too.
+#
+# The commit must be pushed, so that anyone using the server can get its
+# source, as AGPL section 13 requires. The server is OPENGROWTH_DEPLOY_HOST,
+# deploy@api.openhealthtechnology.org unless set, and must be in your
+# known_hosts already; s/create-server puts it there. To roll back, check out
+# an earlier commit and deploy it; the server keeps the images of its last
+# three deployments.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+host="${OPENGROWTH_DEPLOY_HOST:-deploy@api.openhealthtechnology.org}"
+url="${OPENGROWTH_DEPLOY_URL:-https://api.openhealthtechnology.org/growth/v1/}"
+
+[[ -z "$(git status --porcelain --untracked-files=no)" ]] \
+  || { echo "commit your changes first: only a commit can be deployed" >&2; exit 1; }
+commit="$(git rev-parse HEAD)"
+git fetch --quiet origin
+[[ -n "$(git branch --remotes --contains "$commit")" ]] \
+  || { echo "push $commit first: its source must be public before it is served" >&2; exit 1; }
+command -v curl >/dev/null || { echo "curl not found: install it with your package manager" >&2; exit 1; }
+ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" true \
+  || { echo "cannot reach $host over SSH: check your key, known_hosts, and OPENGROWTH_DEPLOY_HOST" >&2; exit 1; }
+
+image="opengrowth:$commit"
+s/container --tag "$image"
+s/check-container "$image"
+labelled="$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")"
+[[ "$labelled" == "$commit" ]] \
+  || { echo "the image is labelled with commit '${labelled}', not $commit, so its results would not name their code" >&2; exit 1; }
+
+echo "copying $image to $host" >&2
+docker save "$image" | gzip -1 | ssh "$host" 'gunzip | docker load --quiet'
+scp -q deploy/compose.yaml deploy/Caddyfile "$host:/srv/opengrowth/"
+caddyfile="$(sha256sum deploy/Caddyfile | cut -d' ' -f1)"
+# The commit and the hash are hexadecimal, so they are safe to expand here.
+# shellcheck disable=SC2029
+ssh "$host" "cd /srv/opengrowth && printf 'OPENGROWTH_COMMIT=%s\nCADDYFILE_SHA256=%s\n' '$commit' '$caddyfile' > .env && docker compose up --detach --remove-orphans --quiet-pull"
+
+# Keep the images of the last three deployments, for a quick rollback. The
+# running image cannot be removed, so a rollback to an older one is safe.
+ssh "$host" "docker image ls opengrowth --format '{{.CreatedAt}}|{{.Repository}}:{{.Tag}}' | sort --reverse | tail -n +4 | cut -d'|' -f2 | xargs --no-run-if-empty docker image rm >/dev/null 2>&1 || true"
+
+echo "waiting for $url to answer as $commit" >&2
+served=""
+for _ in $(seq 60); do
+  served="$(curl --silent --head "$url" | tr -d '\r' | sed -n 's/^x-git-revision: //p')"
+  [[ "$served" == "$commit" ]] && break
+  sleep 2
+done
+[[ "$served" == "$commit" ]] || { echo "deployed, but $url answers as ${served:-nothing}, not $commit" >&2; exit 1; }
+echo "deployed $commit to $url"

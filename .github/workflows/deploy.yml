@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Deploys main to the demo server (R58), only when someone runs it: Actions,
+# deploy, Run workflow. It runs s/deploy, which builds and checks the image,
+# copies it to the server, restarts the stack there, and checks the public
+# address. The SSH key and the server's host key are secrets of the `demo`
+# environment, which admits main only, so that a copy of this workflow
+# changed on another branch cannot read them.
+
+name: deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy to the demo server
+    runs-on: ubuntu-latest
+    environment:
+      name: demo
+      url: https://api.openhealthtechnology.org/growth/v1/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install the deploy key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Deploy
+        run: s/deploy

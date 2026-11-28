@@ -19,6 +19,8 @@
 | `s/cli-docs` | Regenerates `docs/cli/`, the command-line reference, from the program's own help. `tests/cli_docs.rs` fails while it is out of date. |
 | `s/container` | Builds the container image from the `Dockerfile`, tagged `opengrowth`, recording the commit when the code is committed. Extra arguments go to `docker build`. |
 | `s/check-container` | Smoke-tests a container image: it starts, answers, refuses a request without its key, calculates as documented, and stops cleanly on `docker stop`. CI runs it. |
+| `s/deploy` | Deploys the current commit, once pushed, to the demo server: builds and checks the image, copies it over SSH, restarts the stack in `deploy/`, and checks the public address. See `deploy/README.md`. |
+| `s/create-server` | Creates the demo server on Hetzner Cloud, once, from `deploy/cloud-init.yaml`, using the hcloud context `ohtf`. |
 | `s/docs` | Serves the documentation site locally with hot reload, on the first free port from 8000. Needs `.venv` set up from `requirements.txt` once. |
 | `s/build-docs` | Builds the documentation site into `site/`. `--strict` fails on any warning, as CI does. |
 | `s/check-wording` | Fails on a word `qms/intended-purpose.md` reserves, in the documentation site or the README, unless it says what opengrowth does not do. |

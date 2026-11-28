@@ -1,0 +1,47 @@
+#cloud-config
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# First-boot setup of the demo server. s/create-server passes it to Hetzner
+# Cloud with the two public keys filled in. Docker and Compose come from the
+# Ubuntu archive, so the nightly security updates reach them; a `deploy` user
+# runs the stack; SSH takes keys only, and never root; and a security update
+# that needs a reboot gets one at 04:00 UTC, after which the stack restarts
+# itself.
+
+package_update: true
+package_upgrade: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - unattended-upgrades
+
+users:
+  - name: deploy
+    groups: [sudo]
+    shell: /bin/bash
+    lock_passwd: true
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - __ADMIN_KEY__
+      - __DEPLOY_KEY__
+
+disable_root: true
+ssh_pwauth: false
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/50-opengrowth.conf
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+  - path: /etc/apt/apt.conf.d/51opengrowth-reboot
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+
+runcmd:
+  - usermod --append --groups docker deploy
+  - systemctl enable --now docker
+  - install --directory --owner deploy --group deploy --mode 755 /srv/opengrowth
+  - systemctl restart ssh

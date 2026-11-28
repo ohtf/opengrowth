@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# Keeps the Dockerfile's base images, pinned by digest, current, so that the
-# image picks up their security fixes. CI builds and checks each update.
+# Keeps the images pinned by digest current, so that they pick up their
+# security fixes: the Dockerfile's base images, which CI builds and checks,
+# and Caddy on the demo server (deploy/compose.yaml).
 version: 2
 
 updates:
@@ -15,6 +16,19 @@ updates:
       default-days: 7
     groups:
       base-images:
+        applies-to: version-updates
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    groups:
+      demo-server-images:
         applies-to: version-updates
         patterns:
           - "*"
