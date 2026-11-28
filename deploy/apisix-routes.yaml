@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# APISIX's routes on the demo server (R58). APISIX reads this file only when
+# its last line is #END. Caddy passes on everything under /growth/v1/; this
+# route strips that prefix, since opengrowth serves its paths at the root, and
+# lets each client address make 600 requests a minute, over a sliding window,
+# answering 429 beyond that. API keys and quotas for each key would be
+# consumers here.
+routes:
+  - id: opengrowth
+    uri: /growth/v1/*
+    plugins:
+      proxy-rewrite:
+        regex_uri: ["^/growth/v1/(.*)", "/$1"]
+      limit-count:
+        count: 600
+        time_window: 60
+        window_type: sliding
+        key_type: var
+        key: remote_addr
+        policy: local
+        rejected_code: 429
+        rejected_msg: "Too many requests: the demo server takes up to 600 a minute from each address."
+        show_limit_quota_header: false
+    upstream:
+      type: roundrobin
+      nodes:
+        "opengrowth:8000": 1
+#END

@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# APISIX on the demo server (R58), between Caddy and opengrowth: rate limits
+# now, and API keys and quotas when they are needed. It runs in standalone
+# mode, with no etcd and no Admin API, and takes its routes from
+# apisix-routes.yaml, so that its whole configuration is in this directory.
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+
+apisix:
+  node_listen: 9080
+  # Caddy terminates TLS, so APISIX listens for plain HTTP only.
+  ssl:
+    enable: false
+  enable_control: false
+  enable_server_tokens: false
+  # Docker's DNS answers with a 600-second TTL, but a redeployed container can
+  # have a new address, so opengrowth's is looked up again every 5 seconds.
+  dns_resolver_valid: 5
+
+nginx_config:
+  error_log_level: warn
+  http:
+    # No request is recorded.
+    enable_access_log: false
+    # The rate limits count by the client's address, which Caddy sends in
+    # X-Forwarded-For. Only Caddy can reach APISIX, over the stack's private
+    # network.
+    real_ip_header: X-Forwarded-For
+    real_ip_from:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - fc00::/7

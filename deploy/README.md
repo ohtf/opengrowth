@@ -1,6 +1,6 @@
 # The demo server
 
-opengrowth's public demo runs at <https://api.openhealthtechnology.org/growth/v1/>, on an OHTF server at Hetzner in Helsinki (`R58`). Caddy terminates TLS and adds the `/growth/v1` prefix that the RCPCH API uses, in front of opengrowth itself. The server holds no data: it calculates and forgets.
+opengrowth's public demo runs at <https://api.openhealthtechnology.org/growth/v1/>, on an OHTF server at Hetzner in Helsinki (`R58`). Caddy terminates TLS, under the `/growth/v1` prefix that the RCPCH API uses. Behind it, APISIX strips the prefix and limits how many requests each client makes, in front of opengrowth itself. The server holds no data: it calculates and forgets.
 
 It is open to anyone, and pre-alpha: not for clinical use.
 
@@ -8,8 +8,10 @@ It is open to anyone, and pre-alpha: not for clinical use.
 
 | File | What it is |
 | --- | --- |
-| `compose.yaml` | The stack: opengrowth, pinned to the commit it was built from, behind Caddy, pinned by digest. Both run read-only and without capabilities, except the one Caddy needs to listen on ports 80 and 443. |
-| `Caddyfile` | TLS, the `/growth/v1` prefix, compression, and the fix for opengrowth's trailing-slash redirects behind a prefix. |
+| `compose.yaml` | The stack: opengrowth, pinned to the commit it was built from, behind APISIX and Caddy, pinned by digest. All three run without capabilities, except the one Caddy needs to listen on ports 80 and 443; opengrowth and Caddy also run read-only. |
+| `Caddyfile` | TLS, compression, and the fix for opengrowth's trailing-slash redirects behind a prefix. |
+| `apisix-config.yaml` | APISIX in standalone mode, with no etcd and no Admin API, keeping no access log. |
+| `apisix-routes.yaml` | The route to opengrowth, which strips the prefix, and the rate limit. |
 
 ## Deploying
 
@@ -22,6 +24,12 @@ s/deploy
 or run the `deploy` workflow in GitHub Actions, which deploys `main`. Either one builds the image, checks it with `s/check-container`, copies it to the server over SSH, restarts the stack, and waits until the public address answers with the new commit.
 
 To roll back, check out an earlier commit and deploy it. The server keeps the images of its last three deployments.
+
+## Rate limits
+
+Each client address can make 600 requests a minute, counted over a sliding window. Beyond that, APISIX answers 429 with a JSON message, until the rate falls. Caddy tells APISIX the client's address, so a client cannot claim another one.
+
+To change the limit, edit `limit-count` in `apisix-routes.yaml` and deploy. API keys, and quotas for each key, would be APISIX consumers in the same file, with the keys themselves kept out of the repository.
 
 ## Looking at it
 

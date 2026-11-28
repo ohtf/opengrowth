@@ -38,12 +38,23 @@ labelled="$(docker inspect --format '{{index .Config.Labels "org.opencontainers.
 [[ "$labelled" == "$commit" ]] \
   || { echo "the image is labelled with commit '${labelled}', not $commit, so its results would not name their code" >&2; exit 1; }
 
+# Compose recreates a network whose definition has changed, but reattaches a
+# container it is not recreating without its service name, so that the
+# others cannot find it. A changed compose.yaml therefore recreates them all.
+deployed="$(remote 'sha256sum /srv/opengrowth/compose.yaml 2>/dev/null' | cut -d' ' -f1 || true)"
+recreate=""
+if [[ "$deployed" != "$(sha256sum deploy/compose.yaml | cut -d' ' -f1)" ]]; then
+  recreate="--force-recreate"
+fi
+
 echo "copying $image to $host" >&2
 docker save "$image" | gzip -1 | remote 'gunzip | docker load --quiet'
-scp -q -o BatchMode=yes -P "$port" deploy/compose.yaml deploy/Caddyfile "$host:/srv/opengrowth/"
+scp -q -o BatchMode=yes -P "$port" deploy/compose.yaml deploy/Caddyfile deploy/apisix-config.yaml deploy/apisix-routes.yaml \
+  "$host:/srv/opengrowth/"
 caddyfile="$(sha256sum deploy/Caddyfile | cut -d' ' -f1)"
-# The commit and the hash are hexadecimal, so they are safe to expand here.
-remote "cd /srv/opengrowth && printf 'OPENGROWTH_COMMIT=%s\nCADDYFILE_SHA256=%s\n' '$commit' '$caddyfile' > .env && docker compose up --detach --remove-orphans --quiet-pull"
+apisix="$(cat deploy/apisix-config.yaml deploy/apisix-routes.yaml | sha256sum | cut -d' ' -f1)"
+# The commit and the hashes are hexadecimal, so they are safe to expand here.
+remote "cd /srv/opengrowth && printf 'OPENGROWTH_COMMIT=%s\nCADDYFILE_SHA256=%s\nAPISIX_CONFIG_SHA256=%s\n' '$commit' '$caddyfile' '$apisix' > .env && docker compose up --detach --remove-orphans --quiet-pull $recreate"
 
 # Keep the images of the last three deployments, for a quick rollback. The
 # running image cannot be removed, so a rollback to an older one is safe.

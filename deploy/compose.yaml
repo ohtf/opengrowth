@@ -1,11 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# The opengrowth demo server (R58): Caddy, for TLS and the /growth/v1 prefix,
-# in front of opengrowth. s/deploy copies this directory to the server and
-# writes .env beside it, so that the stack runs the image built from the
-# commit being deployed. Every image is pinned: opengrowth by its commit, and
-# Caddy by digest, which Dependabot keeps current.
+# The opengrowth demo server (R58): Caddy, for TLS, in front of APISIX, for
+# routing and rate limits, in front of opengrowth. s/deploy copies this
+# directory to the server and writes .env beside it, so that the stack runs
+# the image built from the commit being deployed. Every image is pinned:
+# opengrowth by its commit, and Caddy and APISIX by digest, which Dependabot
+# keeps current.
 name: opengrowth
 
 services:
@@ -23,10 +24,34 @@ services:
       driver: local
     networks: [internal]
 
+  apisix:
+    image: apache/apisix:3.21.0-debian@sha256:1741a8e1186e5c39ea10e6b4fb3e682534d1705efb8328195de5b41ad0657380
+    restart: unless-stopped
+    depends_on: [opengrowth]
+    # Not read-only: APISIX writes its nginx.conf when it starts.
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      APISIX_STAND_ALONE: "true"
+    labels:
+      # The hash of APISIX's two files, from s/deploy, so that a change to
+      # either restarts APISIX with it.
+      org.openhealthtechnology.apisix-config-sha256: ${APISIX_CONFIG_SHA256:-}
+    volumes:
+      - ./apisix-config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ./apisix-routes.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: local
+    networks: [internal]
+
   caddy:
     image: caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
     restart: unless-stopped
-    depends_on: [opengrowth]
+    depends_on: [apisix]
     read_only: true
     cap_drop: [ALL]
     cap_add: [NET_BIND_SERVICE]
@@ -51,6 +76,10 @@ services:
 
 networks:
   internal:
+    # With IPv6 here, Docker forwards IPv6 clients' connections with their
+    # own addresses, as it does IPv4 clients', instead of through a proxy
+    # process that would give them all one address, and so one rate limit.
+    enable_ipv6: true
 
 volumes:
   caddy_data:
