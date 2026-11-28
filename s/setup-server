@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Open Health Technology Foundation contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Prepare a server for s/deploy (R58), or change who can deploy to it:
+#
+#   s/setup-server ADMIN_DESTINATION KEY.pub...
+#
+# ADMIN_DESTINATION is how you reach the server over SSH as a user who can
+# sudo without a password, such as an alias from your ssh config. Any Ubuntu
+# server will do. The script installs Docker and Compose from the Ubuntu
+# archive if the server has no Docker yet; gives it a `deploy` user, in the
+# docker group, whose authorized_keys become exactly the KEY.pub files given
+# (yours, and the deploy workflow's); and makes /srv/opengrowth for the stack.
+# Running it again changes only the keys.
+#
+# It then adds the server's host key, as read over your own SSH connection,
+# to your known_hosts under the deploy address, and prints that line for the
+# deploy workflow's DEPLOY_KNOWN_HOSTS secret. The deploy address is
+# OPENGROWTH_DEPLOY_HOST on OPENGROWTH_DEPLOY_PORT, as for s/deploy.
+#
+# The deploy user can run any container, which gives it control of the whole
+# server: give its keys only to those who deploy.
+set -euo pipefail
+deploy_host="${OPENGROWTH_DEPLOY_HOST:-deploy@api.openhealthtechnology.org}"
+deploy_port="${OPENGROWTH_DEPLOY_PORT:-2227}"
+
+[[ $# -ge 2 ]] || { echo "usage: s/setup-server ADMIN_DESTINATION KEY.pub..." >&2; exit 2; }
+admin="$1"
+shift
+keys=""
+for key in "$@"; do
+  line="$(head -n 1 "$key" 2>/dev/null || true)"
+  [[ "$key" == *.pub && "$line" =~ ^(ssh-|ecdsa-|sk-) ]] || { echo "not an SSH public key file: $key" >&2; exit 1; }
+  keys+="$line"$'\n'
+done
+
+# The keys travel as base64, so that nothing in them reaches the remote shell.
+encoded="$(printf '%s' "$keys" | base64 | tr -d '\n')"
+# shellcheck disable=SC2029
+output="$(ssh -o BatchMode=yes "$admin" "sudo bash -s -- $encoded" <<'REMOTE'
+set -euo pipefail
+keys="$(printf '%s' "$1" | base64 --decode)"
+if ! command -v docker >/dev/null; then
+  echo "installing Docker and Compose from the Ubuntu archive" >&2
+  apt-get update -qq </dev/null
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io docker-compose-v2 </dev/null >/dev/null
+  systemctl enable --now docker </dev/null
+fi
+docker compose version >/dev/null 2>&1 || { echo "the server has Docker, but not Compose v2" >&2; exit 1; }
+id deploy >/dev/null 2>&1 || useradd --create-home --shell /bin/bash deploy
+usermod --append --groups docker deploy
+home="$(getent passwd deploy | cut -d: -f6)"
+install --directory --owner deploy --group deploy --mode 700 "$home/.ssh"
+printf '%s' "$keys" > "$home/.ssh/authorized_keys.new"
+chown deploy:deploy "$home/.ssh/authorized_keys.new"
+chmod 600 "$home/.ssh/authorized_keys.new"
+mv "$home/.ssh/authorized_keys.new" "$home/.ssh/authorized_keys"
+install --directory --owner deploy --group deploy --mode 755 /srv/opengrowth
+echo "versions: Docker $(docker version --format '{{.Server.Version}}') and Compose $(docker compose version --short)"
+echo "hostkey: $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"
+REMOTE
+)"
+versions="$(sed -n 's/^versions: //p' <<<"$output")"
+host_key="$(sed -n 's/^hostkey: //p' <<<"$output")"
+[[ "$host_key" == "ssh-ed25519 "* ]] || { echo "could not read the server's ed25519 host key" >&2; exit 1; }
+
+name="${deploy_host#*@}"
+entry="$name"
+if [[ "$deploy_port" != 22 ]]; then
+  entry="[$name]:$deploy_port"
+fi
+known="$entry $host_key"
+ssh-keygen -R "$entry" >/dev/null 2>&1 || true
+printf '%s\n' "$known" >> ~/.ssh/known_hosts
+
+cat <<EOF
+
+$admin is ready for s/deploy, with $versions, a deploy user with $# key(s), and /srv/opengrowth.
+
+Its host key is now in ~/.ssh/known_hosts as $entry. The deploy workflow's DEPLOY_KNOWN_HOSTS secret is:
+$known
+EOF
